@@ -1,0 +1,195 @@
+/* Custom Cursor */
+body {
+    cursor: none; /* Hide default cursor */
+}
+
+#custom-cursor {
+    position: fixed;
+    top: 0; left: 0;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--primary);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                height 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                background-color 0.3s ease;
+    mix-blend-mode: difference;
+}
+
+#custom-cursor.hovering {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 255, 187, 0.2);
+    border-color: transparent;
+    backdrop-filter: blur(2px);
+}
+
+/* Button Advanced Hover (Text Shearing & Gradients) */
+.btn {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+    z-index: -1;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: skewX(-5deg) translateY(-2px);
+}
+
+/* Page Wipe Transition Overlay */
+#page-wipe {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100vh;
+    background: var(--bg-dark);
+    z-index: 10000;
+    transform: translateY(100%);
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#page-wipe .wipe-logo {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    color: var(--primary);
+    opacity: 0;
+}
+
+/* Page Wipe Animation Classes */
+.wipe-out {
+    animation: wipeUp 0.8s cubic-bezier(0.8, 0, 0.2, 1) forwards;
+}
+
+.wipe-in {
+    animation: wipeDown 0.8s cubic-bezier(0.8, 0, 0.2, 1) forwards;
+}
+
+.wipe-logo-fade {
+    animation: fadeInOut 0.8s ease forwards;
+}
+
+@keyframes wipeUp {
+    0% { transform: translateY(100%); }
+    100% { transform: translateY(0%); }
+}
+
+@keyframes wipeDown {
+    0% { transform: translateY(0%); }
+    100% { transform: translateY(-100%); }
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.1); }
+}
+
+/* Mobile Responsiveness & Swipe Interfaces */
+@media (max-width: 768px) {
+    /* Main Layouts */
+    .dashboard-grid, .recruiter-grid, .split-section {
+        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
+        height: auto;
+    }
+    
+    /* Convert CRM pipeline to swipeable horizontal scroll */
+    .pipeline-view {
+        width: 100vw;
+        margin-left: -5%; /* Breakout of padding */
+        padding-left: 5%;
+    }
+    
+    .pipeline-columns {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 2rem;
+        -webkit-overflow-scrolling: touch;
+        min-width: unset;
+    }
+    
+    .crm-column {
+        flex: 0 0 85vw; /* 85% of screen width for peek effect */
+        scroll-snap-align: center;
+        margin-right: 1rem;
+        height: 60vh; /* Fixed height for scrollable lists */
+    }
+
+    /* Convert Feature Grid to swipeable */
+    .grid-container {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        padding-bottom: 2rem;
+        margin-left: -5%;
+        padding-left: 5%;
+        gap: 1rem;
+    }
+    
+    .project-card {
+        flex: 0 0 80vw;
+        scroll-snap-align: center;
+    }
+    
+    /* Radar Chart Scaling */
+    .radar-container {
+        transform: scale(0.8);
+        min-height: 200px;
+    }
+    
+    /* Sidebar bottom sheet for mobile */
+    .sidebar {
+        width: 100vw;
+        height: 60px;
+        flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--border-light);
+        position: fixed;
+        bottom: 0; left: 0;
+        z-index: 90;
+        padding: 0 1rem;
+    }
+    
+    .small-logo { display: none; }
+    
+    .side-nav {
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-around;
+        gap: 0;
+    }
+    
+    .integrity-module { display: none; }
+    
+    /* Adjust main content padding */
+    .dashboard-main {
+        padding-bottom: 60px; /* Space for bottom nav */
+    }
+    
+    /* AI Panel Mobile */
+    :root {
+        --panel-width: 100vw;
+    }
+}

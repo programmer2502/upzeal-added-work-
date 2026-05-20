@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Control | Virtual Internship Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&family=Syne:wght@400..800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./dashboard.css">
+    <link rel="stylesheet" href="./interaction.css">
+</head>
+<body class="dashboard-body">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar glass-panel-nav">
+        <div class="sidebar-top">
+            <div class="logo small-logo">
+                <span class="logo-bracket">[</span><span class="logo-text">VIP</span><span class="logo-bracket">]</span>
+            </div>
+            <nav class="side-nav">
+                <a href="./dashboard.html" class="nav-icon active" title="Mission Control">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </a>
+                <a href="./index.html" class="nav-icon" title="Repositories">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </a>
+                <a href="./recruiter.html" class="nav-icon" title="Talent Explorer">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                </a>
+            </nav>
+        </div>
+        
+        <!-- Anti-Cheat Traceability Visual -->
+        <div class="integrity-module" title="Git History Analysis: Normal">
+            <div class="integrity-header">Integrity_Meter</div>
+            <svg class="git-branching-svg" viewBox="0 0 100 80">
+                <!-- Master Branch -->
+                <line x1="10" y1="70" x2="10" y2="10" stroke="var(--primary)" stroke-width="2" />
+                <circle cx="10" cy="60" r="3" fill="var(--primary)" />
+                <circle cx="10" cy="30" r="3" fill="var(--primary)" />
+                <circle cx="10" cy="15" r="3" fill="var(--primary)" />
+                
+                <!-- Feature Branch -->
+                <path d="M10 60 Q 30 50 30 40 T 10 30" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="2 2" />
+                <circle cx="30" cy="45" r="3" fill="var(--text-main)" />
+                <circle cx="20" cy="35" r="3" fill="var(--text-main)" />
+            </svg>
+            <div class="integrity-status"><span class="status-dot"></span> Trace: Valid</div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <!-- Top Bar -->
+        <header class="top-bar glass-panel-nav">
+            <div class="breadcrumb">
+                <span class="text-muted">~/projects/</span><span class="text-main">e-commerce-core</span>
+            </div>
+            <div class="cmd-hint" id="cmd-k-hint">
+                <span class="kbd">CMD</span> + <span class="kbd">K</span> <span class="text-muted ml-2">AI Mentor</span>
+            </div>
+        </header>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- Left Column: Ticket Feed -->
+            <section class="ticket-feed">
+                <div class="section-header-small">
+                    <h3 class="font-heading">ACTIVE_SPRINT</h3>
+                    <div class="filter-tabs">
+                        <span class="tab active">To Do</span>
+                        <span class="tab">In Progress</span>
+                        <span class="tab">In Review</span>
+                    </div>
+                </div>
+
+                <div class="ticket-list">
+                    <!-- Ticket 1 -->
+                    <div class="ticket-card glass-panel">
+                        <div class="ticket-top">
+                            <span class="ticket-id font-body">VIP-402</span>
+                            <span class="ticket-complexity high">Complex</span>
+                        </div>
+                        <h4 class="ticket-title font-heading">Implement Distributed Rate Limiting</h4>
+                        <p class="ticket-desc font-body text-muted">Use Redis to implement a sliding window rate limiter for the public GraphQL API endpoint.</p>
+                        <div class="ticket-footer">
+                            <div class="stack-tags">
+                                <span class="stack-tag">Redis</span>
+                                <span class="stack-tag">Node.js</span>
+                            </div>
+                            <button class="btn-micro btn-outline">Checkout Branch</button>
+                        </div>
+                    </div>
+
+                    <!-- Ticket 2 -->
+                    <div class="ticket-card glass-panel">
+                        <div class="ticket-top">
+                            <span class="ticket-id font-body">VIP-405</span>
+                            <span class="ticket-complexity medium">Medium</span>
+                        </div>
+                        <h4 class="ticket-title font-heading">Migrate Auth to JWT</h4>
+                        <p class="ticket-desc font-body text-muted">Replace session-based authentication with stateless JWTs using RS256 signing.</p>
+                        <div class="ticket-footer">
+                            <div class="stack-tags">
+                                <span class="stack-tag">Security</span>
+                                <span class="stack-tag">Express</span>
+                            </div>
+                            <button class="btn-micro btn-outline">Checkout Branch</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Analytics & Scorecard -->
+            <section class="profile-analytics">
+                <div class="scorecard-panel glass-panel">
+                    <div class="panel-header">
+                        <h3 class="font-heading">ENGINEERING_VECTOR</h3>
+                        <span class="live-badge">Live Sync</span>
+                    </div>
+                    
+                    <!-- Radar Chart Container -->
+                    <div class="radar-container" id="radar-chart">
+                        <!-- SVG dynamically generated by dashboard.js -->
+                    </div>
+                    
+                    <div class="scorecard-legend">
+                        <div class="legend-item"><span class="legend-color primary"></span> Your Score</div>
+                        <div class="legend-item"><span class="legend-color muted"></span> Global Avg</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- AI Mentor Side Panel (CMD+K) -->
+    <div class="ai-panel-overlay" id="ai-overlay"></div>
+    <aside class="ai-mentor-panel glass-panel" id="ai-panel">
+        <div class="ai-panel-header">
+            <h3 class="font-heading">AI_MENTOR_TERMINAL</h3>
+            <button class="close-btn" id="ai-close">&times;</button>
+        </div>
+        
+        <div class="ai-chat-area">
+            <div class="chat-bubble ai">
+                <p>Hello! I noticed you checked out branch <code>VIP-402-rate-limiting</code>. Let me know if you need architectural guidance on Redis sliding windows.</p>
+            </div>
+            <div class="chat-bubble user">
+                <p>How should I structure the Redis keys for a sliding window?</p>
+            </div>
+            <div class="chat-bubble ai">
+                <p>For a sliding window, a Sorted Set is optimal. Use the timestamp as the score. Here is a blueprint:</p>
+                <div class="code-block">
+                    <div class="code-header">redis_limiter.ts</div>
+                    <pre><code class="language-typescript"><span class="keyword">const</span> key = <span class="string">\`rate:\${ip}\`</span>;
+<span class="keyword">const</span> now = Date.now();
+<span class="keyword">const</span> windowStart = now - <span class="number">60000</span>;
+
+<span class="keyword">await</span> redis.multi()
+    .zremrangebyscore(key, <span class="number">0</span>, windowStart)
+    .zadd(key, now, now.toString())
+    .zcard(key)
+    .expire(key, <span class="number">60</span>)
+    .exec();</code></pre>
+                </div>
+                <p>This ensures only requests within the last 60 seconds are counted.</p>
+            </div>
+        </div>
+
+        <div class="ai-input-area">
+            <input type="text" class="ai-input" placeholder="Ask your mentor..." id="ai-input-field">
+            <button class="ai-send-btn"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg></button>
+        </div>
+    </aside>
+
+    <script src="./dashboard.js"></script>
+    <script src="./interaction.js"></script>
+</body>
+</html>

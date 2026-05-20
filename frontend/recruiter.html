@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talent Explorer | Virtual Internship Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&family=Syne:wght@400..800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./dashboard.css">
+    <link rel="stylesheet" href="./recruiter.css">
+    <link rel="stylesheet" href="./interaction.css">
+</head>
+<body class="dashboard-body">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar glass-panel-nav">
+        <div class="sidebar-top">
+            <div class="logo small-logo">
+                <span class="logo-bracket">[</span><span class="logo-text">VIP</span><span class="logo-bracket">]</span>
+            </div>
+            <nav class="side-nav">
+                <a href="./dashboard.html" class="nav-icon" title="Mission Control">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </a>
+                <a href="./recruiter.html" class="nav-icon active" title="Talent Explorer">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </a>
+                <a href="./index.html" class="nav-icon" title="Landing Page">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dashboard-main recruiter-main">
+        <!-- Top Bar -->
+        <header class="top-bar glass-panel-nav">
+            <div class="breadcrumb">
+                <span class="text-main font-heading" style="font-size:1.2rem;">TALENT_EXPLORER</span>
+            </div>
+            <div class="flex-actions">
+                <button class="btn btn-outline btn-micro">Sync ATS</button>
+            </div>
+        </header>
+
+        <div class="recruiter-grid">
+            
+            <!-- CRM Pipeline View -->
+            <section class="pipeline-view">
+                <div class="pipeline-columns">
+                    
+                    <!-- Column 1 -->
+                    <div class="crm-column">
+                        <div class="crm-header">
+                            <span class="status-dot completed"></span>
+                            Internship Complete
+                            <span class="count">2</span>
+                        </div>
+                        <div class="crm-body">
+                            <div class="candidate-card glass-panel" onclick="selectCandidate('olivia')">
+                                <div class="c-card-header">
+                                    <div class="avatar-wrapper availability-decay">
+                                        <img src="https://i.pravatar.cc/150?img=5" alt="Avatar">
+                                    </div>
+                                    <div class="c-info">
+                                        <h4 class="font-heading">Olivia Martin</h4>
+                                        <p class="text-muted font-body">Data Scientist</p>
+                                    </div>
+                                    <div class="match-score">84%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="crm-column">
+                        <div class="crm-header">
+                            <span class="status-dot verified"></span>
+                            Technical Verified
+                            <span class="count">1</span>
+                        </div>
+                        <div class="crm-body">
+                            <div class="candidate-card glass-panel active-select" onclick="selectCandidate('liam')">
+                                <div class="c-card-header">
+                                    <div class="avatar-wrapper availability-active">
+                                        <img src="https://i.pravatar.cc/150?img=11" alt="Avatar">
+                                    </div>
+                                    <div class="c-info">
+                                        <h4 class="font-heading">Liam Chen</h4>
+                                        <p class="text-muted font-body">Sr. Frontend</p>
+                                    </div>
+                                    <div class="match-score">98%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 3 -->
+                    <div class="crm-column">
+                        <div class="crm-header">
+                            <span class="status-dot export"></span>
+                            Ready for Export to ATS
+                            <span class="count">0</span>
+                        </div>
+                        <div class="crm-body dropzone">
+                            <!-- Empty State -->
+                            <div class="empty-state">
+                                <p class="text-muted font-body text-sm">Drag candidates here to export to Workday/Greenhouse.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Explainability Matrix Side Panel -->
+            <section class="explainability-panel glass-panel">
+                <div class="panel-header">
+                    <h3 class="font-heading">EXPLAINABILITY_MATRIX</h3>
+                    <span class="text-muted font-body text-sm">Target: Liam Chen</span>
+                </div>
+                
+                <div class="matrix-container" id="matrix-graph">
+                    <!-- Central Axis Line -->
+                    <div class="matrix-axis"></div>
+                    
+                    <!-- Bars injected by JS -->
+                </div>
+                
+                <div class="matrix-footer">
+                    <button class="btn btn-primary w-full">Export Profile to ATS</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="./recruiter.js"></script>
+    <script src="./interaction.js"></script>
+</body>
+</html>
