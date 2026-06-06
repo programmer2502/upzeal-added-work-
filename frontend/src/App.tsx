@@ -145,13 +145,6 @@ export default function App() {
               playsInline
               className="w-full h-full object-cover pointer-events-none"
               src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4"
-              onTimeUpdate={(e) => {
-                const video = e.currentTarget;
-                if (video.duration && video.currentTime >= video.duration - 0.2) {
-                  video.currentTime = 0.00005;
-                  video.play().catch(() => { });
-                }
-              }}
             />
           </div>
 
@@ -863,13 +856,6 @@ export default function App() {
               loop
               playsInline
               className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
-              onTimeUpdate={(e) => {
-                const video = e.currentTarget;
-                if (video.duration && video.currentTime >= video.duration - 0.2) {
-                  video.currentTime = 0.00005;
-                  video.play().catch(() => { });
-                }
-              }}
             >
               <source
                 src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4"
