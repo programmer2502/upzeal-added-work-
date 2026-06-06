@@ -19,7 +19,8 @@ import {
   X,
   Check,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from 'lucide-react';
 
 // ==========================================
@@ -103,6 +104,9 @@ export default function App() {
   // Sign up form states
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
+  const [signupStep, setSignupStep] = useState(1);
+  const [isSocialLoading, setIsSocialLoading] = useState(false);
+  const [selectedTech, setSelectedTech] = useState<string[]>([]);
 
   // Gradient style configuration for the "Revitalized" text
   const gradientStyle: React.CSSProperties = {
@@ -113,6 +117,30 @@ export default function App() {
     color: 'transparent',
     WebkitTextFillColor: 'transparent',
     filter: 'url(#c3-noise)',
+  };
+
+  const TECH_STACK_OPTIONS = [
+    { id: 'github', label: 'GitHub' },
+    { id: 'gitlab', label: 'GitLab' },
+    { id: 'python', label: 'Python / FastAPI' },
+    { id: 'node', label: 'Node.js / Express' },
+    { id: 'react', label: 'React / Next.js' },
+    { id: 'docker', label: 'Docker / K8s' },
+  ];
+
+  const handleNextStep = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSocialLoading(true);
+    setTimeout(() => {
+      setIsSocialLoading(false);
+      setSignupStep(2);
+    }, 1200);
+  };
+
+  const toggleTech = (id: string) => {
+    setSelectedTech(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
   };
 
   const AppleButton = ({ label, onClick, full = false }: { label: string; onClick?: () => void; full?: boolean }) => (
@@ -363,8 +391,8 @@ export default function App() {
                           <button
                             key={folder.label}
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${folder.active
-                                ? 'bg-white/10 text-white'
-                                : 'text-white/60 hover:bg-white/5 hover:text-white'
+                              ? 'bg-white/10 text-white'
+                              : 'text-white/60 hover:bg-white/5 hover:text-white'
                               }`}
                           >
                             <div className="flex items-center gap-2.5">
@@ -914,9 +942,9 @@ export default function App() {
                 }}
                 className="space-y-3 w-full"
               >
-                <StepItem number={1} text="Register your identity" active />
-                <StepItem number={2} text="Configure your dashboard" />
-                <StepItem number={3} text="Finalize your profile" />
+                <StepItem number={1} text="Register your identity" active={signupStep === 1} completed={signupStep > 1} />
+                <StepItem number={2} text="Configure your dashboard" active={signupStep === 2} completed={signupStep > 2} />
+                <StepItem number={3} text="Finalize your profile" active={signupStep === 3} />
               </motion.div>
             </motion.div>
           </div>
@@ -1027,29 +1055,37 @@ export default function App() {
 // REUSABLE PRESENTATION COMPONENTS
 // ==========================================
 
-function StepItem({ number, text, active = false }: { number: number; text: string; active?: boolean }) {
+function StepItem({ number, text, active = false, completed = false }: { number: number; text: string; active?: boolean; completed?: boolean }) {
   return (
     <div className={`flex items-center gap-4 p-4 rounded-2xl w-full text-left transition-all ${active
-        ? 'bg-white text-black border border-white shadow-lg'
+      ? 'bg-white text-black border border-white shadow-lg'
+      : completed
+        ? 'bg-white/5 text-white/50 border border-white/5'
         : 'bg-brand-gray text-white border-transparent'
       }`}>
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${active ? 'bg-black text-white' : 'bg-white/10 text-white/40'
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${active
+        ? 'bg-black text-white'
+        : completed
+          ? 'bg-white/20 text-white'
+          : 'bg-white/10 text-white/40'
         }`}>
-        {number}
+        {completed ? <Check className="w-3.5 h-3.5" /> : number}
       </span>
       <span className="text-sm font-semibold tracking-tight select-none">{text}</span>
     </div>
   );
 }
 
-function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function SocialButton({ icon, label, isLoading = false, onClick }: { icon: React.ReactNode; label: string; isLoading?: boolean; onClick?: () => void }) {
   return (
     <button
       type="button"
-      className="flex items-center justify-center gap-2 h-12 w-full bg-black border border-white/10 rounded-xl hover:bg-white/5 active:scale-[0.98] transition-all cursor-pointer select-none"
+      onClick={onClick}
+      disabled={isLoading}
+      className={`flex items-center justify-center gap-2 h-12 w-full bg-black border border-white/10 rounded-xl hover:bg-white/5 active:scale-[0.98] transition-all select-none ${isLoading ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}`}
     >
-      {icon}
-      <span className="text-sm font-semibold text-white/90">{label}</span>
+      {isLoading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : icon}
+      <span className="text-sm font-semibold text-white/90">{isLoading ? 'Connecting...' : label}</span>
     </button>
   );
 }
