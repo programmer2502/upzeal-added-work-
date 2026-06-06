@@ -107,7 +107,7 @@ export default function App() {
 
   // Gradient style configuration for the "Revitalized" text
   const gradientStyle: React.CSSProperties = {
-    backgroundImage: 'linear-gradient(to right, #091020 0%, #0B2551 12.5%, #A4F4FD 32.5%, #00d2ff 50%, #0B2551 67.5%, #091020 87.5%, #091020 100%)',
+    backgroundImage: 'linear-gradient(to right, #091020 0%, #0B2551 20%, #A4F4FD 40%, #00d2ff 50%, #A4F4FD 60%, #0B2551 80%, #091020 100%)',
     backgroundSize: '200% auto',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
@@ -146,6 +146,13 @@ export default function App() {
               playsInline
               className="w-full h-full object-cover pointer-events-none"
               src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" 
+              onTimeUpdate={(e) => {
+                const video = e.currentTarget;
+                if (video.duration && video.currentTime >= video.duration - 0.2) {
+                  video.currentTime = 0.05;
+                  video.play().catch(() => {});
+                }
+              }}
             />
           </div>
 
@@ -860,6 +867,13 @@ export default function App() {
               loop 
               playsInline 
               className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+              onTimeUpdate={(e) => {
+                const video = e.currentTarget;
+                if (video.duration && video.currentTime >= video.duration - 0.2) {
+                  video.currentTime = 0.05;
+                  video.play().catch(() => {});
+                }
+              }}
             >
               <source 
                 src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" 
@@ -926,7 +940,16 @@ export default function App() {
           </div>
 
           {/* Right Column (Sign Up Form) */}
-          <div className="flex-1 flex flex-col items-center justify-center py-12 lg:py-6 px-4 sm:px-12 lg:px-16 xl:px-24 overflow-y-auto lg:overflow-hidden bg-black">
+          <div className="flex-1 flex flex-col items-center justify-center py-12 lg:py-6 px-4 sm:px-12 lg:px-16 xl:px-24 overflow-y-auto lg:overflow-hidden bg-black relative">
+            {/* Close Button to return to Homepage */}
+            <button 
+              onClick={() => setView('landing')}
+              className="absolute top-6 right-6 p-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
+              aria-label="Back to homepage"
+            >
+              <X className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
+            </button>
+
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
