@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/logo.png';
-import { 
-  ChevronRight, 
-  Search, 
-  Sparkles, 
-  Inbox, 
-  Star, 
-  Send, 
-  FileText, 
-  Archive, 
-  Trash2, 
-  MoreHorizontal, 
-  Reply, 
-  Forward, 
-  Paperclip, 
-  Menu, 
-  X, 
+import {
+  ChevronRight,
+  Search,
+  Sparkles,
+  Inbox,
+  Star,
+  Send,
+  FileText,
+  Archive,
+  Trash2,
+  MoreHorizontal,
+  Reply,
+  Forward,
+  Paperclip,
+  Menu,
+  X,
   Check,
-  Circle,
   Eye,
   EyeOff
 } from 'lucide-react';
@@ -28,16 +27,16 @@ import {
 // ==========================================
 
 const Chrome = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="16" 
-    height="16" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2.5" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     {...props}
   >
     <circle cx="12" cy="12" r="10" />
@@ -49,16 +48,16 @@ const Chrome = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const Github = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width="16" 
-    height="16" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2.5" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     {...props}
   >
     <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
@@ -100,7 +99,7 @@ export default function App() {
   const [view, setView] = useState<'landing' | 'signup'>('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [yearly, setYearly] = useState(false);
-  
+
   // Sign up form states
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState('');
@@ -117,7 +116,7 @@ export default function App() {
   };
 
   const AppleButton = ({ label, onClick, full = false }: { label: string; onClick?: () => void; full?: boolean }) => (
-    <button 
+    <button
       onClick={onClick}
       className={`group inline-flex items-center justify-center gap-2 rounded-full bg-white text-black font-semibold text-sm px-5 py-3 transition-all hover:bg-white/90 active:scale-[0.98] cursor-pointer ${full ? 'w-full' : ''}`}
     >
@@ -129,7 +128,7 @@ export default function App() {
   return (
     <AnimatePresence mode="wait">
       {view === 'landing' ? (
-        <motion.div 
+        <motion.div
           key="landing"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -139,18 +138,18 @@ export default function App() {
         >
           {/* Global Background Video */}
           <div className="fixed inset-0 z-0 pointer-events-none">
-            <video 
-              autoPlay 
-              loop 
-              muted 
+            <video
+              autoPlay
+              loop
+              muted
               playsInline
               className="w-full h-full object-cover pointer-events-none"
-              src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" 
+              src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4"
               onTimeUpdate={(e) => {
                 const video = e.currentTarget;
                 if (video.duration && video.currentTime >= video.duration - 0.2) {
-                  video.currentTime = 0.05;
-                  video.play().catch(() => {});
+                  video.currentTime = 0.00005;
+                  video.play().catch(() => { });
                 }
               }}
             />
@@ -175,7 +174,7 @@ export default function App() {
           {/* ==========================================
               SECTION 1 — NAVBAR
               ========================================== */}
-          <motion.nav 
+          <motion.nav
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -190,7 +189,7 @@ export default function App() {
               {/* Desktop Nav Items */}
               <div className="hidden md:flex gap-8">
                 {['Solutions', 'Pricing', 'Blog', 'Documentation', 'Careers'].map((item, idx) => (
-                  <motion.a 
+                  <motion.a
                     key={item}
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -209,7 +208,7 @@ export default function App() {
               </div>
 
               {/* Mobile Menu Toggle */}
-              <button 
+              <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden w-10 h-10 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
               >
@@ -220,7 +219,7 @@ export default function App() {
             {/* Mobile dropdown */}
             <AnimatePresence>
               {mobileMenuOpen && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -228,7 +227,7 @@ export default function App() {
                 >
                   <div className="px-6 py-6 flex flex-col gap-4">
                     {['Solutions', 'Pricing', 'Blog', 'Documentation', 'Careers'].map((item) => (
-                      <a 
+                      <a
                         key={item}
                         href={`#${item.toLowerCase()}`}
                         onClick={() => setMobileMenuOpen(false)}
@@ -252,7 +251,7 @@ export default function App() {
           <section className="relative z-10 max-w-6xl mx-auto px-6">
             <div className="pt-16 md:pt-28 pb-20 text-center flex flex-col items-center">
               {/* Headline H1 */}
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
@@ -265,7 +264,7 @@ export default function App() {
               </motion.h1>
 
               {/* Subtitle paragraph */}
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
@@ -275,7 +274,7 @@ export default function App() {
               </motion.p>
 
               {/* CTA and Download Hint */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.7 }}
@@ -292,7 +291,7 @@ export default function App() {
           {/* ==========================================
               SECTION 3 — MAC OS MENU BAR STRIP
               ========================================== */}
-          <motion.section 
+          <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.9 }}
@@ -327,7 +326,7 @@ export default function App() {
               SECTION 4 — INBOX MOCKUP
               ========================================== */}
           <section className="relative z-20 max-w-6xl mx-auto px-6 py-16 md:py-24">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.1 }}
@@ -346,7 +345,7 @@ export default function App() {
 
               {/* Mockup Workspace Grid */}
               <div className="grid grid-cols-12 h-[520px]">
-                
+
                 {/* Sidebar (col-span-3) */}
                 <div className="col-span-3 border-r border-white/5 bg-black/30 p-4 flex flex-col justify-between">
                   <div>
@@ -368,22 +367,20 @@ export default function App() {
                       ].map((folder) => {
                         const Icon = folder.icon;
                         return (
-                          <button 
+                          <button
                             key={folder.label}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                              folder.active 
-                                ? 'bg-white/10 text-white' 
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${folder.active
+                                ? 'bg-white/10 text-white'
                                 : 'text-white/60 hover:bg-white/5 hover:text-white'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-2.5">
                               <Icon className="w-4 h-4" />
                               <span>{folder.label}</span>
                             </div>
                             {folder.count && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                folder.active ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40'
-                              }`}>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${folder.active ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40'
+                                }`}>
                                 {folder.count}
                               </span>
                             )}
@@ -417,9 +414,9 @@ export default function App() {
                   {/* Search bar header */}
                   <div className="p-3 border-b border-white/5 flex items-center gap-2 text-white/40 bg-black/20">
                     <Search className="w-4 h-4" />
-                    <input 
-                      type="text" 
-                      placeholder="Search mail" 
+                    <input
+                      type="text"
+                      placeholder="Search mail"
                       disabled
                       className="bg-transparent border-none text-xs text-white/80 placeholder-white/30 focus:outline-none w-full cursor-default"
                     />
@@ -435,11 +432,10 @@ export default function App() {
                       { sender: 'Vercel', subject: 'Deployment ready for aura-web', body: 'Preview is live at aura-web-g3f.vercel.app', time: 'Mon' },
                       { sender: 'GitHub', subject: '[aura/core] PR #482 approved', body: 'david-lim approved your pull request.', time: 'Mon' },
                     ].map((msg, idx) => (
-                      <div 
+                      <div
                         key={idx}
-                        className={`p-3.5 text-left cursor-default transition-colors relative ${
-                          msg.active ? 'bg-white/5' : 'hover:bg-white/[0.02]'
-                        }`}
+                        className={`p-3.5 text-left cursor-default transition-colors relative ${msg.active ? 'bg-white/5' : 'hover:bg-white/[0.02]'
+                          }`}
                       >
                         {/* Unread indicator */}
                         {msg.unread && (
@@ -532,7 +528,7 @@ export default function App() {
           <section className="relative z-20 max-w-6xl mx-auto px-6 py-20 md:py-28">
             <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start">
               {/* Left column */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -540,11 +536,11 @@ export default function App() {
                 className="flex flex-col items-start text-left"
               >
                 <SectionEyebrow label="Triage" tag="AI-native" />
-                
+
                 <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02] text-white">
                   Clear your inbox<br />in a single pass.
                 </h2>
-                
+
                 <p className="mt-6 text-white/60 text-base leading-[1.6] max-w-md">
                   Aura reads every message, understands intent, and routes the noise away from the signal. Focus on what moves your day forward — the rest handles itself.
                 </p>
@@ -552,8 +548,8 @@ export default function App() {
                 {/* Category Chips */}
                 <div className="mt-8 flex flex-wrap gap-2">
                   {["Auto-categorize", "Snooze for later", "Silent newsletters", "One-tap unsubscribe"].map((chip) => (
-                    <span 
-                      key={chip} 
+                    <span
+                      key={chip}
                       className="text-xs text-white/70 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] transition-colors hover:bg-white/5"
                     >
                       {chip}
@@ -563,7 +559,7 @@ export default function App() {
               </motion.div>
 
               {/* Right column (Triaged stats cards) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -578,29 +574,29 @@ export default function App() {
                 {/* Sub-cards */}
                 <div className="flex flex-col gap-2.5">
                   {[
-                    { 
-                      title: 'Priority (4)', 
-                      color: 'text-white', 
+                    {
+                      title: 'Priority (4)',
+                      color: 'text-white',
                       dot: 'bg-white',
-                      items: 'Sophia Chen — Q3 review, David Lim — contract signoff' 
+                      items: 'Sophia Chen — Q3 review, David Lim — contract signoff'
                     },
-                    { 
-                      title: 'Follow-up (7)', 
-                      color: 'text-[#e5e5e5]', 
+                    {
+                      title: 'Follow-up (7)',
+                      color: 'text-[#e5e5e5]',
                       dot: 'bg-neutral-300',
-                      items: 'Marcus — design review, Figma — comment thread' 
+                      items: 'Marcus — design review, Figma — comment thread'
                     },
-                    { 
-                      title: 'Updates (18)', 
-                      color: 'text-[#a3a3a3]', 
+                    {
+                      title: 'Updates (18)',
+                      color: 'text-[#a3a3a3]',
                       dot: 'bg-neutral-400',
-                      items: 'Vercel — deploy ready, GitHub — PR #482 merged' 
+                      items: 'Vercel — deploy ready, GitHub — PR #482 merged'
                     },
-                    { 
-                      title: 'Archived (13)', 
-                      color: 'text-[#525252]', 
+                    {
+                      title: 'Archived (13)',
+                      color: 'text-[#525252]',
                       dot: 'bg-neutral-600',
-                      items: 'Stripe payout · Newsletter · Receipts' 
+                      items: 'Stripe payout · Newsletter · Receipts'
                     },
                   ].map((tier, idx) => (
                     <div key={idx} className="liquid-glass rounded-lg p-3 flex flex-col gap-1 transition-all hover:bg-white/[0.02]">
@@ -629,7 +625,7 @@ export default function App() {
 
               <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-6 justify-center items-center">
                 {['Linear', 'Vercel', 'Figma', 'Stripe', 'Ramp', 'Notion', 'Loom', 'Arc'].map((logo, idx) => (
-                  <motion.div 
+                  <motion.div
                     key={logo}
                     initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -669,7 +665,7 @@ export default function App() {
                   company: "LUNAR"
                 }
               ].map((card, idx) => (
-                <motion.div 
+                <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -719,7 +715,7 @@ export default function App() {
             {/* Pricing Toggle row */}
             <div className="c3-toggle-wrap">
               <span className="text-xs uppercase tracking-widest text-white/50 font-bold select-none">Yearly</span>
-              <button 
+              <button
                 onClick={() => setYearly(!yearly)}
                 className={`c3-toggle ${yearly ? 'active' : ''}`}
                 aria-label="Toggle billing duration"
@@ -812,7 +808,7 @@ export default function App() {
               SECTION 9 — FINAL CTA
               ========================================== */}
           <section className="relative z-20 max-w-6xl mx-auto px-6 py-20 md:py-32">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -820,8 +816,8 @@ export default function App() {
               className="liquid-glass relative overflow-hidden rounded-3xl px-8 py-16 md:py-24 text-center"
             >
               {/* Radial Glow Overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none" 
+              <div
+                className="absolute inset-0 pointer-events-none"
                 style={{
                   backgroundImage: 'radial-gradient(600px circle at 50% 0%, rgba(255,255,255,0.15), transparent 70%)',
                   opacity: 0.3
@@ -850,7 +846,7 @@ export default function App() {
         /* ==========================================
             AURORA SIGN UP (Two-Column Registration)
             ========================================== */
-        <motion.main 
+        <motion.main
           key="signup"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -861,28 +857,28 @@ export default function App() {
           {/* Left Column (Hero & Pure Background Video) */}
           <div className="w-[52%] hidden lg:flex relative flex-col items-center justify-end pb-32 px-12 rounded-3xl overflow-hidden shadow-2xl h-full">
             {/* Pure Background Video - CRITICAL: Absolutely no tint or overlay mask */}
-            <video 
-              autoPlay 
-              muted 
-              loop 
-              playsInline 
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
               className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
               onTimeUpdate={(e) => {
                 const video = e.currentTarget;
                 if (video.duration && video.currentTime >= video.duration - 0.2) {
-                  video.currentTime = 0.05;
-                  video.play().catch(() => {});
+                  video.currentTime = 0.00005;
+                  video.play().catch(() => { });
                 }
               }}
             >
-              <source 
-                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4" 
-                type="video/mp4" 
+              <source
+                src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260508_064122_c4750c0e-7476-4b44-94a2-a85a65c63bf2.mp4"
+                type="video/mp4"
               />
             </video>
 
             {/* Hero Content Over Video */}
-            <motion.div 
+            <motion.div
               variants={{
                 hidden: { opacity: 0 },
                 show: {
@@ -898,7 +894,7 @@ export default function App() {
               className="z-10 w-full max-w-xs space-y-8"
             >
               {/* Brand/Logo */}
-              <motion.div 
+              <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 10 },
                   show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
@@ -911,7 +907,7 @@ export default function App() {
               </motion.div>
 
               {/* Heading Block */}
-              <motion.div 
+              <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 10 },
                   show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
@@ -925,7 +921,7 @@ export default function App() {
               </motion.div>
 
               {/* Steps List */}
-              <motion.div 
+              <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 10 },
                   show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
@@ -942,7 +938,7 @@ export default function App() {
           {/* Right Column (Sign Up Form) */}
           <div className="flex-1 flex flex-col items-center justify-center py-12 lg:py-6 px-4 sm:px-12 lg:px-16 xl:px-24 overflow-y-auto lg:overflow-hidden bg-black relative">
             {/* Close Button to return to Homepage */}
-            <button 
+            <button
               onClick={() => setView('landing')}
               className="absolute top-6 right-6 p-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer group"
               aria-label="Back to homepage"
@@ -950,7 +946,7 @@ export default function App() {
               <X className="w-5 h-5 text-white/70 group-hover:text-white transition-colors" />
             </button>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
@@ -978,8 +974,8 @@ export default function App() {
               </div>
 
               {/* Sign Up Form */}
-              <form 
-                onSubmit={(e) => { e.preventDefault(); alert('Upzeal account registration simulated!'); }} 
+              <form
+                onSubmit={(e) => { e.preventDefault(); alert('Upzeal account registration simulated!'); }}
                 className="space-y-4 text-left"
               >
                 {/* First and Last Name Grid */}
@@ -995,14 +991,14 @@ export default function App() {
                 <div className="flex flex-col space-y-2">
                   <label className="text-sm font-medium text-white">Password</label>
                   <div className="relative">
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="••••••••" 
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 pr-12 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
                     />
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
@@ -1014,8 +1010,8 @@ export default function App() {
                 </div>
 
                 {/* Submit button */}
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="w-full h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] mt-4 transition-all cursor-pointer"
                 >
                   Create Account
@@ -1025,7 +1021,7 @@ export default function App() {
               {/* Footer Log In link */}
               <div className="text-center text-sm text-white/40">
                 Member of the team?{' '}
-                <button 
+                <button
                   onClick={() => setView('landing')}
                   className="text-white hover:underline font-semibold bg-transparent border-none cursor-pointer p-0"
                 >
@@ -1047,14 +1043,12 @@ export default function App() {
 
 function StepItem({ number, text, active = false }: { number: number; text: string; active?: boolean }) {
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-2xl w-full text-left transition-all ${
-      active 
-        ? 'bg-white text-black border border-white shadow-lg' 
+    <div className={`flex items-center gap-4 p-4 rounded-2xl w-full text-left transition-all ${active
+        ? 'bg-white text-black border border-white shadow-lg'
         : 'bg-brand-gray text-white border-transparent'
-    }`}>
-      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-        active ? 'bg-black text-white' : 'bg-white/10 text-white/40'
       }`}>
+      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${active ? 'bg-black text-white' : 'bg-white/10 text-white/40'
+        }`}>
         {number}
       </span>
       <span className="text-sm font-semibold tracking-tight select-none">{text}</span>
@@ -1064,8 +1058,8 @@ function StepItem({ number, text, active = false }: { number: number; text: stri
 
 function SocialButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <button 
-      type="button" 
+    <button
+      type="button"
       className="flex items-center justify-center gap-2 h-12 w-full bg-black border border-white/10 rounded-xl hover:bg-white/5 active:scale-[0.98] transition-all cursor-pointer select-none"
     >
       {icon}
@@ -1078,8 +1072,8 @@ function InputGroup({ label, placeholder, type }: { label: string; placeholder: 
   return (
     <div className="flex flex-col space-y-2">
       <label className="text-sm font-medium text-white">{label}</label>
-      <input 
-        type={type} 
+      <input
+        type={type}
         placeholder={placeholder}
         className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
       />
