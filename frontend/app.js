@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXTERN | CORE LOGIC OVERRIDE
+   UPZEAL | CORE LOGIC OVERRIDE
    ========================================================================== */
 
 // ── Strict Router ──
@@ -114,7 +114,7 @@ function appendMessage(text, senderClass) {
 
 function generateBotResponse(userText) {
     const lowerText = userText.toLowerCase();
-    let response = "I'm your Nextern Concierge. I can connect you with elite developers or help you begin your assessment journey.";
+    let response = "I'm your Upzeal Concierge. I can connect you with elite developers or help you begin your assessment journey.";
 
     // Basic Mock Logic (Replace with real LLM API later)
     if (lowerText.includes('hire') || lowerText.includes('recruiter')) {
@@ -129,3 +129,57 @@ function generateBotResponse(userText) {
 // Expose functions to window because app.js is loaded as a module
 window.toggleChat = toggleChat;
 window.handleChatSubmit = handleChatSubmit;
+
+// ── Video Fade Loop Logic ──
+const initHeroVideo = () => {
+    const video = document.getElementById('hero-video');
+    if (!video) return;
+
+    let delayTimeout = null;
+
+    const updateVideoOpacity = () => {
+        if (!video.paused && !video.ended) {
+            const curTime = video.currentTime;
+            const duration = video.duration;
+
+            if (duration && duration > 0) {
+                const fadeDuration = 0.5; // 0.5s fade-in at start, 0.5s fade-out at end
+                let opacity = 1;
+
+                if (curTime < fadeDuration) {
+                    opacity = curTime / fadeDuration;
+                } else if (curTime > duration - fadeDuration) {
+                    opacity = Math.max(0, (duration - curTime) / fadeDuration);
+                }
+
+                video.style.opacity = opacity;
+            }
+        }
+        requestAnimationFrame(updateVideoOpacity);
+    };
+
+    video.addEventListener('ended', () => {
+        video.style.opacity = '0';
+        if (delayTimeout) clearTimeout(delayTimeout);
+        delayTimeout = setTimeout(() => {
+            video.currentTime = 0;
+            video.play().catch(err => console.log('Video autoplay blocked:', err));
+        }, 100);
+    });
+
+    // Start video playback and opacity animation loop
+    video.play().then(() => {
+        requestAnimationFrame(updateVideoOpacity);
+    }).catch(err => {
+        console.log('Video autoplay blocked or pending interaction:', err);
+        // Fallback: requestAnimationFrame anyway so it updates once played
+        requestAnimationFrame(updateVideoOpacity);
+    });
+};
+
+// Initialize video
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initHeroVideo();
+} else {
+    document.addEventListener('DOMContentLoaded', initHeroVideo);
+}

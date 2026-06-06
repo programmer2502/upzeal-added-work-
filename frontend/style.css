@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXTERN | DYNAMIC EDITORIAL OVERRIDE
+   UPZEAL | DYNAMIC EDITORIAL OVERRIDE
    Shifting Gradients, Particle Blooms, Dimensional Depth
    ========================================================================== */
 
@@ -14,6 +14,7 @@
 
     --font-serif: 'Playfair Display', serif;
     --font-sans: 'Inter', sans-serif;
+    --font-logo: 'Outfit', sans-serif;
 
     --radius-soft: 24px;
     --radius-pill: 9999px;
@@ -199,12 +200,25 @@ body {
 }
 
 .logo {
-    font-family: var(--font-serif);
-    font-size: 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-logo);
+    font-size: 1.8rem;
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
     text-decoration: none;
     color: var(--text-primary);
+}
+
+.logo-icon {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    margin-right: 0.8rem;
 }
 
 /* Removed top-links entirely based on requirement */
@@ -556,7 +570,7 @@ body {
 /* ── Student Arena (Editorial Grid) ── */
 .test-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 3rem;
 }
 
@@ -1077,5 +1091,136 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* ── Mobile Layout Adjustments ── */
+@media (max-width: 768px) {
+    /* Landing adjustments */
+    .landing-nav-extended {
+        padding: 1.5rem 1.5rem;
+    }
+    
+    .landing-hero {
+        padding: 3rem 1.5rem 2rem;
+    }
+
+    .landing-hero h1 {
+        font-size: clamp(2.2rem, 8vw, 4rem);
+    }
+    
+    .landing-actions {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 0 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .action-card {
+        padding: 2.5rem 2rem;
+        min-height: 280px;
+    }
+
+    .action-title {
+        font-size: 2rem;
+    }
+
+    .card-content-wrap,
+    .action-card:hover .card-content-wrap {
+        transform: none !important;
+    }
+    
+    .action-subtext,
+    .action-card:hover .action-subtext {
+        opacity: 0.8 !important;
+        height: auto !important;
+        transform: none !important;
+        margin-top: 0.5rem;
+    }
+
+    .floating-chat {
+        display: none !important;
+    }
+    
+    /* Portal General adjustments */
+    .portal-layout {
+        padding: 2rem 1.5rem;
+    }
+
+    .portal-nav {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .portal-nav .nav-links {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 1.5rem;
+    }
+
+    .portal-nav .btn-pill {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    /* Candidate Feed adjustments */
+    .candidate-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        padding: 2rem 1.5rem;
+    }
+
+    .candidate-card .btn-pill {
+        width: 100%;
+    }
+
+    /* Resume grid adjustments */
+    .resume-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    /* About/Magazine adjustments */
+    .magazine-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding: 0 1.5rem;
+    }
+
+    .magazine-sticky-heading {
+        position: static;
+    }
+
+    /* Leaderboard adjustments */
+    .leaderboard-top {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .lb-card {
+        padding: 2rem 1.5rem;
+    }
+
+    /* Focus Arena / Active Tests adjustments */
+    .focus-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .focus-card h2 {
+        font-size: 1.6rem;
+    }
+
+    /* Chat widget adjustments */
+    .chat-container {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .chat-window {
+        width: calc(100vw - 40px);
+        height: 70vh;
     }
 }
