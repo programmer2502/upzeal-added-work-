@@ -67,7 +67,7 @@ const Github = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 // ==========================================
-// SHARED PRIMITIVES & LOGOS (Aura Landing)
+// SHARED PRIMITIVES & LOGOS (Upzeal Landing)
 // ==========================================
 
 const AppleLogo = ({ className = "w-4 h-4" }: { className?: string }) => (
@@ -108,6 +108,39 @@ export default function App() {
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
 
+  const TECH_STACK_OPTIONS = [
+    { id: 'github', label: 'GitHub' },
+    { id: 'gitlab', label: 'GitLab' },
+    { id: 'python', label: 'Python / FastAPI' },
+    { id: 'node', label: 'Node.js / Express' },
+    { id: 'react', label: 'React / Next.js' },
+    { id: 'vue', label: 'Vue.js' },
+    { id: 'aws', label: 'AWS / Cloudflare' },
+    { id: 'docker', label: 'Docker / K8s' }
+  ];
+
+  const handleNextStep = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSocialLoading(true);
+    setTimeout(() => {
+      setIsSocialLoading(false);
+      setSignupStep(prev => prev + 1);
+    }, 800);
+  };
+
+  const handleFinish = () => {
+    setIsSocialLoading(true);
+    setTimeout(() => {
+      window.location.href = '/dashboard.html';
+    }, 1500);
+  };
+
+  const toggleTech = (id: string) => {
+    setSelectedTech(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
+  };
+
   // Gradient style configuration for the "Revitalized" text
   const gradientStyle: React.CSSProperties = {
     backgroundImage: 'linear-gradient(to right, #091020 0%, #0B2551 20%, #A4F4FD 40%, #00d2ff 50%, #A4F4FD 60%, #0B2551 80%, #091020 100%)',
@@ -116,31 +149,6 @@ export default function App() {
     backgroundClip: 'text',
     color: 'transparent',
     WebkitTextFillColor: 'transparent',
-    filter: 'url(#c3-noise)',
-  };
-
-  const TECH_STACK_OPTIONS = [
-    { id: 'github', label: 'GitHub' },
-    { id: 'gitlab', label: 'GitLab' },
-    { id: 'python', label: 'Python / FastAPI' },
-    { id: 'node', label: 'Node.js / Express' },
-    { id: 'react', label: 'React / Next.js' },
-    { id: 'docker', label: 'Docker / K8s' },
-  ];
-
-  const handleNextStep = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setIsSocialLoading(true);
-    setTimeout(() => {
-      setIsSocialLoading(false);
-      setSignupStep(2);
-    }, 1200);
-  };
-
-  const toggleTech = (id: string) => {
-    setSelectedTech(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
-    );
   };
 
   const AppleButton = ({ label, onClick, full = false }: { label: string; onClick?: () => void; full?: boolean }) => (
@@ -291,7 +299,7 @@ export default function App() {
                 transition={{ duration: 0.6, delay: 0.5 }}
                 className="mt-8 text-white/60 max-w-md text-base leading-[1.5]"
               >
-                Aura is the premier inbox platform for the current era. It leverages powerful AI to organize, prioritize, and refine your messages into total clarity.
+                Upzeal is the premier virtual internship and skill verification platform. Prove your engineering vector with real-world Git history assessments and connect with top-tier tech companies.
               </motion.p>
 
               {/* CTA and Download Hint */}
@@ -322,7 +330,7 @@ export default function App() {
               {/* Left menu items */}
               <div className="flex items-center gap-5">
                 <AppleLogo className="w-3.5 h-3.5 fill-white" />
-                <span className="font-bold">Aura</span>
+                <span className="font-bold">Upzeal</span>
                 {['File', 'Edit', 'View', 'Go', 'Window', 'Help'].map((item, idx) => {
                   let visibilityClass = "";
                   if (idx > 2) visibilityClass = "hidden sm:inline";
@@ -360,7 +368,7 @@ export default function App() {
                   <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
                   <span className="w-3 h-3 rounded-full bg-[#28c840]" />
                 </div>
-                <span className="text-xs text-white/50 select-none font-medium">Aura — Inbox</span>
+                <span className="text-xs text-white/50 select-none font-medium">Upzeal — Mission Control</span>
                 <div className="w-12" /> {/* spacer to balance traffic lights */}
               </div>
 
@@ -373,7 +381,7 @@ export default function App() {
                     {/* Compose button */}
                     <button onClick={() => setView('signup')} className="w-full flex items-center justify-center gap-2 rounded-lg bg-white text-black text-xs font-semibold px-3 py-2.5 mb-6 hover:bg-neutral-100 transition-colors cursor-pointer">
                       <Sparkles className="w-3.5 h-3.5 fill-black" />
-                      <span>Compose with Aura</span>
+                      <span>Compose with Upzeal</span>
                     </button>
 
                     {/* Nav Items */}
@@ -450,8 +458,8 @@ export default function App() {
                       { sender: 'Sophia Chen', subject: 'Re: Q3 roadmap review', body: 'Thanks for sending the deck over. I had a few thoughts...', time: '8:12 AM', unread: true },
                       { sender: 'Figma', subject: 'Marcus commented on your file', body: 'Love the new direction on the landing hero.', time: 'Yesterday' },
                       { sender: 'Stripe', subject: 'Payout of $12,480.00 sent', body: 'Your payout is on its way to your bank...', time: 'Yesterday' },
-                      { sender: 'Vercel', subject: 'Deployment ready for aura-web', body: 'Preview is live at aura-web-g3f.vercel.app', time: 'Mon' },
-                      { sender: 'GitHub', subject: '[aura/core] PR #482 approved', body: 'david-lim approved your pull request.', time: 'Mon' },
+                      { sender: 'Vercel', subject: 'Deployment ready for upzeal-web', body: 'Preview is live at upzeal-web-g3f.vercel.app', time: 'Mon' },
+                      { sender: 'GitHub', subject: '[upzeal/core] PR #482 approved', body: 'david-lim approved your pull request.', time: 'Mon' },
                     ].map((msg, idx) => (
                       <div
                         key={idx}
@@ -508,12 +516,12 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Summary Card by Aura */}
+                    {/* Summary Card by Upzeal */}
                     <div className="rounded-xl border border-[#A4F4FD]/20 bg-[#A4F4FD]/5 p-3.5 relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-[#A4F4FD]/10 rounded-full blur-xl pointer-events-none" />
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-[#A4F4FD] mb-1.5">
                         <Sparkles className="w-3.5 h-3.5 fill-[#A4F4FD]" />
-                        <span>Summary by Aura</span>
+                        <span>Summary by Upzeal</span>
                       </div>
                       <p className="text-xs text-white/80 leading-relaxed">
                         Your team closed 23 issues, merged 14 PRs, and shipped 2 features. Top contributor: Marcus. No action needed.
@@ -559,11 +567,11 @@ export default function App() {
                 <SectionEyebrow label="Triage" tag="AI-native" />
 
                 <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight leading-[1.02] text-white">
-                  Clear your inbox<br />in a single pass.
+                  Analyze your git history<br />in a single pass.
                 </h2>
 
                 <p className="mt-6 text-white/60 text-base leading-[1.6] max-w-md">
-                  Aura reads every message, understands intent, and routes the noise away from the signal. Focus on what moves your day forward — the rest handles itself.
+                  Upzeal reads your commits, understands code quality, and routes the noise away from the signal. Focus on what shows your real technical skills — the rest handles itself.
                 </p>
 
                 {/* Category Chips */}
@@ -668,7 +676,7 @@ export default function App() {
             <div className="grid md:grid-cols-3 gap-6">
               {[
                 {
-                  quote: "Aura gave our leadership team four hours of their week back. It reads like email from the future.",
+                  quote: "Upzeal gave our leadership team four hours of their week back. It reads like an assessment platform from the future.",
                   name: "Parker Wilf",
                   role: "Group Product Manager",
                   company: "MERCURY"
@@ -966,82 +974,152 @@ export default function App() {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="w-full max-w-xl space-y-8 lg:space-y-6 sm:space-y-10"
             >
-              {/* Header */}
-              <div className="text-left">
-                <h2 className="text-3xl font-medium tracking-tight">Create New Profile</h2>
-                <p className="text-white/40 text-sm mt-1">Input your basic details to begin the journey.</p>
-              </div>
+              {signupStep === 1 && (
+                <>
+                  <div className="text-left">
+                    <h2 className="text-3xl font-medium tracking-tight">Create New Profile</h2>
+                    <p className="text-white/40 text-sm mt-1">Input your basic details to begin the journey.</p>
+                  </div>
 
-              {/* Social Buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                <SocialButton icon={<Chrome className="w-4 h-4 text-white" />} label="Google" />
-                <SocialButton icon={<Github className="w-4 h-4 text-white" />} label="GitHub" />
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <SocialButton icon={<Chrome className="w-4 h-4 text-white" />} label="Google" isLoading={isSocialLoading} onClick={() => handleNextStep()} />
+                    <SocialButton icon={<Github className="w-4 h-4 text-white" />} label="GitHub" isLoading={isSocialLoading} onClick={() => handleNextStep()} />
+                  </div>
 
-              {/* Divider */}
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink mx-4 text-xs font-medium text-white/40 uppercase tracking-widest bg-black px-4 select-none">
-                  Or
-                </span>
-                <div className="flex-grow border-t border-white/10"></div>
-              </div>
+                  <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-white/10"></div>
+                    <span className="flex-shrink mx-4 text-xs font-medium text-white/40 uppercase tracking-widest bg-black px-4 select-none">
+                      Or
+                    </span>
+                    <div className="flex-grow border-t border-white/10"></div>
+                  </div>
 
-              {/* Sign Up Form */}
-              <form
-                onSubmit={(e) => { e.preventDefault(); alert('Upzeal account registration simulated!'); }}
-                className="space-y-4 text-left"
-              >
-                {/* First and Last Name Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <InputGroup label="First Name" placeholder="Jane" type="text" />
-                  <InputGroup label="Last Name" placeholder="Doe" type="text" />
-                </div>
-
-                {/* Email */}
-                <InputGroup label="Email" placeholder="jane@example.com" type="email" />
-
-                {/* Password (custom Eye-toggle built inline for state control) */}
-                <div className="flex flex-col space-y-2">
-                  <label className="text-sm font-medium text-white">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 pr-12 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
-                    />
+                  <form
+                    onSubmit={handleNextStep}
+                    className="space-y-4 text-left"
+                  >
+                    <div className="grid grid-cols-2 gap-4">
+                      <InputGroup label="First Name" placeholder="Jane" type="text" />
+                      <InputGroup label="Last Name" placeholder="Doe" type="text" />
+                    </div>
+                    <InputGroup label="Email" placeholder="jane@example.com" type="email" />
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-sm font-medium text-white">Password</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 pr-12 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-white/40">Requires at least 8 symbols.</span>
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                      type="submit"
+                      disabled={isSocialLoading}
+                      className="w-full h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] mt-4 transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Create Account'}
+                    </button>
+                  </form>
+                  <div className="text-center text-sm text-white/40">
+                    Member of the team?{' '}
+                    <button
+                      onClick={() => setView('landing')}
+                      className="text-white hover:underline font-semibold bg-transparent border-none cursor-pointer p-0"
+                    >
+                      Log in
                     </button>
                   </div>
-                  <span className="text-[10px] text-white/40">Requires at least 8 symbols.</span>
-                </div>
+                </>
+              )}
 
-                {/* Submit button */}
-                <button
-                  type="submit"
-                  className="w-full h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] mt-4 transition-all cursor-pointer"
+              {signupStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6 text-left w-full"
                 >
-                  Create Account
-                </button>
-              </form>
+                  <div>
+                    <h2 className="text-3xl font-medium tracking-tight">Tech Stack</h2>
+                    <p className="text-white/40 text-sm mt-1">Select the technologies you work with daily.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mt-8">
+                    {TECH_STACK_OPTIONS.map((tech) => {
+                      const isSelected = selectedTech.includes(tech.id);
+                      return (
+                        <button
+                          key={tech.id}
+                          onClick={() => toggleTech(tech.id)}
+                          className={`flex items-center gap-3 p-4 rounded-xl border text-sm font-medium transition-all cursor-pointer ${isSelected
+                            ? 'bg-white/10 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                            : 'bg-transparent border-white/10 text-white/50 hover:border-white/30 hover:text-white'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'border-white bg-white' : 'border-white/30'}`}>
+                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                          </div>
+                          {tech.label}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              {/* Footer Log In link */}
-              <div className="text-center text-sm text-white/40">
-                Member of the team?{' '}
-                <button
-                  onClick={() => setView('landing')}
-                  className="text-white hover:underline font-semibold bg-transparent border-none cursor-pointer p-0"
+                  <div className="pt-6 flex gap-4">
+                    <button
+                      onClick={() => setSignupStep(1)}
+                      className="h-14 px-8 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => handleNextStep()}
+                      disabled={isSocialLoading || selectedTech.length === 0}
+                      className="flex-1 h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Continue'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {signupStep === 3 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center justify-center space-y-6 text-center py-10"
                 >
-                  Log in
-                </button>
-              </div>
+                  <div className="relative w-24 h-24 flex items-center justify-center">
+                    <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-medium tracking-tight mb-2">Generating Dashboard...</h2>
+                    <p className="text-white/50 text-sm max-w-sm mx-auto">
+                      We are configuring your Upzeal environment with {selectedTech.length > 0 ? selectedTech.length : 'your'} selected modules.
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={handleFinish}
+                    disabled={isSocialLoading}
+                    className="w-full max-w-xs h-14 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] mt-8 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
+                  </button>
+                </motion.div>
+              )}
 
             </motion.div>
           </div>
