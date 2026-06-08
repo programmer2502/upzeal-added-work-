@@ -3,180 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mission Control | Virtual Internship Platform</title>
+    <title>Dashboard | Upzeal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&family=Syne:wght@400..800&family=Outfit:ital,wght@0,300..900;1,300..900&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./dashboard.css">
-    <link rel="stylesheet" href="./interaction.css">
 </head>
-<body class="dashboard-body">
-
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar glass-panel-nav">
-        <div class="sidebar-top">
-            <div class="logo small-logo">
-                <img src="./logo.png" class="logo-icon" alt="UPZEAL Logo">
-            </div>
-            <nav class="side-nav">
-                <a href="./dashboard.html" class="nav-icon active" title="Mission Control">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </a>
-                <a href="./index.html" class="nav-icon" title="Repositories">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                </a>
-                <a href="./recruiter.html" class="nav-icon" title="Talent Explorer">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
-                </a>
-            </nav>
+<body class="dark-theme">
+    
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
         </div>
-        
-        <!-- Anti-Cheat Traceability Visual -->
-        <div class="integrity-module" title="Git History Analysis: Normal">
-            <div class="integrity-header">Integrity_Meter</div>
-            <svg class="git-branching-svg" viewBox="0 0 100 80">
-                <!-- Master Branch -->
-                <line x1="10" y1="70" x2="10" y2="10" stroke="var(--primary)" stroke-width="2" />
-                <circle cx="10" cy="60" r="3" fill="var(--primary)" />
-                <circle cx="10" cy="30" r="3" fill="var(--primary)" />
-                <circle cx="10" cy="15" r="3" fill="var(--primary)" />
-                
-                <!-- Feature Branch -->
-                <path d="M10 60 Q 30 50 30 40 T 10 30" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="2 2" />
-                <circle cx="30" cy="45" r="3" fill="var(--text-main)" />
-                <circle cx="20" cy="35" r="3" fill="var(--text-main)" />
-            </svg>
-            <div class="integrity-status"><span class="status-dot"></span> Trace: Valid</div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </a>
+            <a href="#" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            </a>
         </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="dashboard-main">
+    <main class="main-content">
+        
         <!-- Top Bar -->
-        <header class="top-bar glass-panel-nav">
-            <div class="breadcrumb">
-                <span class="text-muted">~/projects/</span><span class="text-main">e-commerce-core</span>
+        <header class="topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Dashboard <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></h1>
             </div>
-            <div class="cmd-hint" id="cmd-k-hint">
-                <span class="kbd">CMD</span> + <span class="kbd">K</span> <span class="text-muted ml-2">AI Mentor</span>
+            
+            <div class="search-bar">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" placeholder="Search challenges...">
+                <span class="search-shortcut">⌘</span>
+            </div>
+
+            <div class="topbar-right">
+                <button class="notif-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <span class="notif-badge">2 new</span>
+                </button>
+                <button class="date-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    <span>Today, Apr 8</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+                <div class="user-profile">
+                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Profile" class="avatar">
+                    <div class="user-info">
+                        <span class="user-name">Developer</span>
+                        <span class="user-handle">@upzeal_dev</span>
+                    </div>
+                </div>
             </div>
         </header>
 
-        <!-- Dashboard Grid -->
-        <div class="dashboard-grid">
+        <!-- Dashboard Grid Layout -->
+        <div class="grid-layout">
             
-            <!-- Left Column: Ticket Feed -->
-            <section class="ticket-feed">
-                <div class="section-header-small">
-                    <h3 class="font-heading">ACTIVE_SPRINT</h3>
-                    <div class="filter-tabs">
-                        <span class="tab active">To Do</span>
-                        <span class="tab">In Progress</span>
-                        <span class="tab">In Review</span>
+            <!-- Column 1: Assessments -->
+            <div class="col-assessments flex-col">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">My Assessments</h2>
+                        <p class="section-subtitle">3 teams and @mentor have access.</p>
                     </div>
+                    <button class="dropdown-btn">Skills <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
                 </div>
 
-                <div class="ticket-list">
-                    <!-- Ticket 1 -->
-                    <div class="ticket-card glass-panel">
-                        <div class="ticket-top">
-                            <span class="ticket-id font-body">VIP-402</span>
-                            <span class="ticket-complexity high">Complex</span>
-                        </div>
-                        <h4 class="ticket-title font-heading">Implement Distributed Rate Limiting</h4>
-                        <p class="ticket-desc font-body text-muted">Use Redis to implement a sliding window rate limiter for the public GraphQL API endpoint.</p>
-                        <div class="ticket-footer">
-                            <div class="stack-tags">
-                                <span class="stack-tag">Redis</span>
-                                <span class="stack-tag">Node.js</span>
-                            </div>
-                            <button class="btn-micro btn-outline">Checkout Branch</button>
-                        </div>
-                    </div>
-
-                    <!-- Ticket 2 -->
-                    <div class="ticket-card glass-panel">
-                        <div class="ticket-top">
-                            <span class="ticket-id font-body">VIP-405</span>
-                            <span class="ticket-complexity medium">Medium</span>
-                        </div>
-                        <h4 class="ticket-title font-heading">Migrate Auth to JWT</h4>
-                        <p class="ticket-desc font-body text-muted">Replace session-based authentication with stateless JWTs using RS256 signing.</p>
-                        <div class="ticket-footer">
-                            <div class="stack-tags">
-                                <span class="stack-tag">Security</span>
-                                <span class="stack-tag">Express</span>
-                            </div>
-                            <button class="btn-micro btn-outline">Checkout Branch</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Right Column: Analytics & Scorecard -->
-            <section class="profile-analytics">
-                <div class="scorecard-panel glass-panel">
-                    <div class="panel-header">
-                        <h3 class="font-heading">ENGINEERING_VECTOR</h3>
-                        <span class="live-badge">Live Sync</span>
+                <!-- Overview Card -->
+                <div class="card overview-card">
+                    <div class="overview-header">
+                        <h3>Overview</h3>
+                        <button class="info-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></button>
                     </div>
                     
-                    <!-- Radar Chart Container -->
-                    <div class="radar-container" id="radar-chart">
-                        <!-- SVG dynamically generated by dashboard.js -->
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <span class="stat-label">Max records</span>
+                            <span class="stat-value">2 times increase to the last month</span>
+                        </div>
+                        <div class="stat-item text-right">
+                            <span class="stat-label">Comparative rates</span>
+                            <span class="stat-value positive">+ 12.83 %</span>
+                        </div>
                     </div>
-                    
-                    <div class="scorecard-legend">
-                        <div class="legend-item"><span class="legend-color primary"></span> Your Score</div>
-                        <div class="legend-item"><span class="legend-color muted"></span> Global Avg</div>
+
+                    <div class="chart-tabs">
+                        <button class="tab">24h</button>
+                        <button class="tab">Week</button>
+                        <button class="tab active">Month</button>
+                    </div>
+
+                    <div class="chart-area">
+                        <!-- Pure CSS/SVG Chart representation matching the image -->
+                        <svg class="line-chart" viewBox="0 0 400 150" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="rgba(0, 102, 255, 0.4)" />
+                                    <stop offset="100%" stop-color="rgba(0, 102, 255, 0)" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M0 130 C 20 120, 30 140, 50 110 C 70 80, 80 110, 100 90 C 120 70, 130 90, 150 70 C 170 50, 180 80, 200 60 C 220 40, 230 40, 250 40 C 250 40, 260 20, 260 20 L 270 50 C 290 60, 300 40, 320 40 C 340 40, 350 20, 380 20 L 400 20 L 400 150 L 0 150 Z" fill="url(#chartGradient)" />
+                            <path d="M0 130 C 20 120, 30 140, 50 110 C 70 80, 80 110, 100 90 C 120 70, 130 90, 150 70 C 170 50, 180 80, 200 60 C 220 40, 230 40, 250 40 C 250 40, 260 20, 260 20 L 270 50 C 290 60, 300 40, 320 40 C 340 40, 350 20, 380 20 L 400 20" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" />
+                            
+                            <!-- Grid lines -->
+                            <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="2 2" />
+                            <line x1="0" y1="80" x2="400" y2="80" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="2 2" />
+                            <line x1="0" y1="130" x2="400" y2="130" stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="2 2" />
+                            
+                            <!-- Highlight Point -->
+                            <circle cx="260" cy="20" r="4" fill="white" stroke="#2563eb" stroke-width="2" />
+                            <line x1="260" y1="20" x2="260" y2="150" stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="4 4" />
+                        </svg>
+
+                        <!-- Tooltip -->
+                        <div class="chart-tooltip">
+                            <div class="tooltip-dot"></div>
+                            <span class="tooltip-date">Mar 29</span>
+                            <span class="tooltip-val">$ 5,538.65</span>
+                            <span class="tooltip-change positive">+ 9.41 %</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-x-axis">
+                        <span>Mar 8</span>
+                        <span>Mar 18</span>
+                        <span>Mar 28</span>
+                        <span>Apr 8</span>
+                    </div>
+
+                    <div class="overview-footer">
+                        <div class="huge-percent positive">+ 19.23 <span class="symbol">%</span></div>
+                        <div class="last-updated">
+                            <span class="label">Last updated</span>
+                            <span class="value">Today, 06:49 AM</span>
+                        </div>
                     </div>
                 </div>
-            </section>
+
+                <!-- Top Skills -->
+                <div class="section-header small-mt">
+                    <h2 class="section-title">My Top Skills</h2>
+                    <div class="slider-controls">
+                        <span class="slider-count">02 of 5</span>
+                        <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                        <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+                    </div>
+                </div>
+
+                <div class="top-skills-grid">
+                    <div class="skill-card">
+                        <div class="skill-top">
+                            <div class="skill-title"><span class="dot yellow"></span> React UI</div>
+                            <button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                        </div>
+                        <div class="skill-metric">
+                            <span class="val"># 3,074 Commits</span>
+                            <span class="change positive">↑ 9.23 %</span>
+                        </div>
+                        <div class="skill-bottom">
+                            <div class="avatar-group">
+                                <img src="https://i.pravatar.cc/150?u=1" alt="A">
+                                <img src="https://i.pravatar.cc/150?u=2" alt="B">
+                                <img src="https://i.pravatar.cc/150?u=3" alt="C">
+                                <div class="avatar-more">99+</div>
+                            </div>
+                            <button class="add-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                        </div>
+                    </div>
+
+                    <div class="skill-card">
+                        <div class="skill-top">
+                            <div class="skill-title"><span class="dot blue"></span> Node.js API</div>
+                            <button class="more-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+                        </div>
+                        <div class="skill-metric">
+                            <span class="val"># 2,931 Commits</span>
+                            <span class="change positive">↑ 7.59 %</span>
+                        </div>
+                        <div class="skill-bottom">
+                            <div class="avatar-group">
+                                <img src="https://i.pravatar.cc/150?u=4" alt="D">
+                                <img src="https://i.pravatar.cc/150?u=5" alt="E">
+                                <img src="https://i.pravatar.cc/150?u=6" alt="F">
+                                <div class="avatar-more">99+</div>
+                            </div>
+                            <button class="add-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Total Balance / XP -->
+            <div class="col-xp flex-col">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Global Engineering XP</h2>
+                        <p class="section-subtitle">The sum of all points on my profile</p>
+                    </div>
+                    <button class="dropdown-btn">Tech Score <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                </div>
+
+                <div class="xp-card card">
+                    <div class="xp-top">
+                        <div class="xp-value"><span class="currency">★</span> 23,094.57</div>
+                        <div class="xp-comparison">
+                            <span class="label">Compared to last month</span>
+                            <span class="value negative">- 37.16 %</span>
+                        </div>
+                    </div>
+
+                    <div class="xp-mid">
+                        <span class="yearly-avg">Yearly avg: <strong>★ 34,502.19</strong> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></span>
+                        <a href="#" class="how-it-works"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> How it works?</a>
+                    </div>
+
+                    <!-- AI Assistant Card -->
+                    <div class="ai-assistant-card">
+                        <h3 class="ai-title">Ai Mentor</h3>
+                        <div class="ai-status">
+                            <div class="spinner"></div>
+                            <span>is analyzing your latest commit...</span>
+                        </div>
+                        
+                        <!-- CSS 3D Orb / Flower representation -->
+                        <div class="orb-container">
+                            <div class="petal p1"></div>
+                            <div class="petal p2"></div>
+                            <div class="petal p3"></div>
+                            <div class="petal p4"></div>
+                            <div class="petal p5"></div>
+                            <div class="petal p6"></div>
+                            <div class="petal p7"></div>
+                            <div class="petal p8"></div>
+                            <div class="petal p9"></div>
+                            <div class="petal p10"></div>
+                            <div class="orb-core"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Premium / Ads -->
+            <div class="col-premium flex-col">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Upgrades</h2>
+                        <p class="section-subtitle">Powered by Upzeal</p>
+                    </div>
+                    <button class="text-link-btn">Next <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></button>
+                </div>
+
+                <div class="premium-card card">
+                    <button class="just-for-today">Just for today!</button>
+                    
+                    <div class="premium-content">
+                        <h2 class="premium-headline"><svg width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Let's Go Premium with <span class="badge-gold">40%</span></h2>
+                        <p class="premium-sub">This is your amazing chance!</p>
+                        
+                        <p class="premium-desc">Our premium subscription elevate your experience and unlock a range of benefits tailored to your preferences.</p>
+                        
+                        <a href="#" class="learn-more">Learn more <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></a>
+                    </div>
+                    
+                    <div class="premium-footer">
+                        <span class="dont-show">Don't show again</span>
+                        <button class="get-started-btn">Get started</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Table -->
+            <div class="col-full flex-col">
+                <div class="section-header table-header">
+                    <h2 class="section-title">Available Challenges</h2>
+                    <button class="dropdown-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> as List <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                </div>
+
+                <div class="table-container card">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Project Name</th>
+                                <th>Admin</th>
+                                <th>Date Added</th>
+                                <th>Tech Stack</th>
+                                <th>Participants</th>
+                                <th>Status</th>
+                                <th>Operation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>#1</td>
+                                <td>Distributed Rate Limiter</td>
+                                <td><div class="admin-cell"><img src="https://i.pravatar.cc/150?u=a" alt="S"> Samuel</div></td>
+                                <td>02/14/2024</td>
+                                <td>Backend API</td>
+                                <td><div class="avatar-group sm"><img src="https://i.pravatar.cc/150?u=1"><img src="https://i.pravatar.cc/150?u=2"><div class="avatar-more">99+</div></div></td>
+                                <td><span class="status-badge public">Public</span></td>
+                                <td><button class="action-btn">Join</button></td>
+                            </tr>
+                            <tr>
+                                <td>#2</td>
+                                <td>React Component Library</td>
+                                <td><div class="admin-cell"><img src="https://i.pravatar.cc/150?u=b" alt="H"> Hossein <span class="text-muted">(You)</span></div></td>
+                                <td>09/23/2023</td>
+                                <td>Design System</td>
+                                <td><div class="avatar-group sm"><img src="https://i.pravatar.cc/150?u=3"><img src="https://i.pravatar.cc/150?u=4"><div class="avatar-more">99+</div></div></td>
+                                <td><span class="status-badge public">Public</span></td>
+                                <td><button class="action-btn">Join</button></td>
+                            </tr>
+                            <tr>
+                                <td>#3</td>
+                                <td>Docker Swarm Config</td>
+                                <td><div class="admin-cell"><img src="https://i.pravatar.cc/150?u=c" alt="M"> Maria</div></td>
+                                <td>04/05/2024</td>
+                                <td>DevOps</td>
+                                <td><div class="avatar-group sm"><img src="https://i.pravatar.cc/150?u=5"><img src="https://i.pravatar.cc/150?u=6"><div class="avatar-more">99+</div></div></td>
+                                <td><span class="status-badge private"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Private</span></td>
+                                <td><button class="action-btn">Join</button></td>
+                            </tr>
+                            <tr>
+                                <td>#4</td>
+                                <td>GraphQL Gateway</td>
+                                <td><div class="admin-cell"><img src="https://i.pravatar.cc/150?u=d" alt="S"> Stephano</div></td>
+                                <td>11/18/2023</td>
+                                <td>Architecture</td>
+                                <td><div class="avatar-group sm"><img src="https://i.pravatar.cc/150?u=7"><img src="https://i.pravatar.cc/150?u=8"><div class="avatar-more">99+</div></div></td>
+                                <td><span class="status-badge public">Public</span></td>
+                                <td><button class="action-btn">Join</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
         </div>
     </main>
 
-    <!-- AI Mentor Side Panel (CMD+K) -->
-    <div class="ai-panel-overlay" id="ai-overlay"></div>
-    <aside class="ai-mentor-panel glass-panel" id="ai-panel">
-        <div class="ai-panel-header">
-            <h3 class="font-heading">AI_MENTOR_TERMINAL</h3>
-            <button class="close-btn" id="ai-close">&times;</button>
-        </div>
-        
-        <div class="ai-chat-area">
-            <div class="chat-bubble ai">
-                <p>Hello! I noticed you checked out branch <code>VIP-402-rate-limiting</code>. Let me know if you need architectural guidance on Redis sliding windows.</p>
-            </div>
-            <div class="chat-bubble user">
-                <p>How should I structure the Redis keys for a sliding window?</p>
-            </div>
-            <div class="chat-bubble ai">
-                <p>For a sliding window, a Sorted Set is optimal. Use the timestamp as the score. Here is a blueprint:</p>
-                <div class="code-block">
-                    <div class="code-header">redis_limiter.ts</div>
-                    <pre><code class="language-typescript"><span class="keyword">const</span> key = <span class="string">\`rate:\${ip}\`</span>;
-<span class="keyword">const</span> now = Date.now();
-<span class="keyword">const</span> windowStart = now - <span class="number">60000</span>;
-
-<span class="keyword">await</span> redis.multi()
-    .zremrangebyscore(key, <span class="number">0</span>, windowStart)
-    .zadd(key, now, now.toString())
-    .zcard(key)
-    .expire(key, <span class="number">60</span>)
-    .exec();</code></pre>
-                </div>
-                <p>This ensures only requests within the last 60 seconds are counted.</p>
-            </div>
-        </div>
-
-        <div class="ai-input-area">
-            <input type="text" class="ai-input" placeholder="Ask your mentor..." id="ai-input-field">
-            <button class="ai-send-btn"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg></button>
-        </div>
-    </aside>
-
-    <script type="module" src="./dashboard.js"></script>
-    <script type="module" src="./interaction.js"></script>
 </body>
 </html>

@@ -938,7 +938,7 @@ export default function App() {
               >
                 <h2 className="text-4xl font-medium tracking-tight whitespace-nowrap">Join Upzeal</h2>
                 <p className="text-white/60 text-sm leading-relaxed mt-2 pr-4">
-                  Follow these 3 quick phases to activate your space.
+                  Follow these 2 quick phases to activate your space.
                 </p>
               </motion.div>
 
@@ -952,7 +952,6 @@ export default function App() {
               >
                 <StepItem number={1} text="Register your identity" active={signupStep === 1} completed={signupStep > 1} />
                 <StepItem number={2} text="Configure your dashboard" active={signupStep === 2} completed={signupStep > 2} />
-                <StepItem number={3} text="Finalize your profile" active={signupStep === 3} />
               </motion.div>
             </motion.div>
           </div>
@@ -1083,41 +1082,13 @@ export default function App() {
                       Back
                     </button>
                     <button
-                      onClick={() => handleNextStep()}
+                      onClick={() => handleFinish()}
                       disabled={isSocialLoading || selectedTech.length === 0}
                       className="flex-1 h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Continue'}
+                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
                     </button>
                   </div>
-                </motion.div>
-              )}
-
-              {signupStep === 3 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center space-y-6 text-center py-10"
-                >
-                  <div className="relative w-24 h-24 flex items-center justify-center">
-                    <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
-                    <Sparkles className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-medium tracking-tight mb-2">Generating Dashboard...</h2>
-                    <p className="text-white/50 text-sm max-w-sm mx-auto">
-                      We are configuring your Upzeal environment with {selectedTech.length > 0 ? selectedTech.length : 'your'} selected modules.
-                    </p>
-                  </div>
-                  
-                  <button
-                    onClick={handleFinish}
-                    disabled={isSocialLoading}
-                    className="w-full max-w-xs h-14 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] mt-8 transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
-                  </button>
                 </motion.div>
               )}
 
