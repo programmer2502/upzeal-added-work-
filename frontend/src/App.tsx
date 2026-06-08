@@ -20,7 +20,18 @@ import {
   Check,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  Code2,
+  Briefcase,
+  Server,
+  Database,
+  Cloud,
+  Terminal,
+  MonitorSmartphone,
+  Settings,
+  Layers,
+  LayoutTemplate,
+  TerminalSquare
 } from 'lucide-react';
 
 // ==========================================
@@ -107,16 +118,36 @@ export default function App() {
   const [signupStep, setSignupStep] = useState(1);
   const [isSocialLoading, setIsSocialLoading] = useState(false);
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
+  const [accountType, setAccountType] = useState<'developer' | 'recruiter' | null>(null);
 
-  const TECH_STACK_OPTIONS = [
-    { id: 'github', label: 'GitHub' },
-    { id: 'gitlab', label: 'GitLab' },
-    { id: 'python', label: 'Python / FastAPI' },
-    { id: 'node', label: 'Node.js / Express' },
-    { id: 'react', label: 'React / Next.js' },
-    { id: 'vue', label: 'Vue.js' },
-    { id: 'aws', label: 'AWS / Cloudflare' },
-    { id: 'docker', label: 'Docker / K8s' }
+  const TECH_STACK_CATEGORIES = [
+    {
+      title: "Frontend & UI",
+      icon: <LayoutTemplate className="w-4 h-4" />,
+      options: [
+        { id: 'react', label: 'React / Next.js', icon: <Code2 className="w-4 h-4" /> },
+        { id: 'vue', label: 'Vue.js', icon: <TerminalSquare className="w-4 h-4" /> },
+        { id: 'mobile', label: 'React Native / iOS', icon: <MonitorSmartphone className="w-4 h-4" /> }
+      ]
+    },
+    {
+      title: "Backend & API",
+      icon: <Server className="w-4 h-4" />,
+      options: [
+        { id: 'node', label: 'Node.js / Express', icon: <Terminal className="w-4 h-4" /> },
+        { id: 'python', label: 'Python / FastAPI', icon: <Code2 className="w-4 h-4" /> },
+        { id: 'go', label: 'Go / Rust', icon: <Settings className="w-4 h-4" /> }
+      ]
+    },
+    {
+      title: "DevOps & Cloud",
+      icon: <Cloud className="w-4 h-4" />,
+      options: [
+        { id: 'aws', label: 'AWS / GCP', icon: <Cloud className="w-4 h-4" /> },
+        { id: 'docker', label: 'Docker / K8s', icon: <Layers className="w-4 h-4" /> },
+        { id: 'database', label: 'PostgreSQL', icon: <Database className="w-4 h-4" /> }
+      ]
+    }
   ];
 
   const handleNextStep = (e?: React.FormEvent) => {
@@ -938,7 +969,7 @@ export default function App() {
               >
                 <h2 className="text-4xl font-medium tracking-tight whitespace-nowrap">Join Upzeal</h2>
                 <p className="text-white/60 text-sm leading-relaxed mt-2 pr-4">
-                  Follow these 2 quick phases to activate your space.
+                  Follow these 3 quick phases to activate your space.
                 </p>
               </motion.div>
 
@@ -950,8 +981,9 @@ export default function App() {
                 }}
                 className="space-y-3 w-full"
               >
-                <StepItem number={1} text="Register your identity" active={signupStep === 1} completed={signupStep > 1} />
-                <StepItem number={2} text="Configure your dashboard" active={signupStep === 2} completed={signupStep > 2} />
+                <StepItem number={1} text="Choose Account Type" active={signupStep === 1} completed={signupStep > 1} />
+                <StepItem number={2} text="Register your identity" active={signupStep === 2} completed={signupStep > 2} />
+                <StepItem number={3} text={accountType === 'recruiter' ? "Company Details" : "Configure your dashboard"} active={signupStep === 3} completed={signupStep > 3} />
               </motion.div>
             </motion.div>
           </div>
@@ -974,7 +1006,76 @@ export default function App() {
               className="w-full max-w-xl space-y-8 lg:space-y-6 sm:space-y-10"
             >
               {signupStep === 1 && (
-                <>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6 text-left w-full"
+                >
+                  <div>
+                    <h2 className="text-3xl font-medium tracking-tight">How do you want to use Upzeal?</h2>
+                    <p className="text-white/40 text-sm mt-1">We'll personalize your setup experience accordingly.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                    <button
+                      onClick={() => setAccountType('developer')}
+                      className={`flex flex-col items-start gap-4 p-6 rounded-2xl border transition-all cursor-pointer text-left ${accountType === 'developer'
+                        ? 'bg-white/10 border-[#00d2ff] text-white shadow-[0_0_20px_rgba(0,210,255,0.15)]'
+                        : 'bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="p-3 bg-[#00d2ff]/10 rounded-xl">
+                        <Code2 className="w-6 h-6 text-[#00d2ff]" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-lg flex items-center justify-between w-full">
+                          I'm a Developer
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${accountType === 'developer' ? 'border-[#00d2ff] bg-[#00d2ff]' : 'border-white/30'}`}>
+                            {accountType === 'developer' && <Check className="w-3 h-3 text-black" />}
+                          </div>
+                        </div>
+                        <p className="text-sm text-white/50 mt-1">Looking for projects, assessments, and to build my skill tree.</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setAccountType('recruiter')}
+                      className={`flex flex-col items-start gap-4 p-6 rounded-2xl border transition-all cursor-pointer text-left ${accountType === 'recruiter'
+                        ? 'bg-white/10 border-white text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]'
+                        : 'bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="p-3 bg-white/10 rounded-xl">
+                        <Briefcase className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-lg flex items-center justify-between w-full">
+                          I'm a Recruiter
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${accountType === 'recruiter' ? 'border-white bg-white' : 'border-white/30'}`}>
+                            {accountType === 'recruiter' && <Check className="w-3 h-3 text-black" />}
+                          </div>
+                        </div>
+                        <p className="text-sm text-white/50 mt-1">Hiring verified talent, reviewing assessments, and managing teams.</p>
+                      </div>
+                    </button>
+                  </div>
+                  <div className="pt-6">
+                    <button
+                      onClick={() => handleNextStep()}
+                      disabled={!accountType || isSocialLoading}
+                      className="w-full h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Next: Register Identity'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {signupStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-6 text-left w-full"
+                >
                   <div className="text-left">
                     <h2 className="text-3xl font-medium tracking-tight">Create New Profile</h2>
                     <p className="text-white/40 text-sm mt-1">Input your basic details to begin the journey.</p>
@@ -1022,15 +1123,25 @@ export default function App() {
                       </div>
                       <span className="text-[10px] text-white/40">Requires at least 8 symbols.</span>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={isSocialLoading}
-                      className="w-full h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] mt-4 transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Create Account'}
-                    </button>
+                    
+                    <div className="pt-4 flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setSignupStep(1)}
+                        className="h-14 px-8 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSocialLoading}
+                        className="flex-1 h-14 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Create Account'}
+                      </button>
+                    </div>
                   </form>
-                  <div className="text-center text-sm text-white/40">
+                  <div className="text-center text-sm text-white/40 mt-4">
                     Member of the team?{' '}
                     <button
                       onClick={() => setView('landing')}
@@ -1039,51 +1150,73 @@ export default function App() {
                       Log in
                     </button>
                   </div>
-                </>
+                </motion.div>
               )}
 
-              {signupStep === 2 && (
+              {signupStep === 3 && (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   className="space-y-6 text-left w-full"
                 >
                   <div>
-                    <h2 className="text-3xl font-medium tracking-tight">Tech Stack</h2>
-                    <p className="text-white/40 text-sm mt-1">Select the technologies you work with daily.</p>
+                    <h2 className="text-3xl font-medium tracking-tight">
+                      {accountType === 'recruiter' ? 'Company Details' : 'Tech Stack'}
+                    </h2>
+                    <p className="text-white/40 text-sm mt-1">
+                      {accountType === 'recruiter' ? 'Tell us about your organization.' : 'Select the technologies you work with daily.'}
+                    </p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 mt-8">
-                    {TECH_STACK_OPTIONS.map((tech) => {
-                      const isSelected = selectedTech.includes(tech.id);
-                      return (
-                        <button
-                          key={tech.id}
-                          onClick={() => toggleTech(tech.id)}
-                          className={`flex items-center gap-3 p-4 rounded-xl border text-sm font-medium transition-all cursor-pointer ${isSelected
-                            ? 'bg-white/10 border-white text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'
-                            : 'bg-transparent border-white/10 text-white/50 hover:border-white/30 hover:text-white'
-                          }`}
-                        >
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'border-white bg-white' : 'border-white/30'}`}>
-                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                  {accountType === 'recruiter' ? (
+                    <div className="space-y-4 mt-8">
+                      <InputGroup label="Company Name" placeholder="Acme Corp" type="text" />
+                      <InputGroup label="Role" placeholder="Technical Recruiter" type="text" />
+                      <InputGroup label="Company Website" placeholder="https://acme.com" type="text" />
+                    </div>
+                  ) : (
+                    <div className="space-y-6 mt-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {TECH_STACK_CATEGORIES.map((category) => (
+                        <div key={category.title} className="space-y-3">
+                          <h3 className="text-sm font-semibold flex items-center gap-2 text-white/70">
+                            <span className="p-1.5 bg-white/5 rounded-md text-white">{category.icon}</span>
+                            {category.title}
+                          </h3>
+                          <div className="grid grid-cols-2 gap-3">
+                            {category.options.map((tech) => {
+                              const isSelected = selectedTech.includes(tech.id);
+                              return (
+                                <button
+                                  key={tech.id}
+                                  onClick={() => toggleTech(tech.id)}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium transition-all cursor-pointer ${isSelected
+                                    ? 'bg-white/10 border-[#00d2ff] text-white shadow-[0_0_15px_rgba(0,210,255,0.1)]'
+                                    : 'bg-white/5 border-white/5 text-white/60 hover:border-white/20 hover:text-white'
+                                  }`}
+                                >
+                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${isSelected ? 'bg-[#00d2ff] text-black' : 'bg-transparent text-white/40 border border-white/10'}`}>
+                                    {isSelected ? <Check className="w-4 h-4" /> : tech.icon}
+                                  </div>
+                                  {tech.label}
+                                </button>
+                              );
+                            })}
                           </div>
-                          {tech.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="pt-6 flex gap-4">
                     <button
-                      onClick={() => setSignupStep(1)}
+                      onClick={() => setSignupStep(2)}
                       className="h-14 px-8 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                     >
                       Back
                     </button>
                     <button
                       onClick={() => handleFinish()}
-                      disabled={isSocialLoading || selectedTech.length === 0}
+                      disabled={isSocialLoading || (accountType === 'developer' && selectedTech.length === 0)}
                       className="flex-1 h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
