@@ -3,435 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mission Control | Upzeal</title>
-    <meta name="description" content="Upzeal Developer Dashboard — track your skill progress, complete challenges, and get discovered by top recruiters.">
+    <title>Dashboard | Upzeal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./dashboard.css">
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#logoGrad)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#00d2ff"/><stop offset="100%" stop-color="#7b61ff"/></linearGradient></defs>
-                <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
-                <line x1="12" y1="22" x2="12" y2="15.5"/>
-                <line x1="22" y1="8.5" x2="12" y2="15.5"/>
-                <line x1="2" y1="8.5" x2="12" y2="15.5"/>
-            </svg>
+    <!-- ─── Sidebar ─── -->
+    <aside class="sidebar">
+        <div class="sb-logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><polyline points="12 22 12 15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/></svg>
         </div>
-        <nav class="sidebar-nav">
-            <a href="#" class="nav-link active" aria-label="Dashboard" data-tooltip="Dashboard">
-                <!-- Grid / Dashboard -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <nav class="sb-nav">
+            <!-- Home -->
+            <a href="#" class="sb-link active" title="Dashboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             </a>
-            <a href="#" class="nav-link" aria-label="Challenges" data-tooltip="Challenges">
-                <!-- Zap / Challenges -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <!-- Challenges -->
+            <a href="#" class="sb-link" title="Challenges">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             </a>
-            <a href="#" class="nav-link" aria-label="Leaderboard" data-tooltip="Leaderboard">
-                <!-- Trophy -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            <!-- Leaderboard -->
+            <a href="#" class="sb-link" title="Leaderboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
             </a>
-            <a href="#" class="nav-link" aria-label="Code Reviews" data-tooltip="Code Reviews">
-                <!-- Code -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <!-- Code Review -->
+            <a href="#" class="sb-link" title="Code Review">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </a>
-            <a href="#" class="nav-link" aria-label="Messages" data-tooltip="Messages">
-                <!-- Chat -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <!-- Profile -->
+            <a href="#" class="sb-link" title="Profile">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </a>
         </nav>
-        <div class="sidebar-bottom">
-            <a href="#" class="nav-link" aria-label="Settings" data-tooltip="Settings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <div class="sb-bottom">
+            <a href="#" class="sb-link" title="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </a>
-            <div class="sidebar-avatar">
-                <img src="https://i.pravatar.cc/150?u=upzeal_dev" alt="Profile">
-                <span class="online-dot"></span>
-            </div>
+            <a href="#" class="sb-link" title="Log out">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </a>
         </div>
     </aside>
 
-    <!-- Main -->
+    <!-- ─── Main ─── -->
     <main class="main">
+
         <!-- Top Bar -->
-        <header class="topbar" id="topbar">
-            <div class="topbar-left">
-                <h1 class="page-title">Mission Control</h1>
-                <span class="breadcrumb">/ Overview</span>
+        <header class="topbar">
+            <div class="tb-left">
+                <h1 class="tb-title">Dashboard <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></h1>
             </div>
-            <div class="topbar-center">
-                <div class="search-box" id="searchBox">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" placeholder="Search projects, skills, or people..." id="searchInput">
-                    <kbd>⌘K</kbd>
-                </div>
+            <div class="tb-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" placeholder="Search anything...">
+                <kbd>⌘</kbd>
             </div>
-            <div class="topbar-right">
-                <button class="icon-button" id="notifBtn" aria-label="Notifications">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    <span class="badge">3</span>
+            <div class="tb-right">
+                <button class="tb-icon-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <span class="notif-dot"></span>
                 </button>
-                <div class="divider-v"></div>
-                <div class="user-chip" id="userChip">
-                    <img src="https://i.pravatar.cc/150?u=upzeal_dev" alt="You" class="user-chip-avatar">
-                    <span class="user-chip-name">Hruday S.</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <div class="tb-date">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    Today, Jun 8
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+                <div class="tb-user">
+                    <img src="https://i.pravatar.cc/150?u=upzeal_dev" alt="You">
+                    <div class="tb-user-info">
+                        <span class="tb-user-name">Hruday</span>
+                        <span class="tb-user-handle">@upzeal_dev</span>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- Dashboard Grid -->
-        <section class="dashboard" id="dashboard">
+        <!-- ─── Grid ─── -->
+        <div class="grid">
 
-            <!-- ROW 1: Welcome + Quick Stats -->
-            <div class="welcome-banner" id="welcomeBanner">
-                <div class="welcome-text">
-                    <span class="greeting">Good afternoon, Hruday 👋</span>
-                    <h2 class="welcome-headline">Your skill growth is <span class="highlight">on fire</span> this month.</h2>
-                    <p class="welcome-sub">You've completed 4 challenges and climbed 12 spots on the leaderboard. Keep the momentum going.</p>
-                </div>
-                <div class="welcome-visual">
-                    <div class="orb-wrap">
-                        <div class="orb"></div>
-                        <div class="orb-ring ring-1"></div>
-                        <div class="orb-ring ring-2"></div>
-                        <div class="orb-ring ring-3"></div>
-                    </div>
-                </div>
-            </div>
+            <!-- ═══ Col 1: Skill Progress ═══ -->
+            <div class="col col-1">
 
-            <!-- STAT CARDS -->
-            <div class="stat-card" id="statXp">
-                <div class="stat-icon cyan">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <div class="col-head">
+                    <div><h2 class="sec-title">Skill Progress</h2><p class="sec-sub">3 mentors and @team have access.</p></div>
+                    <button class="pill-btn">All Skills <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
                 </div>
-                <div class="stat-content">
-                    <span class="stat-label">Total XP</span>
-                    <span class="stat-number">23,094</span>
-                </div>
-                <span class="stat-trend up">+19.2%</span>
-            </div>
-            <div class="stat-card" id="statRank">
-                <div class="stat-icon purple">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Global Rank</span>
-                    <span class="stat-number">#142</span>
-                </div>
-                <span class="stat-trend up">↑ 12</span>
-            </div>
-            <div class="stat-card" id="statChallenges">
-                <div class="stat-icon green">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                </div>
-                <div class="stat-content">
-                    <span class="stat-label">Challenges</span>
-                    <span class="stat-number">18</span>
-                </div>
-                <span class="stat-trend neutral">4 active</span>
-            </div>
 
-            <!-- ROW 2: Activity Chart + AI Mentor -->
-            <div class="card chart-card" id="chartCard">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">Skill Growth</h3>
-                        <p class="card-subtitle">XP earned over time</p>
+                <!-- Overview -->
+                <div class="panel overview-panel">
+                    <div class="ov-head">
+                        <h3>Overview</h3>
+                        <button class="info-dot"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
                     </div>
-                    <div class="chart-tabs">
-                        <button class="tab">7D</button>
-                        <button class="tab active">30D</button>
-                        <button class="tab">90D</button>
-                        <button class="tab">1Y</button>
-                    </div>
-                </div>
-                <div class="chart-visual">
-                    <svg class="line-chart" viewBox="0 0 500 180" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="rgba(0,210,255,0.25)"/>
-                                <stop offset="100%" stop-color="rgba(0,210,255,0)"/>
-                            </linearGradient>
-                            <linearGradient id="lineGrad" x1="0" y1="0" x2="500" y2="0" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stop-color="#00d2ff"/>
-                                <stop offset="100%" stop-color="#7b61ff"/>
-                            </linearGradient>
-                        </defs>
-                        <!-- Grid -->
-                        <line x1="0" y1="45" x2="500" y2="45" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-                        <line x1="0" y1="90" x2="500" y2="90" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-                        <line x1="0" y1="135" x2="500" y2="135" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-                        <!-- Area -->
-                        <path d="M0 160 C30 155,50 140,80 125 C110 110,130 130,160 115 C190 100,210 110,240 90 C270 70,290 80,320 55 C350 30,370 45,400 25 C430 15,460 20,500 10 L500 180 L0 180Z" fill="url(#fillGrad)"/>
-                        <!-- Line -->
-                        <path d="M0 160 C30 155,50 140,80 125 C110 110,130 130,160 115 C190 100,210 110,240 90 C270 70,290 80,320 55 C350 30,370 45,400 25 C430 15,460 20,500 10" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round"/>
-                        <!-- Active dot -->
-                        <circle cx="400" cy="25" r="5" fill="#0a0c10" stroke="#00d2ff" stroke-width="2.5"/>
-                        <circle cx="400" cy="25" r="2" fill="#00d2ff"/>
-                        <!-- Dashed vertical -->
-                        <line x1="400" y1="25" x2="400" y2="180" stroke="rgba(0,210,255,0.2)" stroke-width="1" stroke-dasharray="3 3"/>
-                    </svg>
-                    <!-- Floating tooltip -->
-                    <div class="chart-tooltip">
-                        <span class="ct-date">Jun 4</span>
-                        <span class="ct-value">+1,240 XP</span>
-                        <span class="ct-badge up">+9.4%</span>
-                    </div>
-                    <div class="chart-x-labels">
-                        <span>May 9</span><span>May 16</span><span>May 23</span><span>May 30</span><span>Jun 6</span>
-                    </div>
-                </div>
-                <div class="chart-footer">
-                    <div class="chart-big-stat">
-                        <span class="big-num">+19.23<small>%</small></span>
-                        <span class="big-label">vs last period</span>
-                    </div>
-                    <div class="chart-mini-stats">
-                        <div class="mini"><span class="ml">Peak day</span><strong>Jun 4</strong></div>
-                        <div class="mini"><span class="ml">Avg daily</span><strong>+412 XP</strong></div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="card ai-card" id="aiCard">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">AI Mentor</h3>
-                        <p class="card-subtitle">Powered by Upzeal Intelligence</p>
+                    <div class="ov-stats">
+                        <div><span class="ov-label">Peak performance</span><span class="ov-val">2x increase to last month</span></div>
+                        <div class="text-r"><span class="ov-label">Growth rate</span><span class="ov-val accent">+ 12.83 %</span></div>
                     </div>
-                    <span class="live-dot">
-                        <span class="pulse"></span>
-                        Live
-                    </span>
-                </div>
-                <div class="ai-body">
-                    <div class="ai-orb-container">
-                        <div class="ai-orb">
-                            <div class="ai-sphere"></div>
-                            <div class="ai-glow"></div>
+
+                    <div class="tabs">
+                        <button class="tab">24h</button>
+                        <button class="tab">Week</button>
+                        <button class="tab active">Month</button>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="chart-wrap">
+                        <svg class="chart-svg" viewBox="0 0 440 140" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="gFill" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="rgba(37,99,235,0.35)"/>
+                                    <stop offset="100%" stop-color="rgba(37,99,235,0)"/>
+                                </linearGradient>
+                            </defs>
+                            <line x1="0" y1="35" x2="440" y2="35" stroke="rgba(255,255,255,0.04)"/>
+                            <line x1="0" y1="70" x2="440" y2="70" stroke="rgba(255,255,255,0.04)"/>
+                            <line x1="0" y1="105" x2="440" y2="105" stroke="rgba(255,255,255,0.04)"/>
+                            <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18 L440 140 L0 140Z" fill="url(#gFill)"/>
+                            <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="310" cy="18" r="4.5" fill="#111318" stroke="#2563eb" stroke-width="2.5"/>
+                            <circle cx="310" cy="18" r="1.5" fill="white"/>
+                            <line x1="310" y1="18" x2="310" y2="140" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="3 3"/>
+                        </svg>
+                        <div class="chart-tip">
+                            <span class="ct-d">Jun 4</span>
+                            <span class="ct-v">5,538 XP</span>
+                            <span class="ct-c">+ 9.41 %</span>
                         </div>
                     </div>
-                    <div class="ai-insights">
-                        <div class="ai-message">
-                            <p>Based on your recent challenge completions, I recommend focusing on <strong>system design patterns</strong> next. Your backend skills are strong — let's round out your architecture knowledge.</p>
+
+                    <div class="chart-x"><span>May 8</span><span>May 18</span><span>May 28</span><span>Jun 8</span></div>
+
+                    <div class="ov-footer">
+                        <div class="big-pct">+ 19.23 <span>%</span></div>
+                        <div class="last-up"><span class="lu-l">Last updated</span><span class="lu-v">Today, 06:49 AM</span></div>
+                    </div>
+                </div>
+
+                <!-- Top Skills -->
+                <div class="col-head mt">
+                    <h2 class="sec-title">My Top Skills</h2>
+                    <div class="slider-nav">
+                        <span class="sn-count">02 of 5</span>
+                        <button class="arr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button class="arr"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>
+                    </div>
+                </div>
+                <div class="skills-row">
+                    <div class="skill-card">
+                        <div class="sk-top"><div class="sk-name"><span class="dot dot-cyan"></span>React</div><button class="dots-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+                        <div class="sk-metric"><span class="sk-val"># 3,074 XP</span><span class="sk-change up">↑ 9.23 %</span></div>
+                        <div class="sk-bot">
+                            <div class="av-group"><img src="https://i.pravatar.cc/150?u=a1" alt=""><img src="https://i.pravatar.cc/150?u=a2" alt=""><img src="https://i.pravatar.cc/150?u=a3" alt=""><span class="av-more">99+</span></div>
+                            <button class="plus-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                         </div>
-                        <div class="ai-actions">
-                            <button class="ai-btn primary">Start Recommended Path</button>
-                            <button class="ai-btn ghost">Explore All Paths</button>
+                    </div>
+                    <div class="skill-card">
+                        <div class="sk-top"><div class="sk-name"><span class="dot dot-green"></span>Node.js</div><button class="dots-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>
+                        <div class="sk-metric"><span class="sk-val"># 2,931 XP</span><span class="sk-change up">↑ 7.59 %</span></div>
+                        <div class="sk-bot">
+                            <div class="av-group"><img src="https://i.pravatar.cc/150?u=a4" alt=""><img src="https://i.pravatar.cc/150?u=a5" alt=""><img src="https://i.pravatar.cc/150?u=a6" alt=""><span class="av-more">99+</span></div>
+                            <button class="plus-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ROW 3: Top Skills + Upgrade -->
-            <div class="card skills-card" id="skillsCard">
-                <div class="card-header">
-                    <h3 class="card-title">Verified Skills</h3>
-                    <div class="slider-controls">
-                        <span class="slider-info">3 of 8</span>
-                        <button class="arrow-btn" aria-label="Previous"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <button class="arrow-btn" aria-label="Next"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
-                    </div>
+            <!-- ═══ Col 2: XP Balance ═══ -->
+            <div class="col col-2">
+
+                <div class="col-head">
+                    <div><h2 class="sec-title">Total XP Balance</h2><p class="sec-sub">The sum of all points on my profile</p></div>
+                    <button class="pill-btn">All Time <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
                 </div>
-                <div class="skills-grid">
-                    <div class="skill-tile">
-                        <div class="skill-tile-top">
-                            <div class="skill-icon react">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></svg>
+
+                <div class="panel xp-panel">
+                    <div class="xp-top">
+                        <div class="xp-big">★ 23,094<span>.57</span></div>
+                        <div class="xp-cmp"><span class="xp-cmp-l">Compared to last month</span><span class="xp-cmp-v down">- 37.16 %</span></div>
+                    </div>
+                    <div class="xp-mid">
+                        <span class="xp-avg">Yearly avg: <strong>★ 34,502</strong> <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                        <a href="#" class="xp-how"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> How it works?</a>
+                    </div>
+
+                    <!-- AI Assistant -->
+                    <div class="ai-box">
+                        <h4 class="ai-title">Ai Mentor</h4>
+                        <div class="ai-status"><div class="ai-spinner"></div><span>is reviewing your latest PR...</span></div>
+                        <div class="orb-scene">
+                            <div class="orb-outer">
+                                <div class="orb-petal p1"></div>
+                                <div class="orb-petal p2"></div>
+                                <div class="orb-petal p3"></div>
+                                <div class="orb-petal p4"></div>
+                                <div class="orb-petal p5"></div>
+                                <div class="orb-petal p6"></div>
+                                <div class="orb-petal p7"></div>
+                                <div class="orb-petal p8"></div>
                             </div>
-                            <span class="skill-level">Advanced</span>
-                        </div>
-                        <h4 class="skill-name">React</h4>
-                        <div class="skill-bar-track"><div class="skill-bar-fill" style="width:87%"></div></div>
-                        <div class="skill-meta">
-                            <span>87% mastery</span>
-                            <span class="skill-xp">+3,074 XP</span>
-                        </div>
-                    </div>
-                    <div class="skill-tile">
-                        <div class="skill-tile-top">
-                            <div class="skill-icon node">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                            </div>
-                            <span class="skill-level">Advanced</span>
-                        </div>
-                        <h4 class="skill-name">Node.js</h4>
-                        <div class="skill-bar-track"><div class="skill-bar-fill green" style="width:79%"></div></div>
-                        <div class="skill-meta">
-                            <span>79% mastery</span>
-                            <span class="skill-xp">+2,931 XP</span>
-                        </div>
-                    </div>
-                    <div class="skill-tile">
-                        <div class="skill-tile-top">
-                            <div class="skill-icon python">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                            </div>
-                            <span class="skill-level">Inter.</span>
-                        </div>
-                        <h4 class="skill-name">Python</h4>
-                        <div class="skill-bar-track"><div class="skill-bar-fill amber" style="width:62%"></div></div>
-                        <div class="skill-meta">
-                            <span>62% mastery</span>
-                            <span class="skill-xp">+1,847 XP</span>
+                            <div class="orb-glow"></div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card upgrade-card" id="upgradeCard">
-                <div class="upgrade-glow"></div>
-                <span class="upgrade-eyebrow">Limited Time</span>
-                <h3 class="upgrade-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    Go Pro — <span class="gold">40% Off</span>
-                </h3>
-                <p class="upgrade-desc">Unlock unlimited AI mentorship, priority challenge access, recruiter visibility boost, and advanced analytics.</p>
-                <ul class="upgrade-features">
-                    <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Unlimited AI code reviews</li>
-                    <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Featured in recruiter search</li>
-                    <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Private challenge hosting</li>
-                </ul>
-                <button class="upgrade-cta">Upgrade Now</button>
-                <button class="upgrade-dismiss">Maybe later</button>
-            </div>
+            <!-- ═══ Col 3: Upgrade ═══ -->
+            <div class="col col-3">
 
-            <!-- ROW 4: Table -->
-            <div class="card table-card" id="tableCard">
-                <div class="card-header">
-                    <div>
-                        <h3 class="card-title">Active Challenges</h3>
-                        <p class="card-subtitle">Open challenges you can join right now</p>
+                <div class="col-head">
+                    <div><h2 class="sec-title">Upgrade</h2><p class="sec-sub">Powered by Upzeal</p></div>
+                    <button class="text-btn">Next →</button>
+                </div>
+
+                <div class="panel promo-panel">
+                    <div class="promo-tag">Just for today!</div>
+                    <div class="promo-body">
+                        <h3 class="promo-h">⚡ Let's Go Pro with <span class="gold-badge">40%</span></h3>
+                        <p class="promo-sub">This is your amazing chance!</p>
+                        <p class="promo-desc">Premium unlocks unlimited AI mentorship, recruiter visibility, and advanced analytics for your developer profile.</p>
+                        <a href="#" class="promo-link">Learn more →</a>
                     </div>
-                    <div class="table-actions">
-                        <button class="filter-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                            Filter
-                        </button>
-                        <button class="filter-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                            View
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                        </button>
+                    <div class="promo-foot">
+                        <span class="promo-dismiss">Don't show again</span>
+                        <button class="promo-cta">Get started</button>
                     </div>
                 </div>
-                <div class="table-wrap">
+            </div>
+
+            <!-- ═══ Full-width Table ═══ -->
+            <div class="col col-full">
+                <div class="col-head">
+                    <h2 class="sec-title">Active Challenges</h2>
+                    <button class="pill-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> as List <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+                </div>
+                <div class="panel tbl-panel">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Challenge</th>
-                                <th>Created by</th>
-                                <th>Stack</th>
-                                <th>Difficulty</th>
-                                <th>Participants</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Rank</th><th>Challenge</th><th>Author</th><th>Date</th><th>Stack</th><th>Participants</th><th>Status</th><th>Action</th></tr></thead>
                         <tbody>
                             <tr>
-                                <td class="rank-cell">1</td>
-                                <td class="name-cell">
-                                    <div class="challenge-icon ci-1">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                                    </div>
-                                    Build a Rate Limiter
-                                </td>
-                                <td><div class="person-cell"><img src="https://i.pravatar.cc/150?u=sam" alt="S"> Samuel K.</div></td>
-                                <td><span class="stack-tag">Go</span></td>
-                                <td><span class="difficulty hard">Hard</span></td>
-                                <td>
-                                    <div class="avatar-stack">
-                                        <img src="https://i.pravatar.cc/150?u=p1" alt=""><img src="https://i.pravatar.cc/150?u=p2" alt=""><img src="https://i.pravatar.cc/150?u=p3" alt="">
-                                        <span class="avatar-count">+128</span>
-                                    </div>
-                                </td>
-                                <td><span class="status-pill open">Open</span></td>
-                                <td><button class="join-btn">Join</button></td>
+                                <td class="t-rank">#1</td>
+                                <td class="t-name">Build a Rate Limiter</td>
+                                <td><div class="t-person"><img src="https://i.pravatar.cc/150?u=sam" alt="">Samuel</div></td>
+                                <td>02/14/2024</td>
+                                <td><span class="t-tag">Go</span></td>
+                                <td><div class="av-group sm"><img src="https://i.pravatar.cc/150?u=p1"><img src="https://i.pravatar.cc/150?u=p2"><span class="av-more">99+</span></div></td>
+                                <td><span class="t-status open">Public</span></td>
+                                <td><button class="t-join">Join</button></td>
                             </tr>
                             <tr>
-                                <td class="rank-cell">2</td>
-                                <td class="name-cell">
-                                    <div class="challenge-icon ci-2">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4"/></svg>
-                                    </div>
-                                    Design System from Scratch
-                                </td>
-                                <td><div class="person-cell"><img src="https://i.pravatar.cc/150?u=hoss" alt="H"> You</div></td>
-                                <td><span class="stack-tag">React</span></td>
-                                <td><span class="difficulty medium">Medium</span></td>
-                                <td>
-                                    <div class="avatar-stack">
-                                        <img src="https://i.pravatar.cc/150?u=p4" alt=""><img src="https://i.pravatar.cc/150?u=p5" alt="">
-                                        <span class="avatar-count">+64</span>
-                                    </div>
-                                </td>
-                                <td><span class="status-pill open">Open</span></td>
-                                <td><button class="join-btn outlined">View</button></td>
+                                <td class="t-rank">#2</td>
+                                <td class="t-name">Design System from Scratch</td>
+                                <td><div class="t-person"><img src="https://i.pravatar.cc/150?u=hoss" alt="">You</div></td>
+                                <td>09/23/2023</td>
+                                <td><span class="t-tag">React</span></td>
+                                <td><div class="av-group sm"><img src="https://i.pravatar.cc/150?u=p3"><img src="https://i.pravatar.cc/150?u=p4"><span class="av-more">64</span></div></td>
+                                <td><span class="t-status open">Public</span></td>
+                                <td><button class="t-join">Join</button></td>
                             </tr>
                             <tr>
-                                <td class="rank-cell">3</td>
-                                <td class="name-cell">
-                                    <div class="challenge-icon ci-3">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-                                    </div>
-                                    K8s Cluster Autoscaler
-                                </td>
-                                <td><div class="person-cell"><img src="https://i.pravatar.cc/150?u=maria" alt="M"> Maria L.</div></td>
-                                <td><span class="stack-tag">DevOps</span></td>
-                                <td><span class="difficulty hard">Hard</span></td>
-                                <td>
-                                    <div class="avatar-stack">
-                                        <img src="https://i.pravatar.cc/150?u=p6" alt=""><img src="https://i.pravatar.cc/150?u=p7" alt="">
-                                        <span class="avatar-count">+91</span>
-                                    </div>
-                                </td>
-                                <td><span class="status-pill invite">Invite</span></td>
-                                <td><button class="join-btn">Join</button></td>
+                                <td class="t-rank">#3</td>
+                                <td class="t-name">K8s Cluster Autoscaler</td>
+                                <td><div class="t-person"><img src="https://i.pravatar.cc/150?u=maria" alt="">Maria</div></td>
+                                <td>04/05/2024</td>
+                                <td><span class="t-tag">DevOps</span></td>
+                                <td><div class="av-group sm"><img src="https://i.pravatar.cc/150?u=p5"><img src="https://i.pravatar.cc/150?u=p6"><span class="av-more">91</span></div></td>
+                                <td><span class="t-status priv">🔒 Private</span></td>
+                                <td><button class="t-join">Join</button></td>
                             </tr>
                             <tr>
-                                <td class="rank-cell">4</td>
-                                <td class="name-cell">
-                                    <div class="challenge-icon ci-4">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                                    </div>
-                                    GraphQL Federation Gateway
-                                </td>
-                                <td><div class="person-cell"><img src="https://i.pravatar.cc/150?u=steph" alt="S"> Steph R.</div></td>
-                                <td><span class="stack-tag">Node</span></td>
-                                <td><span class="difficulty easy">Easy</span></td>
-                                <td>
-                                    <div class="avatar-stack">
-                                        <img src="https://i.pravatar.cc/150?u=p8" alt=""><img src="https://i.pravatar.cc/150?u=p9" alt="">
-                                        <span class="avatar-count">+42</span>
-                                    </div>
-                                </td>
-                                <td><span class="status-pill open">Open</span></td>
-                                <td><button class="join-btn">Join</button></td>
+                                <td class="t-rank">#4</td>
+                                <td class="t-name">GraphQL Federation Gateway</td>
+                                <td><div class="t-person"><img src="https://i.pravatar.cc/150?u=steph" alt="">Steph</div></td>
+                                <td>11/18/2023</td>
+                                <td><span class="t-tag">Node</span></td>
+                                <td><div class="av-group sm"><img src="https://i.pravatar.cc/150?u=p7"><img src="https://i.pravatar.cc/150?u=p8"><span class="av-more">42</span></div></td>
+                                <td><span class="t-status open">Public</span></td>
+                                <td><button class="t-join">Join</button></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-        </section>
+        </div><!-- /grid -->
     </main>
 
     <script>
-        // Minimal interactivity
-        document.querySelectorAll('.chart-tabs .tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.chart-tabs .tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-            });
-        });
+    document.querySelectorAll('.tabs .tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active')})});
     </script>
 </body>
 </html>
