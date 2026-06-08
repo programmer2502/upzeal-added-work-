@@ -1163,7 +1163,7 @@ export default function App() {
                     <h2 className="text-3xl font-medium tracking-tight">
                       {accountType === 'recruiter' ? 'Company Details' : 'Tech Stack'}
                     </h2>
-                    <p className="text-white/40 text-sm mt-1">
+                    <p className="text-gray-400 text-sm mt-1">
                       {accountType === 'recruiter' ? 'Tell us about your organization.' : 'Select the technologies you work with daily.'}
                     </p>
                   </div>
@@ -1189,15 +1189,15 @@ export default function App() {
                                 <button
                                   key={tech.id}
                                   onClick={() => toggleTech(tech.id)}
-                                  className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium transition-all cursor-pointer ${isSelected
-                                    ? 'bg-white/10 border-[#00d2ff] text-white shadow-[0_0_15px_rgba(0,210,255,0.1)]'
-                                    : 'bg-white/5 border-white/5 text-white/60 hover:border-white/20 hover:text-white'
+                                  className={`flex items-center gap-3 p-3 rounded-xl border text-sm transition-all cursor-pointer ${isSelected
+                                    ? 'bg-[#00d2ff]/10 border-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.15)]'
+                                    : 'bg-transparent border-white/10 hover:bg-white/5 hover:border-white/30'
                                   }`}
                                 >
-                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${isSelected ? 'bg-[#00d2ff] text-black' : 'bg-transparent text-white/40 border border-white/10'}`}>
-                                    {isSelected ? <Check className="w-4 h-4" /> : tech.icon}
+                                  <div className={`transition-colors ${isSelected ? 'text-[#00d2ff]' : 'text-white/50'}`}>
+                                    {tech.icon}
                                   </div>
-                                  {tech.label}
+                                  <span className={isSelected ? 'text-white font-semibold' : 'text-gray-400'}>{tech.label}</span>
                                 </button>
                               );
                             })}
@@ -1210,14 +1210,14 @@ export default function App() {
                   <div className="pt-6 flex gap-4">
                     <button
                       onClick={() => setSignupStep(2)}
-                      className="h-14 px-8 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer"
+                      className="h-14 px-8 border border-transparent text-white/50 font-semibold rounded-xl hover:text-white hover:bg-transparent transition-all cursor-pointer"
                     >
                       Back
                     </button>
                     <button
                       onClick={() => handleFinish()}
                       disabled={isSocialLoading || (accountType === 'developer' && selectedTech.length === 0)}
-                      className="flex-1 h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
                     </button>
