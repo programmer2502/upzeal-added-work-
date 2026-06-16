@@ -8,10 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const cmdHint = document.getElementById("cmd-k-hint");
 
     const togglePanel = () => {
+        if (!aiPanel || !aiOverlay) return;
         const isActive = aiPanel.classList.toggle("active");
         aiOverlay.classList.toggle("active");
         if (isActive) {
-            aiInput.focus();
+            aiInput?.focus();
         }
     };
 
@@ -21,14 +22,22 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             togglePanel();
         }
-        if (e.key === 'Escape' && aiPanel.classList.contains("active")) {
+        if (e.key === 'Escape' && aiPanel?.classList.contains("active")) {
             togglePanel();
         }
     });
 
+    if(closeBtn){
     closeBtn.addEventListener("click", togglePanel);
+}
+
+if(aiOverlay){
     aiOverlay.addEventListener("click", togglePanel);
-    if(cmdHint) cmdHint.addEventListener("click", togglePanel);
+}
+
+if(cmdHint){
+    cmdHint.addEventListener("click", togglePanel);
+}
 
     // 2. Draw Radar Chart dynamically
     window.renderRadarChart = () => {

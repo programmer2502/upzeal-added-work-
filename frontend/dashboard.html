@@ -185,24 +185,44 @@
                         <a href="#" class="xp-how"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> How it works?</a>
                     </div>
 
-                    <!-- AI Assistant -->
-                    <div class="ai-box">
-                        <h4 class="ai-title">AI Mentor</h4>
-                        <div class="ai-status"><div class="ai-spinner"></div><span>is reviewing your latest PR...</span></div>
-                        <a href="#" class="ai-link">View Review &rarr;</a>
-                        <div class="orb-scene">
-                            <div class="orb-outer">
-                                <div class="orb-petal p1"></div>
-                                <div class="orb-petal p2"></div>
-                                <div class="orb-petal p3"></div>
-                                <div class="orb-petal p4"></div>
-                                <div class="orb-petal p5"></div>
-                                <div class="orb-petal p6"></div>
-                                <div class="orb-petal p7"></div>
-                                <div class="orb-petal p8"></div>
+                    <!-- AI Mentor -->
+                    <div class="ai-box mentor-box">
+                        <div class="mentor-head">
+                            <div>
+                                <h4 class="ai-title">AI Mentor</h4>
+                                <p class="mentor-subtitle">Technical help, interview prep, and project guidance</p>
                             </div>
-                            <div class="orb-glow"></div>
                         </div>
+
+                        <div class="ai-status">
+                            <div class="ai-spinner"></div>
+                            <span id="mentor-status">Ready to help you learn</span>
+                        </div>
+
+                        <div id="mentor-chat" class="mentor-chat" aria-live="polite">
+                            <div class="mentor-msg bot">
+                                <strong>Hi Hruday.</strong> Ask me a technical question and I will explain it clearly, give examples, and suggest what to practice next.
+                            </div>
+                        </div>
+
+                        <div class="mentor-suggestions" aria-label="Suggested mentor prompts">
+                            <button type="button" data-prompt="Explain React hooks with a small example">React hooks</button>
+                            <button type="button" data-prompt="How should I prepare DSA for interviews?">DSA prep</button>
+                            <button type="button" data-prompt="Give me a Node.js project idea for my profile">Project idea</button>
+                        </div>
+
+                        <form class="mentor-input-wrap" id="mentor-form">
+                            <input
+                                id="mentor-input"
+                                type="text"
+                                autocomplete="off"
+                                placeholder="Ask about React, Node.js, DSA, projects..."
+                            />
+
+                            <button id="mentor-send" type="submit" aria-label="Send message">
+                                Send
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -291,5 +311,7 @@
     <script>
     document.querySelectorAll('.tabs .tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('active'));t.classList.add('active')})});
     </script>
+    <script type="module" src="./dashboard.js"></script>
+    <script type="module" src="./mentor.js"></script>
 </body>
 </html>
