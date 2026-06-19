@@ -31,7 +31,12 @@ import {
   Settings,
   Layers,
   LayoutTemplate,
-  TerminalSquare
+  TerminalSquare,
+  LayoutDashboard,
+  User,
+  Activity,
+  MapPin,
+  Users
 } from 'lucide-react';
 
 // ==========================================
@@ -108,7 +113,7 @@ const SectionEyebrow = ({ label, tag }: { label: string; tag?: string }) => (
 // ==========================================
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'signup'>('landing');
+  const [view, setView] = useState<'landing' | 'signup' | 'dashboard'>('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [yearly, setYearly] = useState(false);
 
@@ -162,7 +167,8 @@ export default function App() {
   const handleFinish = () => {
     setIsSocialLoading(true);
     setTimeout(() => {
-      window.location.href = '/dashboard.html';
+      setIsSocialLoading(false);
+      setView('dashboard');
     }, 1500);
   };
 
@@ -902,7 +908,7 @@ export default function App() {
             </motion.div>
           </section>
         </motion.div>
-      ) : (
+      ) : view === 'signup' ? (
         /* ==========================================
             AURORA SIGN UP (Two-Column Registration)
             ========================================== */
@@ -1009,56 +1015,66 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="space-y-6 text-left w-full"
+                  className="space-y-8 text-left w-full"
                 >
                   <div>
                     <h2 className="text-3xl font-medium tracking-tight">How do you want to use Upzeal?</h2>
                     <p className="text-white/40 text-sm mt-1">We'll personalize your setup experience accordingly.</p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+
+                  <div className="flex flex-col gap-3 mt-6">
+                    {/* Developer Option */}
                     <button
                       onClick={() => setAccountType('developer')}
-                      className={`flex flex-col items-start gap-4 p-6 rounded-2xl border transition-all cursor-pointer text-left ${accountType === 'developer'
-                        ? 'bg-white/10 border-[#00d2ff] text-white shadow-[0_0_20px_rgba(0,210,255,0.15)]'
-                        : 'bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:bg-white/10'
+                      className={`group relative flex items-center gap-5 w-full p-5 rounded-xl border transition-all cursor-pointer text-left ${
+                        accountType === 'developer'
+                          ? 'bg-[#00d2ff]/5 border-[#00d2ff]/40'
+                          : 'bg-transparent border-[#333] hover:border-white/20 hover:bg-white/[0.02]'
                       }`}
                     >
-                      <div className="p-3 bg-[#00d2ff]/10 rounded-xl">
-                        <Code2 className="w-6 h-6 text-[#00d2ff]" />
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        accountType === 'developer' ? 'bg-[#00d2ff]/15' : 'bg-white/5 group-hover:bg-white/10'
+                      }`}>
+                        <Code2 className={`w-5 h-5 transition-colors ${accountType === 'developer' ? 'text-[#00d2ff]' : 'text-white/50'}`} />
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg flex items-center justify-between w-full">
-                          I'm a Developer
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${accountType === 'developer' ? 'border-[#00d2ff] bg-[#00d2ff]' : 'border-white/30'}`}>
-                            {accountType === 'developer' && <Check className="w-3 h-3 text-black" />}
-                          </div>
-                        </div>
-                        <p className="text-sm text-white/50 mt-1">Looking for projects, assessments, and to build my skill tree.</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`text-base font-semibold transition-colors ${accountType === 'developer' ? 'text-white' : 'text-white/80'}`}>I'm a Developer</h3>
+                        <p className="text-xs text-white/40 mt-0.5">Build your skill tree, take assessments, and showcase verified projects.</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                        accountType === 'developer' ? 'border-[#00d2ff] bg-[#00d2ff] scale-110' : 'border-[#333] group-hover:border-white/30'
+                      }`}>
+                        {accountType === 'developer' && <Check className="w-3 h-3 text-black" />}
                       </div>
                     </button>
 
+                    {/* Recruiter Option */}
                     <button
                       onClick={() => setAccountType('recruiter')}
-                      className={`flex flex-col items-start gap-4 p-6 rounded-2xl border transition-all cursor-pointer text-left ${accountType === 'recruiter'
-                        ? 'bg-white/10 border-white text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]'
-                        : 'bg-white/5 border-white/10 text-white/70 hover:border-white/30 hover:bg-white/10'
+                      className={`group relative flex items-center gap-5 w-full p-5 rounded-xl border transition-all cursor-pointer text-left ${
+                        accountType === 'recruiter'
+                          ? 'bg-white/5 border-white/30'
+                          : 'bg-transparent border-[#333] hover:border-white/20 hover:bg-white/[0.02]'
                       }`}
                     >
-                      <div className="p-3 bg-white/10 rounded-xl">
-                        <Briefcase className="w-6 h-6 text-white" />
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        accountType === 'recruiter' ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/10'
+                      }`}>
+                        <Briefcase className={`w-5 h-5 transition-colors ${accountType === 'recruiter' ? 'text-white' : 'text-white/50'}`} />
                       </div>
-                      <div>
-                        <div className="font-semibold text-lg flex items-center justify-between w-full">
-                          I'm a Recruiter
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${accountType === 'recruiter' ? 'border-white bg-white' : 'border-white/30'}`}>
-                            {accountType === 'recruiter' && <Check className="w-3 h-3 text-black" />}
-                          </div>
-                        </div>
-                        <p className="text-sm text-white/50 mt-1">Hiring verified talent, reviewing assessments, and managing teams.</p>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`text-base font-semibold transition-colors ${accountType === 'recruiter' ? 'text-white' : 'text-white/80'}`}>I'm a Recruiter</h3>
+                        <p className="text-xs text-white/40 mt-0.5">Hire verified talent, review technical assessments, and manage pipelines.</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                        accountType === 'recruiter' ? 'border-white bg-white scale-110' : 'border-[#333] group-hover:border-white/30'
+                      }`}>
+                        {accountType === 'recruiter' && <Check className="w-3 h-3 text-black" />}
                       </div>
                     </button>
                   </div>
-                  <div className="pt-6">
+
+                  <div className="pt-4">
                     <button
                       onClick={() => handleNextStep()}
                       disabled={!accountType || isSocialLoading}
@@ -1163,7 +1179,7 @@ export default function App() {
                     <h2 className="text-3xl font-medium tracking-tight">
                       {accountType === 'recruiter' ? 'Company Details' : 'Tech Stack'}
                     </h2>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-white/40 text-sm mt-1">
                       {accountType === 'recruiter' ? 'Tell us about your organization.' : 'Select the technologies you work with daily.'}
                     </p>
                   </div>
@@ -1189,15 +1205,15 @@ export default function App() {
                                 <button
                                   key={tech.id}
                                   onClick={() => toggleTech(tech.id)}
-                                  className={`flex items-center gap-3 p-3 rounded-xl border text-sm transition-all cursor-pointer ${isSelected
-                                    ? 'bg-[#00d2ff]/10 border-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.15)]'
-                                    : 'bg-transparent border-white/10 hover:bg-white/5 hover:border-white/30'
+                                  className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium transition-all cursor-pointer ${isSelected
+                                    ? 'bg-white/10 border-[#00d2ff] text-white shadow-[0_0_15px_rgba(0,210,255,0.1)]'
+                                    : 'bg-white/5 border-white/5 text-white/60 hover:border-white/20 hover:text-white'
                                   }`}
                                 >
-                                  <div className={`transition-colors ${isSelected ? 'text-[#00d2ff]' : 'text-white/50'}`}>
-                                    {tech.icon}
+                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${isSelected ? 'bg-[#00d2ff] text-black' : 'bg-transparent text-white/40 border border-white/10'}`}>
+                                    {isSelected ? <Check className="w-4 h-4" /> : tech.icon}
                                   </div>
-                                  <span className={isSelected ? 'text-white font-semibold' : 'text-gray-400'}>{tech.label}</span>
+                                  {tech.label}
                                 </button>
                               );
                             })}
@@ -1210,14 +1226,14 @@ export default function App() {
                   <div className="pt-6 flex gap-4">
                     <button
                       onClick={() => setSignupStep(2)}
-                      className="h-14 px-8 border border-transparent text-white/50 font-semibold rounded-xl hover:text-white hover:bg-transparent transition-all cursor-pointer"
+                      className="h-14 px-8 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer"
                     >
                       Back
                     </button>
                     <button
                       onClick={() => handleFinish()}
                       disabled={isSocialLoading || (accountType === 'developer' && selectedTech.length === 0)}
-                      className="flex-1 h-14 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-14 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSocialLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Go to Dashboard'}
                     </button>
@@ -1228,6 +1244,10 @@ export default function App() {
             </motion.div>
           </div>
         </motion.main>
+      ) : accountType === 'recruiter' ? (
+        <RecruiterDashboard key="recruiter" />
+      ) : (
+        <StudentDashboard key="student" />
       )}
     </AnimatePresence>
   );
@@ -1281,6 +1301,790 @@ function InputGroup({ label, placeholder, type }: { label: string; placeholder: 
         placeholder={placeholder}
         className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
       />
+    </div>
+  );
+}
+// ==========================================
+// SEPARATE DASHBOARD COMPONENTS
+// ==========================================
+
+function StudentDashboard() {
+  const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed'>('dashboard');
+
+  return (
+    <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-64 border-r border-[#333] bg-[#0a0a0a] flex flex-col justify-between shrink-0">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-10">
+            <Code2 className="w-6 h-6 text-[#00d2ff]" />
+            <span className="font-bold text-lg tracking-tight">Upzeal</span>
+          </div>
+          <nav className="flex flex-col gap-2">
+            <button 
+              onClick={() => setCurrentView('dashboard')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="font-medium text-sm">Dashboard</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('profile')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'profile' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+            >
+              <User className="w-4 h-4" />
+              <span className="font-medium text-sm">Profile</span>
+            </button>
+            <button 
+              onClick={() => setCurrentView('feed')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'feed' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+            >
+              <Activity className="w-4 h-4" />
+              <span className="font-medium text-sm">Company Feed</span>
+            </button>
+          </nav>
+        </div>
+        <div className="p-6 border-t border-[#333]">
+           <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-white shadow-none border border-[#333] shrink-0">
+                JD
+             </div>
+             <div className="overflow-hidden">
+               <p className="text-sm font-semibold truncate">John Doe</p>
+               <p className="text-xs text-white/50 font-mono truncate">@johndoe_dev</p>
+             </div>
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto bg-[#0e1015]">
+        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView /> : <StudentFeedView />}
+      </main>
+    </div>
+  );
+}
+
+function StudentBentoDashboard() {
+  return (
+    <div className="p-6 md:p-8 lg:p-10 space-y-6 max-w-[1400px] mx-auto">
+      {/* Top Row: 3 column bento */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        {/* ── Column 1: Skill Progress (spans 5 cols) ── */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* Section Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Skill Progress</h2>
+              <p className="text-xs text-white/40 mt-0.5">3 mentors and @team have access.</p>
+            </div>
+            <button className="flex items-center gap-1.5 text-xs font-medium text-white/60 border border-[#333] rounded-full px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer">
+              All Skills
+              <ChevronRight className="w-3 h-3 rotate-90" />
+            </button>
+          </div>
+
+          {/* Overview Card */}
+          <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white/90">Overview</h3>
+              <button className="w-6 h-6 rounded-full border border-[#333] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors cursor-pointer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              </button>
+            </div>
+
+            {/* Stats Row */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">Commit throughput</span>
+                <p className="text-sm text-white/80 mt-0.5">2x increase to last month</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">Growth rate</span>
+                <p className="text-sm font-mono text-[#00d2ff] mt-0.5">+ 12.83 %</p>
+              </div>
+            </div>
+
+            {/* Time Tabs */}
+            <div className="flex gap-1 bg-[#0a0a0a] rounded-lg p-1 w-fit">
+              <button className="text-[11px] font-medium px-3 py-1.5 rounded-md text-white/40 hover:text-white/60 transition-colors cursor-pointer">24h</button>
+              <button className="text-[11px] font-medium px-3 py-1.5 rounded-md text-white/40 hover:text-white/60 transition-colors cursor-pointer">Week</button>
+              <button className="text-[11px] font-medium px-3 py-1.5 rounded-md bg-[#1a1d24] text-white border border-[#333] cursor-pointer">Month</button>
+            </div>
+
+            {/* Chart */}
+            <div className="relative">
+              <svg className="w-full h-[140px]" viewBox="0 0 440 140" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="gFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(0,210,255,0.2)"/>
+                    <stop offset="100%" stopColor="rgba(0,210,255,0)"/>
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="35" x2="440" y2="35" stroke="rgba(255,255,255,0.04)"/>
+                <line x1="0" y1="70" x2="440" y2="70" stroke="rgba(255,255,255,0.04)"/>
+                <line x1="0" y1="105" x2="440" y2="105" stroke="rgba(255,255,255,0.04)"/>
+                <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18 L440 140 L0 140Z" fill="url(#gFill)"/>
+                <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18" fill="none" stroke="#00d2ff" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="310" cy="18" r="4.5" fill="#111318" stroke="#00d2ff" strokeWidth="2.5"/>
+                <circle cx="310" cy="18" r="1.5" fill="white"/>
+                <line x1="310" y1="18" x2="310" y2="140" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3 3"/>
+              </svg>
+              {/* Tooltip */}
+              <div className="absolute top-0 left-[65%] -translate-x-1/2 bg-[#1a1d24] border border-[#333] rounded-lg px-3 py-2 pointer-events-none">
+                <span className="text-[10px] text-white/50 block font-mono">Jun 4</span>
+                <span className="text-sm font-semibold font-mono">5,538 XP</span>
+                <span className="text-[10px] text-[#00d2ff] font-mono ml-1">+ 9.41 %</span>
+              </div>
+            </div>
+
+            {/* Chart X-axis */}
+            <div className="flex justify-between text-[10px] text-white/30 font-mono -mt-1">
+              <span>May 8</span><span>May 18</span><span>May 28</span><span>Jun 8</span>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#333]">
+              <span className="text-2xl font-bold font-mono text-[#00d2ff]">+ 19.23 <span className="text-base">%</span></span>
+              <div className="text-right">
+                <span className="text-[10px] text-white/30 block">Last updated</span>
+                <span className="text-xs text-white/60 font-mono">Today, 06:49 AM</span>
+              </div>
+            </div>
+          </div>
+
+          {/* My Top Skills */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">My Top Skills</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/40 font-mono">02 of 5</span>
+              <button className="w-7 h-7 border border-[#333] rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer">
+                <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+              </button>
+              <button className="w-7 h-7 border border-[#333] rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Skill Cards Row */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { name: 'FastAPI', xp: '3,074', change: '9.23', color: 'bg-[#00d2ff]' },
+              { name: 'WebSockets', xp: '2,931', change: '7.59', color: 'bg-[#10b981]' },
+            ].map(skill => (
+              <div key={skill.name} className="border border-[#333] rounded-2xl bg-[#111318] p-4 hover:border-white/20 transition-colors cursor-pointer group">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${skill.color}`} />
+                    <span className="text-sm font-semibold">{skill.name}</span>
+                  </div>
+                  <button className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-lg font-bold font-mono"># {skill.xp} XP</span>
+                  <span className="text-xs font-mono text-[#10b981]">↑ {skill.change} %</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex -space-x-2">
+                    {[1,2,3].map(i => (
+                      <img key={i} src={`https://i.pravatar.cc/150?u=a${skill.name}${i}`} alt="" className="w-6 h-6 rounded-full border-2 border-[#111318] object-cover" />
+                    ))}
+                    <span className="w-6 h-6 rounded-full bg-[#1a1d24] border-2 border-[#111318] flex items-center justify-center text-[8px] font-bold text-white/60">99+</span>
+                  </div>
+                  <button className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform cursor-pointer">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Column 2: XP Balance + AI Mentor (spans 4 cols) ── */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Total XP Balance</h2>
+              <p className="text-xs text-white/40 mt-0.5">The sum of all points on my profile</p>
+            </div>
+            <button className="flex items-center gap-1.5 text-xs font-medium text-white/60 border border-[#333] rounded-full px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer">
+              All Time
+              <ChevronRight className="w-3 h-3 rotate-90" />
+            </button>
+          </div>
+
+          {/* XP Card */}
+          <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-3xl font-bold font-mono">★ 23,094</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/40">Compared to last month</span>
+              <span className="text-sm font-mono text-red-400">- 37.16 %</span>
+            </div>
+            <div className="flex items-center justify-between py-3 border-t border-b border-[#333]">
+              <span className="text-xs text-white/50 flex items-center gap-1.5">
+                Yearly avg: <strong className="text-white font-mono">★ 34,502</strong>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+              </span>
+              <a href="#" className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1 transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                How it works?
+              </a>
+            </div>
+
+            {/* AI Mentor Box */}
+            <div className="border border-[#00d2ff]/20 rounded-xl bg-[#00d2ff]/5 p-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#00d2ff]" />
+                  AI Mentor
+                </h4>
+                <p className="text-[11px] text-white/40 mt-0.5">Technical help, interview prep, and project guidance</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-[#00d2ff]">
+                <span className="w-2 h-2 rounded-full bg-[#00d2ff] animate-pulse" />
+                Ready to help you learn
+              </div>
+
+              {/* Chat bubble */}
+              <div className="bg-[#0a0a0a] border border-[#333] rounded-xl p-3">
+                <p className="text-xs text-white/80 leading-relaxed">
+                  <strong>Hi Hruday.</strong> Ask me a technical question and I will explain it clearly, give examples, and suggest what to practice next.
+                </p>
+              </div>
+
+              {/* Suggestion pills */}
+              <div className="flex flex-wrap gap-2">
+                {['React hooks', 'DSA prep', 'Project idea'].map(tag => (
+                  <button key={tag} className="text-[11px] font-medium px-2.5 py-1 border border-[#333] rounded-full text-white/60 hover:text-white hover:border-[#00d2ff]/40 hover:bg-[#00d2ff]/5 transition-colors cursor-pointer">
+                    {tag}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ask about React, Node.js, DSA, projects..."
+                  className="flex-1 bg-[#0a0a0a] border border-[#333] rounded-xl h-10 px-3 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#00d2ff]/40"
+                />
+                <button className="h-10 px-4 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Column 3: Upgrade Promo (spans 3 cols) ── */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Upgrade</h2>
+              <p className="text-xs text-white/40 mt-0.5">Powered by Upzeal</p>
+            </div>
+            <button className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer">Next →</button>
+          </div>
+
+          <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-4 relative overflow-hidden">
+            {/* Decorative gradient blob */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#00d2ff]/10 rounded-full blur-3xl pointer-events-none" />
+
+            <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-[#00d2ff] bg-[#00d2ff]/10 px-2.5 py-1 rounded-full border border-[#00d2ff]/20">
+              Just for today!
+            </span>
+
+            <h3 className="text-xl font-bold tracking-tight">
+              ⚡ Let's Go Pro with <span className="text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">40%</span>
+            </h3>
+            <p className="text-xs text-white/50 font-medium">This is your amazing chance!</p>
+            <p className="text-xs text-white/60 leading-relaxed">
+              Premium unlocks unlimited AI mentorship, recruiter visibility, and advanced analytics for your developer profile.
+            </p>
+            <a href="#" className="text-xs text-[#00d2ff] hover:underline">Learn more →</a>
+
+            <div className="flex items-center justify-between pt-4 border-t border-[#333]">
+              <span className="text-[11px] text-white/30 cursor-pointer hover:text-white/50 transition-colors">Don't show again</span>
+              <button className="text-xs font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">
+                Get started
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Row: Active Challenges Table (full width) ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold tracking-tight">Active Challenges</h2>
+          <button className="flex items-center gap-1.5 text-xs font-medium text-white/60 border border-[#333] rounded-full px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            as List
+            <ChevronRight className="w-3 h-3 rotate-90" />
+          </button>
+        </div>
+
+        <div className="border border-[#333] rounded-2xl bg-[#111318] overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-[#333] text-[11px] uppercase tracking-wider text-white/30 font-medium">
+                <th className="px-5 py-3">Rank</th>
+                <th className="px-5 py-3">Challenge</th>
+                <th className="px-5 py-3">Author</th>
+                <th className="px-5 py-3">Date</th>
+                <th className="px-5 py-3">Stack</th>
+                <th className="px-5 py-3">Participants</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-sm">
+              {[
+                { rank: '#1', name: 'Smart City Noise Map (Real-time)', author: 'Samuel', avatar: 'sam', date: '02/14/2024', stack: 'Go', participants: '99+', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
+                { rank: '#2', name: 'Design System from Scratch', author: 'You', avatar: 'hoss', date: '09/23/2023', stack: 'React', participants: '64', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
+                { rank: '#3', name: 'K8s Cluster Autoscaler', author: 'Maria', avatar: 'maria', date: '04/05/2024', stack: 'DevOps', participants: '91', status: '🔒 Private', statusColor: 'text-white/50 bg-white/5 border-[#333]' },
+                { rank: '#4', name: 'GraphQL Federation Gateway', author: 'Steph', avatar: 'steph', date: '11/18/2023', stack: 'Node', participants: '42', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
+              ].map(row => (
+                <tr key={row.rank} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                  <td className="px-5 py-4 font-mono font-bold text-white/40">{row.rank}</td>
+                  <td className="px-5 py-4 font-semibold text-white/90">{row.name}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <img src={`https://i.pravatar.cc/150?u=${row.avatar}`} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
+                      <span className="text-white/70">{row.author}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
+                  <td className="px-5 py-4">
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-medium bg-black border border-[#333] text-white/70 rounded">{row.stack}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex -space-x-1.5">
+                      <img src={`https://i.pravatar.cc/150?u=p${row.rank}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                      <img src={`https://i.pravatar.cc/150?u=p${row.rank}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                      <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <button className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">Join</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentProfileView() {
+  const [commits] = useState(() => {
+    // Generate a 52x7 grid of commits
+    const grid = [];
+    for (let col = 0; col < 52; col++) {
+      const column = [];
+      for (let row = 0; row < 7; row++) {
+        // Random intensity 0-4
+        const val = Math.random();
+        let intensity = 0;
+        if (val > 0.9) intensity = 4;
+        else if (val > 0.7) intensity = 3;
+        else if (val > 0.5) intensity = 2;
+        else if (val > 0.3) intensity = 1;
+        
+        column.push(intensity);
+      }
+      grid.push(column);
+    }
+    return grid;
+  });
+
+  const getColor = (intensity: number) => {
+    switch(intensity) {
+      case 4: return 'bg-[#39d353] border-[#39d353]';
+      case 3: return 'bg-[#26a641] border-[#26a641]';
+      case 2: return 'bg-[#006d32] border-[#006d32]';
+      case 1: return 'bg-[#0e4429] border-[#0e4429]';
+      default: return 'bg-[#161b22] border-[#333]';
+    }
+  };
+
+  return (
+    <div className="p-8 md:p-12 max-w-5xl mx-auto">
+      {/* Left-Aligned Header */}
+      <div className="flex flex-col md:flex-row gap-8 items-start mb-16">
+        <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden shrink-0 bg-[#151820]">
+          <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Avatar" className="w-full h-full object-cover" />
+        </div>
+        <div className="flex flex-col items-start text-left pt-2">
+          <h1 className="text-4xl font-bold tracking-tight">John Doe</h1>
+          <div className="flex items-center gap-4 mt-3 text-white/60 text-sm">
+            <span className="font-mono flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> San Francisco, CA</span>
+            <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> @johndoe_dev</span>
+          </div>
+          <p className="mt-4 text-white/80 max-w-2xl leading-relaxed">
+            Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.
+          </p>
+        </div>
+      </div>
+
+      {/* GitHub Contribution Graph */}
+      <div className="mb-16">
+        <h2 className="text-lg font-semibold mb-6">Contributions</h2>
+        <div className="p-6 border border-[#333] rounded-2xl bg-[#0d1117] overflow-x-auto">
+          <div className="flex gap-1 min-w-max">
+            {commits.map((col, colIdx) => (
+              <div key={colIdx} className="flex flex-col gap-1">
+                {col.map((intensity, rowIdx) => (
+                  <div key={`${colIdx}-${rowIdx}`} className={`w-3 h-3 rounded-[2px] border ${getColor(intensity)}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 flex items-center justify-between text-xs text-white/50">
+            <span className="font-mono">842 contributions in the last year</span>
+            <div className="flex items-center gap-1.5 font-mono">
+              <span>Less</span>
+              <div className="w-3 h-3 rounded-[2px] bg-[#161b22] border border-[#333]" />
+              <div className="w-3 h-3 rounded-[2px] bg-[#0e4429] border border-[#0e4429]" />
+              <div className="w-3 h-3 rounded-[2px] bg-[#006d32] border border-[#006d32]" />
+              <div className="w-3 h-3 rounded-[2px] bg-[#26a641] border border-[#26a641]" />
+              <div className="w-3 h-3 rounded-[2px] bg-[#39d353] border border-[#39d353]" />
+              <span>More</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Timeline / Achievements */}
+      <div>
+        <h2 className="text-lg font-semibold mb-6">Timeline</h2>
+        <div className="relative border-l border-[#333] ml-3 space-y-10 pb-8">
+          
+          <div className="relative pl-8">
+            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#00d2ff] border-2 border-[#0e1015]" />
+            <div className="text-sm font-mono text-[#00d2ff] mb-1">June 2026</div>
+            <h3 className="text-base font-medium">Presented project at techno meet</h3>
+            <p className="text-sm text-white/60 mt-1">Showcased the Smart City Noise Map architecture to a local group of 150+ developers, detailing the WebSocket implementation for low-latency streaming.</p>
+          </div>
+
+          <div className="relative pl-8">
+            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#333] border-2 border-[#0e1015]" />
+            <div className="text-sm font-mono text-white/50 mb-1">March 2026</div>
+            <h3 className="text-base font-medium text-white/80">Completed Advanced FastAPI Certification</h3>
+            <p className="text-sm text-white/60 mt-1">Verified via Upzeal with a 98% technical accuracy score.</p>
+          </div>
+
+          <div className="relative pl-8">
+            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#333] border-2 border-[#0e1015]" />
+            <div className="text-sm font-mono text-white/50 mb-1">January 2026</div>
+            <h3 className="text-base font-medium text-white/80">Joined the Upzeal Platform</h3>
+            <p className="text-sm text-white/60 mt-1">Started tracking Git history and building the technical portfolio.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+function StudentFeedView() {
+  const feedPosts = [
+    {
+      company: 'DataStream Inc.',
+      time: '2 hours ago',
+      content: 'Just scaled our real-time streaming infrastructure to handle 10k concurrent WebSocket connections. Read the post-mortem here.',
+      tags: ['WebSockets', 'Scaling', 'Infrastructure'],
+      highlight: true,
+    },
+    {
+      company: 'NeuralForge AI',
+      time: '5 hours ago',
+      content: 'We\'re open-sourcing our internal model evaluation framework. 12k lines of Python, battle-tested across 200+ LLM deployments. Star us on GitHub.',
+      tags: ['Python', 'AI/ML', 'Open Source'],
+      highlight: false,
+    },
+    {
+      company: 'CloudVault',
+      time: '8 hours ago',
+      content: 'Migrated our entire Kubernetes fleet from EKS to bare-metal. Reduced cloud costs by 68% while improving p99 latency. Here\'s exactly how we did it.',
+      tags: ['Kubernetes', 'DevOps', 'Cost Optimization'],
+      highlight: false,
+    },
+    {
+      company: 'Lattice Security',
+      time: '1 day ago',
+      content: 'Hiring: Senior Rust Engineer to work on our zero-knowledge proof infrastructure. Remote-first, competitive equity. We process 2M+ transactions/day.',
+      tags: ['Rust', 'Cryptography', 'Hiring'],
+      highlight: false,
+    },
+    {
+      company: 'SyncStack',
+      time: '2 days ago',
+      content: 'Our GraphQL Federation gateway now handles 50k req/s with sub-10ms overhead. Published a deep dive into our custom DataLoader batching strategy.',
+      tags: ['GraphQL', 'Node.js', 'Performance'],
+      highlight: false,
+    },
+  ];
+
+  return (
+    <div className="relative min-h-full flex flex-col lg:flex-row bg-[#0e1015]">
+      {/* Texture Overlay */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.03] z-0" 
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} 
+      />
+
+      {/* Main Feed (60%) */}
+      <div className="w-full lg:w-[60%] border-r border-[#333] p-6 md:p-10 relative z-10 overflow-y-auto">
+        <h1 className="text-2xl font-bold tracking-tight mb-8">Company Feed</h1>
+        
+        {feedPosts.map((post, idx) => (
+          <div key={idx} className="bg-[#151820] border border-[#333] rounded-xl p-5 mb-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0 border border-[#333] text-white/60">
+                <span className="text-sm font-bold">{post.company.charAt(0)}</span>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white">{post.company}</h3>
+                <p className="text-xs text-white/50 font-mono">{post.time}</p>
+              </div>
+            </div>
+            <p className="text-sm text-white/80 leading-relaxed mb-4">{post.content}</p>
+            <div className="flex items-center gap-2 mb-5">
+              {post.tags.map(tag => (
+                <span key={tag} className={`px-1.5 py-0.5 text-[10px] font-mono bg-black border border-[#333] rounded-sm ${post.highlight && tag === post.tags[0] ? 'text-[#00d2ff]' : 'text-white/60'}`}>{tag}</span>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 border-t border-[#333] pt-4">
+              <button className="flex items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded transition-none active:scale-95 cursor-pointer">
+                <Star className="w-3.5 h-3.5" /><span>Like</span>
+              </button>
+              <button className="flex items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded transition-none active:scale-95 cursor-pointer">
+                <Archive className="w-3.5 h-3.5" /><span>Save</span>
+              </button>
+              <div className="flex-1" />
+              <button className="flex items-center gap-1.5 text-xs font-semibold text-black bg-white hover:bg-white/80 px-4 py-1.5 rounded transition-none active:scale-95 cursor-pointer">
+                <span>Apply Now</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Trending Tags Sidebar (40%) */}
+      <div className="w-full lg:w-[40%] p-6 md:p-10 relative z-10 bg-[#0a0a0a]">
+        <h2 className="text-sm font-semibold mb-6 text-white/80 uppercase tracking-widest">Trending Tags</h2>
+        <div className="flex flex-wrap gap-2">
+          {['FastAPI', 'React', 'WebSockets', 'GraphQL', 'PostgreSQL', 'Docker', 'Kubernetes', 'Go', 'Rust', 'Python', 'AI/ML', 'TypeScript'].map(tag => (
+            <button key={tag} className="px-2.5 py-1 text-xs font-mono border border-[#333] bg-[#151820] text-white/70 hover:text-white hover:border-white/40 hover:bg-white/5 transition-none cursor-pointer">
+              #{tag}
+            </button>
+          ))}
+        </div>
+
+        {/* Top Companies */}
+        <h2 className="text-sm font-semibold mt-10 mb-5 text-white/80 uppercase tracking-widest">Top Companies</h2>
+        <div className="space-y-3">
+          {['DataStream Inc.', 'NeuralForge AI', 'CloudVault', 'Lattice Security', 'SyncStack'].map(name => (
+            <div key={name} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+              <div className="w-8 h-8 rounded bg-white/5 border border-[#333] flex items-center justify-center text-xs font-bold text-white/60 shrink-0">{name.charAt(0)}</div>
+              <span className="text-sm text-white/70 font-medium">{name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RecruiterDashboard() {
+  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent'>('pipeline');
+
+  const candidates = [
+    { id: 1, name: 'John Doe', role: 'Full Stack Engineer', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['FastAPI', 'React'], status: 'new', xp: 12400, match: 94 },
+    { id: 2, name: 'Alice Chen', role: 'Backend Developer', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Go', 'Kubernetes'], status: 'new', xp: 9800, match: 91 },
+    { id: 3, name: 'Marcus Johnson', role: 'Data Engineer', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Python', 'PostgreSQL'], status: 'new', xp: 15200, match: 88 },
+    { id: 4, name: 'Elena Rodriguez', role: 'Frontend Architect', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Vue', 'TypeScript'], status: 'screening', xp: 11050, match: 86 },
+    { id: 5, name: 'David Kim', role: 'DevOps Engineer', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Docker', 'AWS'], status: 'screening', xp: 8700, match: 82 },
+    { id: 6, name: 'Sarah Miller', role: 'Machine Learning', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['PyTorch', 'CUDA'], status: 'interviewing', xp: 18900, match: 97 },
+  ];
+
+  const columns = [
+    { id: 'new', title: 'New Applicants' },
+    { id: 'screening', title: 'Screening' },
+    { id: 'interviewing', title: 'Interviewing' }
+  ];
+
+  return (
+    <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden">
+      {/* Recruiter Sidebar */}
+      <aside className="w-16 md:w-64 border-r border-[#333] bg-[#0a0a0a] flex flex-col justify-between shrink-0 transition-all">
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-center md:justify-start gap-2 mb-10">
+            <Briefcase className="w-6 h-6 text-white" />
+            <span className="font-bold text-lg tracking-tight hidden md:block">Upzeal Recruiter</span>
+          </div>
+          <nav className="flex flex-col gap-2">
+            <button
+              onClick={() => setRecruiterView('pipeline')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'pipeline' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block">Pipeline</span>
+            </button>
+            <button
+              onClick={() => setRecruiterView('talent')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'talent' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block">Talent Pool</span>
+            </button>
+          </nav>
+        </div>
+        <div className="p-4 md:p-6 border-t border-[#333] flex justify-center md:justify-start">
+           <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-xs font-bold shrink-0">HR</div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-x-auto overflow-y-auto bg-[#0e1015] p-6 md:p-10 flex flex-col">
+        {recruiterView === 'pipeline' ? (
+          <>
+            <header className="mb-8 shrink-0">
+              <h1 className="text-2xl font-bold tracking-tight text-white">Engineering Pipeline</h1>
+              <p className="text-sm text-white/50 mt-1 font-mono">Q3 Hiring Cycle</p>
+            </header>
+            <div className="flex gap-6 flex-1 overflow-x-auto pb-4 items-start">
+              {columns.map(col => {
+                const colCandidates = candidates.filter(c => c.status === col.id);
+                return (
+                  <div key={col.id} className="w-[320px] shrink-0 flex flex-col bg-[#0a0a0a] border border-[#333] rounded-lg max-h-full">
+                    <div className="p-3 border-b border-[#333] bg-[#111] flex items-center justify-between shrink-0 rounded-t-lg">
+                      <h2 className="text-sm font-semibold tracking-tight text-white/90">{col.title}</h2>
+                      <span className="text-xs font-mono text-white/50 px-1.5 py-0.5 bg-[#222] rounded border border-[#333]">{colCandidates.length}</span>
+                    </div>
+                    <div className="p-3 flex-1 overflow-y-auto space-y-3">
+                      {colCandidates.map(candidate => (
+                        <div key={candidate.id} className="bg-[#151820] border border-[#333] rounded p-3 hover:border-white/20 transition-colors cursor-pointer group text-left">
+                          <div className="flex items-start gap-3">
+                            <img src={candidate.avatar} alt={candidate.name} className="w-10 h-10 rounded border border-[#333] object-cover shrink-0 grayscale group-hover:grayscale-0 transition-all" />
+                            <div className="overflow-hidden">
+                              <h3 className="text-sm font-semibold text-white truncate">{candidate.name}</h3>
+                              <p className="text-xs text-white/50 truncate mb-2">{candidate.role}</p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {candidate.skills.map(skill => (
+                                  <span key={skill} className="px-1.5 py-0.5 text-[10px] font-mono font-medium bg-black border border-[#333] text-white/70 rounded-sm">{skill}</span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          /* ── Talent Pool View ── */
+          <>
+            <header className="mb-8 shrink-0">
+              <h1 className="text-2xl font-bold tracking-tight text-white">Talent Pool</h1>
+              <p className="text-sm text-white/50 mt-1 font-mono">All verified candidates across your hiring pipeline</p>
+            </header>
+
+            {/* Filters Bar */}
+            <div className="flex items-center gap-3 mb-6 flex-wrap">
+              <div className="flex items-center gap-2 bg-[#111318] border border-[#333] rounded-lg px-3 py-2">
+                <Search className="w-4 h-4 text-white/30" />
+                <input type="text" placeholder="Search candidates..." className="bg-transparent text-sm text-white placeholder:text-white/30 border-none focus:outline-none w-48" />
+              </div>
+              {['All Roles', 'Engineering', 'DevOps', 'ML/AI'].map(f => (
+                <button key={f} className={`text-xs font-medium px-3 py-2 rounded-lg border transition-colors cursor-pointer ${
+                  f === 'All Roles' ? 'bg-white/10 border-[#333] text-white' : 'border-[#333] text-white/50 hover:text-white hover:bg-white/5'
+                }`}>{f}</button>
+              ))}
+            </div>
+
+            {/* Talent Table */}
+            <div className="border border-[#333] rounded-xl bg-[#111318] overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-[#333] text-[11px] uppercase tracking-wider text-white/30 font-medium">
+                    <th className="px-5 py-3">Candidate</th>
+                    <th className="px-5 py-3">Role</th>
+                    <th className="px-5 py-3">Skills</th>
+                    <th className="px-5 py-3">XP Score</th>
+                    <th className="px-5 py-3">Match</th>
+                    <th className="px-5 py-3">Stage</th>
+                    <th className="px-5 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {candidates.map(c => (
+                    <tr key={c.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full border border-[#333] object-cover" />
+                          <div>
+                            <span className="font-semibold text-white">{c.name}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-white/60">{c.role}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-1.5">
+                          {c.skills.map(s => (
+                            <span key={s} className="px-1.5 py-0.5 text-[10px] font-mono bg-black border border-[#333] text-white/70 rounded-sm">{s}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-mono font-semibold text-[#00d2ff]">{c.xp?.toLocaleString()}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-1.5 bg-[#1a1d24] rounded-full overflow-hidden">
+                            <div className="h-full bg-[#10b981] rounded-full" style={{ width: `${c.match}%` }} />
+                          </div>
+                          <span className="text-xs font-mono text-white/50">{c.match}%</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
+                          c.status === 'new' ? 'text-[#00d2ff] bg-[#00d2ff]/10 border-[#00d2ff]/20'
+                          : c.status === 'screening' ? 'text-[#f59e0b] bg-[#f59e0b]/10 border-[#f59e0b]/20'
+                          : 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20'
+                        }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <button className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">View</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }
