@@ -290,3 +290,11 @@ body::after {
     padding-right: 0;
   }
 }
+
+/* Fix Safari video play button overlay */
+video::-webkit-media-controls {
+  display: none !important;
+}
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+}
