@@ -2209,14 +2209,6 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
                   Upload File
                 </label>
               </div>
-              <span className="text-[9px] text-white/30 mt-1 block">Or paste URL below:</span>
-              <input
-                type="text"
-                value={tempAvatarUrl}
-                onChange={(e) => setTempAvatarUrl(e.target.value)}
-                placeholder="Image URL"
-                className="w-full text-[10px] bg-brand-gray border border-white/10 rounded-lg px-2 py-1 text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none mt-1"
-              />
             </div>
           </div>
           
