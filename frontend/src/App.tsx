@@ -37,7 +37,8 @@ import {
   User,
   Activity,
   MapPin,
-  Users
+  Users,
+  Edit3
 } from 'lucide-react';
 
 // ==========================================
@@ -1497,6 +1498,7 @@ export default function App() {
       ) : (
         <StudentDashboard 
           key="student" 
+          userId={user?.id}
           firstName={firstName} 
           lastName={lastName} 
           email={email} 
@@ -1644,7 +1646,7 @@ function InputGroup({
 // SEPARATE DASHBOARD COMPONENTS
 // ==========================================
 
-function StudentDashboard({ firstName, lastName, email, onLogout }: { firstName: string; lastName: string; email: string; onLogout: () => void }) {
+function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed'>('dashboard');
 
   return (
@@ -1701,7 +1703,7 @@ function StudentDashboard({ firstName, lastName, email, onLogout }: { firstName:
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#0e1015]">
-        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView firstName={firstName} lastName={lastName} email={email} /> : <StudentFeedView />}
+        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} /> : <StudentFeedView />}
       </main>
     </div>
   );
@@ -2031,14 +2033,12 @@ function StudentBentoDashboard() {
   );
 }
 
-function StudentProfileView({ firstName, lastName, email }: { firstName: string; lastName: string; email: string }) {
+function StudentProfileView({ userId, firstName, lastName, email }: { userId: string; firstName: string; lastName: string; email: string }) {
   const [commits] = useState(() => {
-    // Generate a 52x7 grid of commits
     const grid = [];
     for (let col = 0; col < 52; col++) {
       const column = [];
       for (let row = 0; row < 7; row++) {
-        // Random intensity 0-4
         const val = Math.random();
         let intensity = 0;
         if (val > 0.9) intensity = 4;
@@ -2063,24 +2063,181 @@ function StudentProfileView({ firstName, lastName, email }: { firstName: string;
     }
   };
 
+  // Profile editable states
+  const [isEditing, setIsEditing] = useState(false);
+  const [bio, setBio] = useState('Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.');
+  const [location, setLocation] = useState('San Francisco, CA');
+  const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  // Temp states during editing
+  const [tempBio, setTempBio] = useState(bio);
+  const [tempLocation, setTempLocation] = useState(location);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState(avatarUrl);
+
+  // Load profile details from database
+  useEffect(() => {
+    if (!userId) return;
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .single();
+
+      if (data?.profile_details) {
+        const details = data.profile_details;
+        if (details.bio) {
+          setBio(details.bio);
+          setTempBio(details.bio);
+        }
+        if (details.location) {
+          setLocation(details.location);
+          setTempLocation(details.location);
+        }
+        if (details.avatar_url) {
+          setAvatarUrl(details.avatar_url);
+          setTempAvatarUrl(details.avatar_url);
+        }
+      }
+    };
+    loadProfile();
+  }, [userId]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setEditError(null);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          profile_details: {
+            bio: tempBio,
+            location: tempLocation,
+            avatar_url: tempAvatarUrl
+          }
+        })
+        .eq('id', userId);
+
+      if (error) {
+        setEditError(error.message);
+      } else {
+        setBio(tempBio);
+        setLocation(tempLocation);
+        setAvatarUrl(tempAvatarUrl);
+        setIsEditing(false);
+      }
+    } catch (e: any) {
+      setEditError(e.message || "An error occurred");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setTempBio(bio);
+    setTempLocation(location);
+    setTempAvatarUrl(avatarUrl);
+    setEditError(null);
+    setIsEditing(false);
+  };
+
   return (
     <div className="p-8 md:p-12 max-w-5xl mx-auto">
-      {/* Left-Aligned Header */}
-      <div className="flex flex-col md:flex-row gap-8 items-start mb-16">
-        <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden shrink-0 bg-[#151820]">
-          <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Avatar" className="w-full h-full object-cover" />
-        </div>
-        <div className="flex flex-col items-start text-left pt-2">
-          <h1 className="text-4xl font-bold tracking-tight">{firstName && lastName ? `${firstName} ${lastName}` : email}</h1>
-          <div className="flex items-center gap-4 mt-3 text-white/60 text-sm">
-            <span className="font-mono flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> San Francisco, CA</span>
-            <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {email}</span>
+      {/* Profile Header Block */}
+      {isEditing ? (
+        <div className="flex flex-col md:flex-row gap-8 items-start mb-16 border border-white/10 rounded-2xl bg-white/5 p-6 md:p-8 w-full text-left">
+          <div className="flex flex-col gap-3 shrink-0 items-center">
+            <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden bg-[#151820] relative">
+              <img src={tempAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <div className="w-32">
+              <label className="text-[10px] text-white/40 block mb-1">Avatar Image URL</label>
+              <input
+                type="text"
+                value={tempAvatarUrl}
+                onChange={(e) => setTempAvatarUrl(e.target.value)}
+                placeholder="Image URL"
+                className="w-full text-xs bg-brand-gray border border-white/10 rounded-lg px-2 py-1 text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none"
+              />
+            </div>
           </div>
-          <p className="mt-4 text-white/80 max-w-2xl leading-relaxed">
-            Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.
-          </p>
+          
+          <div className="flex-1 flex flex-col gap-4 text-left w-full">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-white/60">Location</label>
+              <input
+                type="text"
+                value={tempLocation}
+                onChange={(e) => setTempLocation(e.target.value)}
+                placeholder="e.g. San Francisco, CA"
+                className="w-full md:max-w-xs bg-brand-gray border border-white/10 rounded-xl h-10 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+              />
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-white/60">Bio Description</label>
+              <textarea
+                value={tempBio}
+                onChange={(e) => setTempBio(e.target.value)}
+                placeholder="Describe your tech expertise, hobbies, or achievements..."
+                rows={4}
+                className="w-full bg-brand-gray border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none text-sm resize-y leading-relaxed"
+              />
+            </div>
+
+            {editError && (
+              <div className="text-red-400 text-xs mt-2">
+                {editError}
+              </div>
+            )}
+            
+            <div className="flex gap-3 justify-end mt-4">
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleCancel}
+                className="h-10 px-5 border border-white/10 text-white/70 hover:text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleSave}
+                className="h-10 px-6 bg-[#00d2ff] text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-sm"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Save Changes'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col md:flex-row gap-8 items-start mb-16 relative group text-left w-full">
+          <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden shrink-0 bg-[#151820]">
+            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex-1 flex flex-col items-start text-left pt-2 w-full">
+            <div className="flex w-full justify-between items-start">
+              <h1 className="text-4xl font-bold tracking-tight">{firstName && lastName ? `${firstName} ${lastName}` : email}</h1>
+              <button 
+                onClick={() => setIsEditing(true)} 
+                className="text-xs font-semibold px-4 py-2 border border-white/10 hover:border-white/30 rounded-xl hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-white/80 hover:text-white"
+              >
+                <Edit3 className="w-3 h-3" /> Edit Profile
+              </button>
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-white/60 text-sm">
+              <span className="font-mono flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {location}</span>
+              <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {email}</span>
+            </div>
+            <p className="mt-4 text-white/80 max-w-2xl leading-relaxed whitespace-pre-wrap">
+              {bio}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* GitHub Contribution Graph */}
       <div className="mb-16">
