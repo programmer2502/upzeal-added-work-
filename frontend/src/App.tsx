@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/logo.png';
+import { supabase } from './supabaseClient';
 import {
   ChevronRight,
   Search,
@@ -125,6 +126,75 @@ export default function App() {
   const [selectedTech, setSelectedTech] = useState<string[]>([]);
   const [accountType, setAccountType] = useState<'developer' | 'recruiter' | null>(null);
 
+  // Supabase & dynamic user details states
+  const [session, setSession] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [recruiterRole, setRecruiterRole] = useState('');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Login states
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+
+  // Listen to Supabase Auth state shifts
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        setUser(session.user);
+        
+        // Fetch user metadata from the public.users table
+        const { data, error } = await supabase
+          .from('users')
+          .select('first_name, last_name, role, onboarding_phase')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (data) {
+          setFirstName(data.first_name || '');
+          setLastName(data.last_name || '');
+          setAccountType(data.role as any);
+        }
+        setView('dashboard');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      if (session) {
+        setUser(session.user);
+        
+        // Fetch user metadata from the public.users table
+        const { data, error } = await supabase
+          .from('users')
+          .select('first_name, last_name, role, onboarding_phase')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (data) {
+          setFirstName(data.first_name || '');
+          setLastName(data.last_name || '');
+          setAccountType(data.role as any);
+        }
+      } else {
+        setUser(null);
+        setFirstName('');
+        setLastName('');
+        setAccountType(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const TECH_STACK_CATEGORIES = [
     {
       title: "Frontend & UI",
@@ -164,12 +234,125 @@ export default function App() {
     }, 800);
   };
 
-  const handleFinish = () => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
     setIsSocialLoading(true);
-    setTimeout(() => {
-      setIsSocialLoading(false);
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          role: accountType
+        }
+      }
+    });
+    
+    setIsSocialLoading(false);
+    if (error) {
+      setAuthError(error.message);
+    } else if (data.user) {
+      setUser(data.user);
+      setSignupStep(3);
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+    setIsLoginLoading(true);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword
+    });
+    
+    setIsLoginLoading(false);
+    if (error) {
+      setLoginError(error.message);
+    } else if (data.user) {
+      setShowLoginModal(false);
       setView('dashboard');
-    }, 1500);
+    }
+  };
+
+  const handleDeveloperFinish = async () => {
+    setIsSocialLoading(true);
+    setAuthError(null);
+    
+    if (!user) {
+      setIsSocialLoading(false);
+      setAuthError("No active user session");
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('users')
+      .update({
+        dashboard_config: { tech_stack: selectedTech },
+        onboarding_phase: 'phase_3'
+      })
+      .eq('id', user.id);
+      
+    setIsSocialLoading(false);
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setView('dashboard');
+    }
+  };
+
+  const handleRecruiterFinish = async () => {
+    setIsSocialLoading(true);
+    setAuthError(null);
+    
+    if (!user) {
+      setIsSocialLoading(false);
+      setAuthError("No active user session");
+      return;
+    }
+    
+    const { data: companyData, error: companyError } = await supabase
+      .from('companies')
+      .insert({
+        name: companyName,
+        website: companyWebsite,
+        description: `Role: ${recruiterRole}`,
+        created_by: user.id
+      })
+      .select()
+      .single();
+      
+    if (companyError) {
+      setIsSocialLoading(false);
+      setAuthError(companyError.message);
+      return;
+    }
+    
+    const { error: userError } = await supabase
+      .from('users')
+      .update({
+        onboarding_phase: 'phase_3'
+      })
+      .eq('id', user.id);
+      
+    setIsSocialLoading(false);
+    if (userError) {
+      setAuthError(userError.message);
+    } else {
+      setView('dashboard');
+    }
+  };
+
+  const handleFinish = () => {
+    if (accountType === 'recruiter') {
+      handleRecruiterFinish();
+    } else {
+      handleDeveloperFinish();
+    }
   };
 
   const toggleTech = (id: string) => {
@@ -271,7 +454,13 @@ export default function App() {
               </div>
 
               {/* Right Desktop Button */}
-              <div className="hidden md:block">
+              <div className="hidden md:flex items-center gap-4">
+                <button 
+                  onClick={() => setShowLoginModal(true)} 
+                  className="text-sm font-semibold text-white/70 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                >
+                  Log In
+                </button>
                 <AppleButton label="Join the Platform" onClick={() => setView('signup')} />
               </div>
 
@@ -1114,14 +1303,37 @@ export default function App() {
                   </div>
 
                   <form
-                    onSubmit={handleNextStep}
+                    onSubmit={handleRegister}
                     className="space-y-4 text-left"
                   >
+                    {authError && (
+                      <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs">
+                        {authError}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
-                      <InputGroup label="First Name" placeholder="Jane" type="text" />
-                      <InputGroup label="Last Name" placeholder="Doe" type="text" />
+                      <InputGroup 
+                        label="First Name" 
+                        placeholder="Jane" 
+                        type="text" 
+                        value={firstName} 
+                        onChange={(e) => setFirstName(e.target.value)} 
+                      />
+                      <InputGroup 
+                        label="Last Name" 
+                        placeholder="Doe" 
+                        type="text" 
+                        value={lastName} 
+                        onChange={(e) => setLastName(e.target.value)} 
+                      />
                     </div>
-                    <InputGroup label="Email" placeholder="jane@example.com" type="email" />
+                    <InputGroup 
+                      label="Email" 
+                      placeholder="jane@example.com" 
+                      type="email" 
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                    />
                     <div className="flex flex-col space-y-2">
                       <label className="text-sm font-medium text-white">Password</label>
                       <div className="relative">
@@ -1163,7 +1375,7 @@ export default function App() {
                   <div className="text-center text-sm text-white/40 mt-4">
                     Member of the team?{' '}
                     <button
-                      onClick={() => setView('landing')}
+                      onClick={() => { setView('landing'); setShowLoginModal(true); }}
                       className="text-white hover:underline font-semibold bg-transparent border-none cursor-pointer p-0"
                     >
                       Log in
@@ -1187,11 +1399,35 @@ export default function App() {
                     </p>
                   </div>
                   
+                  {authError && (
+                    <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs">
+                      {authError}
+                    </div>
+                  )}
+
                   {accountType === 'recruiter' ? (
                     <div className="space-y-4 mt-8">
-                      <InputGroup label="Company Name" placeholder="Acme Corp" type="text" />
-                      <InputGroup label="Role" placeholder="Technical Recruiter" type="text" />
-                      <InputGroup label="Company Website" placeholder="https://acme.com" type="text" />
+                      <InputGroup 
+                        label="Company Name" 
+                        placeholder="Acme Corp" 
+                        type="text" 
+                        value={companyName} 
+                        onChange={(e) => setCompanyName(e.target.value)} 
+                      />
+                      <InputGroup 
+                        label="Role" 
+                        placeholder="Technical Recruiter" 
+                        type="text" 
+                        value={recruiterRole} 
+                        onChange={(e) => setRecruiterRole(e.target.value)} 
+                      />
+                      <InputGroup 
+                        label="Company Website" 
+                        placeholder="https://acme.com" 
+                        type="text" 
+                        value={companyWebsite} 
+                        onChange={(e) => setCompanyWebsite(e.target.value)} 
+                      />
                     </div>
                   ) : (
                     <div className="space-y-6 mt-6 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1248,9 +1484,92 @@ export default function App() {
           </div>
         </motion.main>
       ) : accountType === 'recruiter' ? (
-        <RecruiterDashboard key="recruiter" />
+        <RecruiterDashboard 
+          key="recruiter" 
+          firstName={firstName} 
+          lastName={lastName} 
+          email={email} 
+          onLogout={async () => {
+            await supabase.auth.signOut();
+            setView('landing');
+          }}
+        />
       ) : (
-        <StudentDashboard key="student" />
+        <StudentDashboard 
+          key="student" 
+          firstName={firstName} 
+          lastName={lastName} 
+          email={email} 
+          onLogout={async () => {
+            await supabase.auth.signOut();
+            setView('landing');
+          }}
+        />
+      )}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md border border-white/10 rounded-2xl bg-[#0c0c0c]/95 p-8 text-left space-y-6 relative"
+          >
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute right-6 top-6 text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-white">Welcome Back</h2>
+              <p className="text-white/40 text-xs mt-1">Sign in to access your Upzeal dashboard.</p>
+            </div>
+            
+            {loginError && (
+              <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 text-xs">
+                {loginError}
+              </div>
+            )}
+            
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <InputGroup 
+                label="Email Address" 
+                placeholder="you@example.com" 
+                type="email" 
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+              />
+              
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-medium text-white">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 pr-12 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isLoginLoading}
+                className="w-full h-12 bg-white text-black font-semibold rounded-xl hover:bg-white/90 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
+              >
+                {isLoginLoading ? <Loader2 className="w-5 h-5 animate-spin text-black" /> : 'Sign In'}
+              </button>
+            </form>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -1295,13 +1614,27 @@ function SocialButton({ icon, label, isLoading = false, onClick }: { icon: React
   );
 }
 
-function InputGroup({ label, placeholder, type }: { label: string; placeholder: string; type: string }) {
+function InputGroup({ 
+  label, 
+  placeholder, 
+  type, 
+  value, 
+  onChange 
+}: { 
+  label: string; 
+  placeholder: string; 
+  type: string; 
+  value?: string; 
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void; 
+}) {
   return (
     <div className="flex flex-col space-y-2">
       <label className="text-sm font-medium text-white">{label}</label>
       <input
         type={type}
         placeholder={placeholder}
+        value={value}
+        onChange={onChange}
         className="w-full bg-brand-gray border-none rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-white/20 focus:outline-none"
       />
     </div>
@@ -1311,7 +1644,7 @@ function InputGroup({ label, placeholder, type }: { label: string; placeholder: 
 // SEPARATE DASHBOARD COMPONENTS
 // ==========================================
 
-function StudentDashboard() {
+function StudentDashboard({ firstName, lastName, email, onLogout }: { firstName: string; lastName: string; email: string; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed'>('dashboard');
 
   return (
@@ -1347,22 +1680,28 @@ function StudentDashboard() {
             </button>
           </nav>
         </div>
-        <div className="p-6 border-t border-[#333]">
+        <div className="p-6 border-t border-[#333] flex flex-col gap-4">
            <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-white shadow-none border border-[#333] shrink-0">
-                JD
+                {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
              </div>
-             <div className="overflow-hidden">
-               <p className="text-sm font-semibold truncate">John Doe</p>
-               <p className="text-xs text-white/50 font-mono truncate">@johndoe_dev</p>
+             <div className="overflow-hidden flex-1">
+               <p className="text-sm font-semibold truncate">{firstName && lastName ? `${firstName} ${lastName}` : email}</p>
+               <p className="text-xs text-white/50 font-mono truncate">{email}</p>
              </div>
            </div>
+           <button 
+             onClick={onLogout}
+             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer"
+           >
+             Log Out
+           </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#0e1015]">
-        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView /> : <StudentFeedView />}
+        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView firstName={firstName} lastName={lastName} email={email} /> : <StudentFeedView />}
       </main>
     </div>
   );
@@ -1692,7 +2031,7 @@ function StudentBentoDashboard() {
   );
 }
 
-function StudentProfileView() {
+function StudentProfileView({ firstName, lastName, email }: { firstName: string; lastName: string; email: string }) {
   const [commits] = useState(() => {
     // Generate a 52x7 grid of commits
     const grid = [];
@@ -1732,10 +2071,10 @@ function StudentProfileView() {
           <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Avatar" className="w-full h-full object-cover" />
         </div>
         <div className="flex flex-col items-start text-left pt-2">
-          <h1 className="text-4xl font-bold tracking-tight">John Doe</h1>
+          <h1 className="text-4xl font-bold tracking-tight">{firstName && lastName ? `${firstName} ${lastName}` : email}</h1>
           <div className="flex items-center gap-4 mt-3 text-white/60 text-sm">
             <span className="font-mono flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> San Francisco, CA</span>
-            <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> @johndoe_dev</span>
+            <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {email}</span>
           </div>
           <p className="mt-4 text-white/80 max-w-2xl leading-relaxed">
             Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.
@@ -1914,7 +2253,7 @@ function StudentFeedView() {
   );
 }
 
-function RecruiterDashboard() {
+function RecruiterDashboard({ firstName, lastName, email, onLogout }: { firstName: string; lastName: string; email: string; onLogout: () => void }) {
   const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent'>('pipeline');
 
   const candidates = [
@@ -1962,8 +2301,29 @@ function RecruiterDashboard() {
             </button>
           </nav>
         </div>
-        <div className="p-4 md:p-6 border-t border-[#333] flex justify-center md:justify-start">
-           <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-xs font-bold shrink-0">HR</div>
+        <div className="p-4 md:p-6 border-t border-[#333] flex flex-col gap-4">
+           <div className="flex items-center justify-center md:justify-start gap-3">
+             <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-xs font-bold shrink-0">
+                {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'R'}
+             </div>
+             <div className="overflow-hidden hidden md:block flex-1 text-left">
+               <p className="text-sm font-semibold truncate">{firstName && lastName ? `${firstName} ${lastName}` : email}</p>
+               <p className="text-xs text-white/50 font-mono truncate">{email}</p>
+             </div>
+           </div>
+           <button 
+             onClick={onLogout}
+             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer hidden md:block"
+           >
+             Log Out
+           </button>
+           <button 
+             onClick={onLogout}
+             title="Log Out"
+             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer block md:hidden"
+           >
+             ←
+           </button>
         </div>
       </aside>
 
