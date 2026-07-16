@@ -2105,6 +2105,46 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
     loadProfile();
   }, [userId]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 256;
+        const MAX_HEIGHT = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setTempAvatarUrl(dataUrl);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setEditError(null);
@@ -2152,14 +2192,30 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
             <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden bg-[#151820] relative">
               <img src={tempAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             </div>
-            <div className="w-32">
-              <label className="text-[10px] text-white/40 block mb-1">Avatar Image URL</label>
+            <div className="w-32 text-center">
+              <label className="text-[10px] text-white/40 block mb-1">Avatar Image</label>
+              <div className="relative mb-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  id="avatar-upload"
+                  className="hidden"
+                />
+                <label
+                  htmlFor="avatar-upload"
+                  className="w-full text-xs bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg px-2 py-1.5 text-white transition-all cursor-pointer inline-block font-semibold text-center hover:border-white/30"
+                >
+                  Upload File
+                </label>
+              </div>
+              <span className="text-[9px] text-white/30 mt-1 block">Or paste URL below:</span>
               <input
                 type="text"
                 value={tempAvatarUrl}
                 onChange={(e) => setTempAvatarUrl(e.target.value)}
                 placeholder="Image URL"
-                className="w-full text-xs bg-brand-gray border border-white/10 rounded-lg px-2 py-1 text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none"
+                className="w-full text-[10px] bg-brand-gray border border-white/10 rounded-lg px-2 py-1 text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none mt-1"
               />
             </div>
           </div>
