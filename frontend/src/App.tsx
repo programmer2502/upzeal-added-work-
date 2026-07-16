@@ -38,7 +38,8 @@ import {
   Activity,
   MapPin,
   Users,
-  Edit3
+  Edit3,
+  MessageSquare
 } from 'lucide-react';
 
 // ==========================================
@@ -1647,7 +1648,7 @@ function InputGroup({
 // ==========================================
 
 function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
 
   return (
     <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden">
@@ -1680,6 +1681,13 @@ function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { us
               <Activity className="w-4 h-4" />
               <span className="font-medium text-sm">Company Feed</span>
             </button>
+            <button 
+              onClick={() => setCurrentView('chat')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'chat' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="font-medium text-sm">Chat</span>
+            </button>
           </nav>
         </div>
         <div className="p-6 border-t border-[#333] flex flex-col gap-4">
@@ -1702,8 +1710,16 @@ function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { us
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#0e1015]">
-        {currentView === 'dashboard' ? <StudentBentoDashboard /> : currentView === 'profile' ? <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} /> : <StudentFeedView />}
+      <main className="flex-1 overflow-hidden bg-[#0e1015] h-full">
+        {currentView === 'dashboard' ? (
+          <StudentBentoDashboard />
+        ) : currentView === 'profile' ? (
+          <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+        ) : currentView === 'feed' ? (
+          <StudentFeedView />
+        ) : (
+          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+        )}
       </main>
     </div>
   );
@@ -2452,6 +2468,177 @@ function StudentFeedView() {
               <span className="text-sm text-white/70 font-medium">{name}</span>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StudentChatView({ userId, firstName, lastName, email }: { userId: string; firstName: string; lastName: string; email: string }) {
+  const [conversations, setConversations] = useState([
+    { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 1, avatar: '⚡' },
+    { id: '2', name: 'HR - Microsoft', lastMessage: 'We reviewed your React assessment. Let\'s schedule a call.', unread: 0, avatar: '💼' },
+    { id: '3', name: 'Mentor - Sarah Jenkins', lastMessage: 'Make sure to submit the Git repository URL.', unread: 0, avatar: '👩‍🏫' },
+  ]);
+
+  const [activeConvId, setActiveConvId] = useState('1');
+  
+  const [messages, setMessages] = useState<Record<string, Array<{ id: string; sender: 'me' | 'them'; text: string; time: string }>>>({
+    '1': [
+      { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' },
+      { id: '1-2', sender: 'me', text: 'Hey, I want to review my FastAPI integration for the main dashboard.', time: '10:05 AM' },
+      { id: '1-3', sender: 'them', text: 'FastAPI connects seamlessly using standard HTTP handlers or WebSockets. Your public schemas are fully synced in Supabase. What would you like to build next?', time: '10:06 AM' }
+    ],
+    '2': [
+      { id: '2-1', sender: 'them', text: 'Hello Hruda! We saw your profile on the Upzeal developer platform. Your skill score in React is impressive.', time: 'Yesterday' },
+      { id: '2-2', sender: 'me', text: 'Thank you! I\'ve spent a lot of time working with Next.js and Tailwind lately.', time: 'Yesterday' },
+      { id: '2-3', sender: 'them', text: 'Excellent. We reviewed your React assessment. Let\'s schedule a call for this Friday.', time: '1:14 PM' }
+    ],
+    '3': [
+      { id: '3-1', sender: 'them', text: 'Hi team, welcome to the weekly sprint checkup. Please submit your updates here.', time: '2 days ago' },
+      { id: '3-2', sender: 'me', text: 'I completed the onboarding flow database integrations.', time: '2 days ago' },
+      { id: '3-3', sender: 'them', text: 'Make sure to submit the Git repository URL.', time: 'Yesterday' }
+    ]
+  });
+
+  const [inputText, setInputText] = useState('');
+
+  const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
+  const activeMessages = messages[activeConvId] || [];
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    const newMsg = {
+      id: `${activeConvId}-${Date.now()}`,
+      sender: 'me' as const,
+      text: inputText.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [activeConvId]: [...(prev[activeConvId] || []), newMsg]
+    }));
+
+    setInputText('');
+
+    if (activeConvId === '1') {
+      setTimeout(() => {
+        const replyMsg = {
+          id: `1-reply-${Date.now()}`,
+          sender: 'them' as const,
+          text: `Got your message! I'm scanning your Upzeal environment database configurations. Your current user id is ${userId || 'guest'}. How else can I assist your coding today?`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => ({
+          ...prev,
+          '1': [...(prev['1'] || []), replyMsg]
+        }));
+      }, 1000);
+    }
+  };
+
+  return (
+    <div className="flex h-full bg-[#0e1015] w-full overflow-hidden">
+      {/* Channels List */}
+      <div className="w-80 border-r border-[#333] bg-[#0a0a0a]/50 flex flex-col shrink-0">
+        <div className="p-6 border-b border-[#333] flex justify-between items-center bg-[#0d0e12]">
+          <h2 className="text-lg font-bold text-left">Messages</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {conversations.map((c) => {
+            const isActive = c.id === activeConvId;
+            return (
+              <button
+                key={c.id}
+                onClick={() => {
+                  setActiveConvId(c.id);
+                  setConversations(prev => prev.map(conv => conv.id === c.id ? { ...conv, unread: 0 } : conv));
+                }}
+                className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all text-left cursor-pointer border ${
+                  isActive 
+                    ? 'bg-white/10 border-[#333] shadow-md' 
+                    : 'border-transparent hover:bg-white/5 hover:border-white/5 text-white/70 hover:text-white'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-full bg-[#1b1e28] flex items-center justify-center text-lg border border-[#333] shrink-0">
+                  {c.avatar}
+                </div>
+                <div className="overflow-hidden flex-1">
+                  <div className="flex justify-between items-baseline mb-0.5">
+                    <span className="font-semibold text-sm truncate">{c.name}</span>
+                    {c.unread > 0 && (
+                      <span className="w-2 h-2 rounded-full bg-[#00d2ff]" />
+                    )}
+                  </div>
+                  <p className="text-xs text-white/40 truncate leading-normal">{c.lastMessage}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Messaging pane */}
+      <div className="flex-1 flex flex-col bg-[#0e1015] justify-between relative h-full min-w-0 overflow-hidden">
+        {/* Chat Header */}
+        <div className="h-[73px] border-b border-[#333] bg-[#0d0e12] px-6 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#1b1e28] flex items-center justify-center text-md border border-[#333]">
+              {activeConv.avatar}
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold">{activeConv.name}</p>
+              <p className="text-[10px] text-[#00d2ff] font-mono">online</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Message bubbles list */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col justify-end min-h-0 pb-24">
+          <div className="space-y-4 overflow-y-auto max-h-full pr-1">
+            {activeMessages.map((m) => {
+              const isMe = m.sender === 'me';
+              return (
+                <div 
+                  key={m.id} 
+                  className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}
+                >
+                  <div className={`max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed border ${
+                    isMe 
+                      ? 'bg-white text-black border-white text-left font-medium' 
+                      : 'bg-[#1b1e28] text-white border-[#333] text-left'
+                  }`}>
+                    <p>{m.text}</p>
+                    <span className={`text-[9px] mt-1.5 block text-right font-mono ${
+                      isMe ? 'text-black/50' : 'text-white/40'
+                    }`}>{m.time}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Message Input box */}
+        <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/95 to-transparent shrink-0">
+          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-center gap-3 p-2 bg-[#0a0a0a] border border-[#333] rounded-2xl relative shadow-lg">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={`Message ${activeConv.name}...`}
+              className="flex-1 bg-transparent border-none py-2 px-3 text-white placeholder:text-white/20 focus:ring-0 focus:outline-none text-sm"
+            />
+            <button
+              type="submit"
+              className="w-10 h-10 rounded-xl bg-white text-black hover:bg-white/90 flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-95 border-none"
+            >
+              <Send className="w-4 h-4 text-black" />
+            </button>
+          </form>
         </div>
       </div>
     </div>
