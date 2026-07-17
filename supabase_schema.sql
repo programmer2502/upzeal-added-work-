@@ -12,6 +12,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(100) UNIQUE,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     role VARCHAR(50) DEFAULT 'developer', -- 'developer', 'recruiter', 'admin'
@@ -115,6 +116,7 @@ BEGIN
     INSERT INTO public.users (
         id, 
         email, 
+        username,
         first_name, 
         last_name, 
         auth_provider,
@@ -123,6 +125,7 @@ BEGIN
     VALUES (
         new.id,
         new.email,
+        COALESCE(new.raw_user_meta_data->>'username', ''),
         COALESCE(new.raw_user_meta_data->>'first_name', ''),
         COALESCE(new.raw_user_meta_data->>'last_name', ''),
         COALESCE(new.raw_app_meta_data->>'provider', 'email'),

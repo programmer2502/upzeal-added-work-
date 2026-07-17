@@ -23,6 +23,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             return {
                 "id": user_id,
                 "email": auth_user.get("email"),
+                "username": auth_user.get("user_metadata", {}).get("username", ""),
                 "first_name": auth_user.get("user_metadata", {}).get("first_name", ""),
                 "last_name": auth_user.get("user_metadata", {}).get("last_name", ""),
                 "role": auth_user.get("user_metadata", {}).get("role", "developer"),

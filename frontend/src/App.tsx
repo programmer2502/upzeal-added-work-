@@ -132,6 +132,7 @@ export default function App() {
   const [session, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -239,13 +240,40 @@ export default function App() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+
+    const trimmedUsername = username.trim().toLowerCase();
+    if (!trimmedUsername) {
+      setAuthError("Username is required");
+      return;
+    }
+    
     setIsSocialLoading(true);
+
+    // Check if username already exists in public.users
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', trimmedUsername)
+      .maybeSingle();
+
+    if (checkError) {
+      setIsSocialLoading(false);
+      setAuthError("Failed to check username availability: " + checkError.message);
+      return;
+    }
+
+    if (existingUser) {
+      setIsSocialLoading(false);
+      setAuthError("Username already exists");
+      return;
+    }
     
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
+          username: trimmedUsername,
           first_name: firstName,
           last_name: lastName,
           role: accountType
@@ -1329,6 +1357,13 @@ export default function App() {
                         onChange={(e) => setLastName(e.target.value)} 
                       />
                     </div>
+                    <InputGroup 
+                      label="Username" 
+                      placeholder="janedoe123" 
+                      type="text" 
+                      value={username} 
+                      onChange={(e) => setUsername(e.target.value)} 
+                    />
                     <InputGroup 
                       label="Email" 
                       placeholder="jane@example.com" 
@@ -2502,9 +2537,79 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
   });
 
   const [inputText, setInputText] = useState('');
+  const [searchUsername, setSearchUsername] = useState('');
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'error' | 'success'>('idle');
+  const [searchMessage, setSearchMessage] = useState('');
 
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
   const activeMessages = messages[activeConvId] || [];
+
+  const handleSearchUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = searchUsername.trim().toLowerCase();
+    if (!query) return;
+
+    setSearchStatus('searching');
+    setSearchMessage('');
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, first_name, last_name, username')
+        .eq('username', query)
+        .maybeSingle();
+
+      if (error) {
+        setSearchStatus('error');
+        setSearchMessage('Failed to search: ' + error.message);
+        return;
+      }
+
+      if (!data) {
+        setSearchStatus('error');
+        setSearchMessage('User not found');
+        return;
+      }
+
+      if (data.id === userId) {
+        setSearchStatus('error');
+        setSearchMessage('Cannot chat with yourself');
+        return;
+      }
+
+      const existing = conversations.find(c => c.id === data.id);
+      if (existing) {
+        setActiveConvId(data.id);
+        setSearchStatus('success');
+        setSearchUsername('');
+        return;
+      }
+
+      const newConv = {
+        id: data.id,
+        name: data.first_name && data.last_name ? `${data.first_name} ${data.last_name}` : data.username || data.email,
+        lastMessage: 'Conversation started',
+        unread: 0,
+        avatar: '👤'
+      };
+
+      setConversations(prev => [newConv, ...prev]);
+      setActiveConvId(data.id);
+      
+      setMessages(prev => ({
+        ...prev,
+        [data.id]: [
+          { id: `${data.id}-init`, sender: 'them', text: `Hi! I found your profile under username: @${data.username || 'user'}. Let's chat!`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        ]
+      }));
+
+      setSearchStatus('success');
+      setSearchUsername('');
+    } catch (err: any) {
+      setSearchStatus('error');
+      setSearchMessage(err.message || 'An error occurred');
+    }
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2544,8 +2649,29 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
     <div className="flex h-full bg-[#0e1015] w-full overflow-hidden">
       {/* Channels List */}
       <div className="w-80 border-r border-[#333] bg-[#0a0a0a]/50 flex flex-col shrink-0">
-        <div className="p-6 border-b border-[#333] flex justify-between items-center bg-[#0d0e12]">
+        <div className="p-6 border-b border-[#333] flex flex-col gap-3 bg-[#0d0e12]">
           <h2 className="text-lg font-bold text-left">Messages</h2>
+          <form onSubmit={handleSearchUser} className="relative flex items-center">
+            <input
+              type="text"
+              placeholder="Search by username..."
+              value={searchUsername}
+              onChange={(e) => setSearchUsername(e.target.value)}
+              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
+          </form>
+          {searchStatus === 'searching' && (
+            <p className="text-[10px] text-white/40 font-mono">Searching...</p>
+          )}
+          {searchStatus === 'error' && (
+            <p className="text-[10px] text-red-400 font-mono">{searchMessage}</p>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {conversations.map((c) => {

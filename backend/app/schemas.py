@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 class UserResponseSchema(BaseModel):
     id: str
     email: str
+    username: Optional[str] = ""
     first_name: Optional[str] = ""
     last_name: Optional[str] = ""
     role: Optional[str] = "developer"
