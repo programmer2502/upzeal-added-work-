@@ -2121,14 +2121,14 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState('Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.');
   const [location, setLocation] = useState('San Francisco, CA');
-  const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Temp states during editing
   const [tempBio, setTempBio] = useState(bio);
   const [tempLocation, setTempLocation] = useState(location);
-  const [tempAvatarUrl, setTempAvatarUrl] = useState(avatarUrl);
+  const [tempAvatarUrl, setTempAvatarUrl] = useState('');
 
   // Load profile details from database
   useEffect(() => {
@@ -2244,7 +2244,13 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
         <div className="flex flex-col md:flex-row gap-8 items-start mb-16 border border-white/10 rounded-2xl bg-white/5 p-6 md:p-8 w-full text-left">
           <div className="flex flex-col gap-3 shrink-0 items-center">
             <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden bg-[#151820] relative">
-              <img src={tempAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              {tempAvatarUrl ? (
+                <img src={tempAvatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-4xl text-white">
+                  {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
             </div>
             <div className="w-32 text-center">
               <label className="text-[10px] text-white/40 block mb-1">Avatar Image</label>
@@ -2318,7 +2324,13 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
       ) : (
         <div className="flex flex-col md:flex-row gap-8 items-start mb-16 relative group text-left w-full">
           <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden shrink-0 bg-[#151820]">
-            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-4xl text-white">
+                {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
           </div>
           <div className="flex-1 flex flex-col items-start text-left pt-2 w-full">
             <div className="flex w-full justify-between items-start">
