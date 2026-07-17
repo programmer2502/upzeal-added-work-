@@ -2544,6 +2544,165 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
   const activeMessages = messages[activeConvId] || [];
 
+  // Load existing messages and distinct chat users on mount/user shift
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchAllMessages = async () => {
+      // 1. Fetch all messages involving the current user
+      const { data: dbMessages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error("Error fetching messages:", error.message);
+        return;
+      }
+
+      // Group messages by conversation ID
+      const grouped: Record<string, Array<{ id: string; sender: 'me' | 'them'; text: string; time: string }>> = {
+        '1': [
+          { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' },
+          { id: '1-2', sender: 'me', text: 'Hey, I want to review my FastAPI integration for the main dashboard.', time: '10:05 AM' },
+          { id: '1-3', sender: 'them', text: 'FastAPI connects seamlessly using standard HTTP handlers or WebSockets. Your public schemas are fully synced in Supabase. What would you like to build next?', time: '10:06 AM' }
+        ]
+      };
+
+      // Find distinct user IDs we have chatted with
+      const otherUserIds = new Set<string>();
+      
+      dbMessages.forEach((msg: any) => {
+        const isMe = msg.sender_id === userId;
+        const otherId = isMe ? msg.receiver_id : msg.sender_id;
+        otherUserIds.add(otherId);
+
+        if (!grouped[otherId]) {
+          grouped[otherId] = [];
+        }
+
+        grouped[otherId].push({
+          id: msg.id,
+          sender: isMe ? 'me' : 'them',
+          text: msg.text,
+          time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      });
+
+      setMessages(prev => ({
+        ...prev,
+        ...grouped
+      }));
+
+      if (otherUserIds.size > 0) {
+        // Fetch profiles of those other users to show their names in the sidebar
+        const { data: userProfiles, error: profileErr } = await supabase
+          .from('users')
+          .select('id, email, first_name, last_name, username')
+          .in('id', Array.from(otherUserIds));
+
+        if (profileErr) {
+          console.error("Error fetching profiles:", profileErr.message);
+          return;
+        }
+
+        const newConversations = userProfiles.map((p: any) => {
+          // Get the last message text for this user
+          const chatMsgs = grouped[p.id] || [];
+          const lastMsgText = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1].text : 'Start chatting';
+          
+          return {
+            id: p.id,
+            name: p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : p.username || p.email,
+            lastMessage: lastMsgText,
+            unread: 0,
+            avatar: '👤'
+          };
+        });
+
+        // Merge static default ones and unique dynamically loaded channels
+        setConversations(prev => {
+          const staticConvs = prev.filter(c => ['1', '2', '3'].includes(c.id));
+          const merged = [...staticConvs];
+          newConversations.forEach(nc => {
+            if (!merged.find(mc => mc.id === nc.id)) {
+              merged.push(nc);
+            }
+          });
+          return merged;
+        });
+      }
+    };
+
+    fetchAllMessages();
+
+    // 2. Real-time listener for incoming messages
+    const channel = supabase
+      .channel('chat-messages-room')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async (payload) => {
+          const newMsg = payload.new;
+          
+          // Verify if the message concerns this user
+          if (newMsg.sender_id === userId || newMsg.receiver_id === userId) {
+            const isMe = newMsg.sender_id === userId;
+            const otherId = isMe ? newMsg.receiver_id : newMsg.sender_id;
+
+            // Formulate message block
+            const msgObj = {
+              id: newMsg.id,
+              sender: isMe ? 'me' as const : 'them' as const,
+              text: newMsg.text,
+              time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            // Check if conversation exists, if not fetch profile first to add to sidebar
+            setConversations(prev => {
+              const existing = prev.find(c => c.id === otherId);
+              if (!existing) {
+                // Trigger async profile load to insert to sidebar
+                supabase.from('users').select('id, email, first_name, last_name, username').eq('id', otherId).maybeSingle().then(({ data }) => {
+                  if (data) {
+                    const newConv = {
+                      id: data.id,
+                      name: data.first_name && data.last_name ? `${data.first_name} ${data.last_name}` : data.username || data.email,
+                      lastMessage: newMsg.text,
+                      unread: isMe ? 0 : 1,
+                      avatar: '👤'
+                    };
+                    setConversations(current => {
+                      if (!current.find(c => c.id === otherId)) {
+                        return [newConv, ...current];
+                      }
+                      return current;
+                    });
+                  }
+                });
+              } else {
+                // Update lastMessage text
+                return prev.map(c => c.id === otherId ? { ...c, lastMessage: newMsg.text, unread: isMe ? 0 : c.unread + 1 } : c);
+              }
+              return prev;
+            });
+
+            // Append to messages map
+            setMessages(prev => ({
+              ...prev,
+              [otherId]: [...(prev[otherId] || []), msgObj]
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
   const handleSearchUser = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchUsername.trim().toLowerCase();
@@ -2611,25 +2770,26 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMsg = {
-      id: `${activeConvId}-${Date.now()}`,
-      sender: 'me' as const,
-      text: inputText.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setMessages(prev => ({
-      ...prev,
-      [activeConvId]: [...(prev[activeConvId] || []), newMsg]
-    }));
-
+    const queryText = inputText.trim();
     setInputText('');
 
     if (activeConvId === '1') {
+      const newMsg = {
+        id: `1-${Date.now()}`,
+        sender: 'me' as const,
+        text: queryText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      
+      setMessages(prev => ({
+        ...prev,
+        '1': [...(prev['1'] || []), newMsg]
+      }));
+
       setTimeout(() => {
         const replyMsg = {
           id: `1-reply-${Date.now()}`,
@@ -2642,6 +2802,39 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
           '1': [...(prev['1'] || []), replyMsg]
         }));
       }, 1000);
+      
+      return;
+    }
+
+    if (activeConvId === '2' || activeConvId === '3') {
+      const newMsg = {
+        id: `${activeConvId}-${Date.now()}`,
+        sender: 'me' as const,
+        text: queryText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => ({
+        ...prev,
+        [activeConvId]: [...(prev[activeConvId] || []), newMsg]
+      }));
+      return;
+    }
+
+    // Dynamic Peer-to-Peer messaging persistence
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: userId,
+          receiver_id: activeConvId,
+          text: queryText
+        });
+
+      if (error) {
+        console.error("Error inserting message:", error.message);
+      }
+    } catch (err: any) {
+      console.error("Failed to send message:", err.message || err);
     }
   };
 

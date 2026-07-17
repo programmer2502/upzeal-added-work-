@@ -229,3 +229,33 @@ DROP POLICY IF EXISTS "Allow public read access to reviews" ON public.reviews;
 DROP POLICY IF EXISTS "Allow authenticated users to write reviews" ON public.reviews;
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT USING (true);
 CREATE POLICY "Allow authenticated users to write reviews" ON public.reviews FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- =========================================================================
+-- 8. PERSISTENT MESSAGES TABLE (Real-time Peer-to-Peer Chat)
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    receiver_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    text TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Enable RLS
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- Drop existences to prevent duplicate policies errors
+DROP POLICY IF EXISTS "Allow users to read their own messages" ON public.messages;
+DROP POLICY IF EXISTS "Allow users to insert their own messages" ON public.messages;
+
+-- RLS Policies
+CREATE POLICY "Allow users to read their own messages" 
+    ON public.messages FOR SELECT 
+    USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+CREATE POLICY "Allow users to insert their own messages" 
+    ON public.messages FOR INSERT 
+    WITH CHECK (auth.uid() = sender_id);
+
+-- Enable Supabase Realtime for messages table
+alter publication supabase_realtime add table public.messages;
