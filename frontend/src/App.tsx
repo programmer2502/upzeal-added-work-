@@ -153,6 +153,7 @@ export default function App() {
       setSession(session);
       if (session) {
         setUser(session.user);
+        setEmail(session.user.email || '');
         
         // Fetch user metadata from the public.users table
         const { data, error } = await supabase
@@ -174,6 +175,7 @@ export default function App() {
       setSession(session);
       if (session) {
         setUser(session.user);
+        setEmail(session.user.email || '');
         
         // Fetch user metadata from the public.users table
         const { data, error } = await supabase
@@ -191,6 +193,7 @@ export default function App() {
         setUser(null);
         setFirstName('');
         setLastName('');
+        setEmail('');
         setAccountType(null);
       }
     });
