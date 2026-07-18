@@ -1549,6 +1549,7 @@ export default function App() {
           firstName={firstName} 
           lastName={lastName} 
           email={email} 
+          developerSkills={selectedTech}
           onLogout={async () => {
             await supabase.auth.signOut();
             setView('landing');
@@ -1693,7 +1694,7 @@ function InputGroup({
 // SEPARATE DASHBOARD COMPONENTS
 // ==========================================
 
-function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
+function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
 
   return (
@@ -1762,7 +1763,7 @@ function StudentDashboard({ userId, firstName, lastName, email, onLogout }: { us
         ) : currentView === 'profile' ? (
           <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         ) : currentView === 'feed' ? (
-          <StudentFeedView userId={userId} developerSkills={selectedTech} />
+          <StudentFeedView userId={userId} developerSkills={developerSkills} />
         ) : (
           <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         )}
