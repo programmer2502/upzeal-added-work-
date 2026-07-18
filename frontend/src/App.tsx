@@ -3435,7 +3435,7 @@ function PostJobView({ userId }: { userId: string }) {
 }
 
 function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
-  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job'>('pipeline');
+  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat'>('pipeline');
 
   const candidates = [
     { id: 1, name: 'John Doe', role: 'Full Stack Engineer', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['FastAPI', 'React'], status: 'new', xp: 12400, match: 94 },
@@ -3491,6 +3491,15 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
               </svg>
               <span className="font-medium text-sm hidden md:block text-left">Post Requirement</span>
             </button>
+            <button
+              onClick={() => setRecruiterView('chat')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'chat' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block text-left">Chat</span>
+            </button>
           </nav>
         </div>
         <div className="p-4 md:p-6 border-t border-[#333] flex flex-col gap-4">
@@ -3520,7 +3529,11 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-x-auto overflow-y-auto bg-[#0e1015] p-6 md:p-10 flex flex-col items-start justify-start w-full">
+      <main className={`flex-1 bg-[#0e1015] flex flex-col ${
+        recruiterView === 'chat' 
+          ? 'overflow-hidden h-full' 
+          : 'overflow-x-auto overflow-y-auto p-6 md:p-10 items-start justify-start w-full'
+      }`}>
         {recruiterView === 'pipeline' ? (
           <div className="w-full flex flex-col flex-1">
             <header className="mb-8 shrink-0 text-left">
@@ -3561,6 +3574,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           </div>
         ) : recruiterView === 'post_job' ? (
           <PostJobView userId={userId} />
+        ) : recruiterView === 'chat' ? (
+          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         ) : (
           /* ── Talent Pool View ── */
           <div className="w-full flex flex-col flex-1 text-left">
