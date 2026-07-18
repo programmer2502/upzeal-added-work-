@@ -149,27 +149,66 @@ export default function App() {
 
   // Listen to Supabase Auth state shifts
   useEffect(() => {
+    const handleUserMetadataSync = async (session: any) => {
+      if (!session?.user) return;
+      const userIdVal = session.user.id;
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('first_name, last_name, role, onboarding_phase, dashboard_config')
+        .eq('id', userIdVal)
+        .single();
+        
+      let finalFirstName = '';
+      let finalLastName = '';
+      let finalRole = '';
+      
+      if (data) {
+        finalFirstName = data.first_name || '';
+        finalLastName = data.last_name || '';
+        finalRole = data.role || '';
+        setFirstName(finalFirstName);
+        setLastName(finalLastName);
+        setAccountType(data.role as any);
+        if (data.dashboard_config?.tech_stack) {
+          setSelectedTech(data.dashboard_config.tech_stack);
+        }
+      }
+
+      // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize from auth metadata
+      if (session.user.user_metadata && (!finalFirstName || !finalRole)) {
+        const storedRole = localStorage.getItem('oauth_intended_role') || 'developer';
+        localStorage.removeItem('oauth_intended_role');
+        
+        const fullName = session.user.user_metadata.full_name || session.user.user_metadata.name || '';
+        const parts = fullName.split(' ');
+        const fName = finalFirstName || parts[0] || '';
+        const lName = finalLastName || parts.slice(1).join(' ') || '';
+        const roleVal = finalRole || storedRole;
+        const oUsername = session.user.user_metadata.user_name || session.user.user_metadata.username || session.user.user_metadata.preferred_username || '';
+
+        await supabase
+          .from('users')
+          .update({ 
+            first_name: fName,
+            last_name: lName,
+            role: roleVal,
+            username: oUsername || `user_${userIdVal.substring(0, 5)}`
+          })
+          .eq('id', userIdVal);
+          
+        setFirstName(fName);
+        setLastName(lName);
+        setAccountType(roleVal as any);
+      }
+    };
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session) {
         setUser(session.user);
         setEmail(session.user.email || '');
-        
-        // Fetch user metadata from the public.users table
-        const { data, error } = await supabase
-          .from('users')
-          .select('first_name, last_name, role, onboarding_phase, dashboard_config')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (data) {
-          setFirstName(data.first_name || '');
-          setLastName(data.last_name || '');
-          setAccountType(data.role as any);
-          if (data.dashboard_config?.tech_stack) {
-            setSelectedTech(data.dashboard_config.tech_stack);
-          }
-        }
+        await handleUserMetadataSync(session);
         setView('dashboard');
       }
     });
@@ -179,22 +218,7 @@ export default function App() {
       if (session) {
         setUser(session.user);
         setEmail(session.user.email || '');
-        
-        // Fetch user metadata from the public.users table
-        const { data, error } = await supabase
-          .from('users')
-          .select('first_name, last_name, role, onboarding_phase, dashboard_config')
-          .eq('id', session.user.id)
-          .single();
-          
-        if (data) {
-          setFirstName(data.first_name || '');
-          setLastName(data.last_name || '');
-          setAccountType(data.role as any);
-          if (data.dashboard_config?.tech_stack) {
-            setSelectedTech(data.dashboard_config.tech_stack);
-          }
-        }
+        await handleUserMetadataSync(session);
       } else {
         setUser(null);
         setFirstName('');
@@ -207,6 +231,35 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleSocialLogin = async (provider: 'google' | 'github') => {
+    setIsSocialLoading(true);
+    setAuthError(null);
+    setLoginError(null);
+    
+    // Store intended role in localStorage if signup flow is active
+    if (accountType) {
+      localStorage.setItem('oauth_intended_role', accountType);
+    }
+    
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) {
+        setAuthError(error.message);
+        setLoginError(error.message);
+      }
+    } catch (err: any) {
+      setAuthError(err.message);
+      setLoginError(err.message);
+    } finally {
+      setIsSocialLoading(false);
+    }
+  };
 
   const TECH_STACK_CATEGORIES = [
     {
@@ -1330,8 +1383,8 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <SocialButton icon={<Chrome className="w-4 h-4 text-white" />} label="Google" isLoading={isSocialLoading} onClick={() => handleNextStep()} />
-                    <SocialButton icon={<Github className="w-4 h-4 text-white" />} label="GitHub" isLoading={isSocialLoading} onClick={() => handleNextStep()} />
+                    <SocialButton icon={<Chrome className="w-4 h-4 text-white" />} label="Google" isLoading={isSocialLoading} onClick={() => handleSocialLogin('google')} />
+                    <SocialButton icon={<Github className="w-4 h-4 text-white" />} label="GitHub" isLoading={isSocialLoading} onClick={() => handleSocialLogin('github')} />
                   </div>
 
                   <div className="relative flex py-2 items-center">
@@ -1573,6 +1626,19 @@ export default function App() {
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">Welcome Back</h2>
               <p className="text-white/40 text-xs mt-1">Sign in to access your Upzeal dashboard.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <SocialButton icon={<Chrome className="w-4 h-4 text-white" />} label="Google" isLoading={isSocialLoading} onClick={() => handleSocialLogin('google')} />
+              <SocialButton icon={<Github className="w-4 h-4 text-white" />} label="GitHub" isLoading={isSocialLoading} onClick={() => handleSocialLogin('github')} />
+            </div>
+
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-white/10"></div>
+              <span className="flex-shrink mx-4 text-xs font-medium text-white/40 uppercase tracking-widest bg-[#0c0c0c] px-4 select-none">
+                Or
+              </span>
+              <div className="flex-grow border-t border-white/10"></div>
             </div>
             
             {loginError && (
