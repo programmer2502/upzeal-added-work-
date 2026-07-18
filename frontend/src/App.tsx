@@ -1834,6 +1834,18 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
           <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         )}
       </main>
+      {selectedCandidate && (
+        <DeveloperProfileModal 
+          developer={selectedCandidate} 
+          onClose={() => setSelectedCandidate(null)} 
+        />
+      )}
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -2158,6 +2170,12 @@ function StudentBentoDashboard() {
           </table>
         </div>
       </div>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -2493,6 +2511,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
   const [dbProjects, setDbProjects] = useState<any[]>([]);
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -2506,6 +2525,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
           budget,
           created_at,
           companies (
+            id,
             name,
             logo_url
           )
@@ -2534,7 +2554,9 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
 
           return {
             id: proj.id,
+            companyId: proj.companies?.id || null,
             company: proj.companies?.name || 'Upzeal Client Partner',
+            logoUrl: proj.companies?.logo_url || '',
             time: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
             content: `${proj.title} - ${proj.description}`,
             budget: proj.budget || '',
@@ -2707,12 +2729,19 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
             const hasApplied = post.id && appliedProjectIds.includes(post.id);
             return (
               <div key={idx} className="bg-[#151820] border border-[#333] rounded-xl p-5 mb-5 text-left">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0 border border-[#333] text-white/60 font-bold">
-                    <span>{post.company.charAt(0)}</span>
+                <div 
+                  onClick={() => post.isDbProject && post.companyId && setSelectedCompanyId(post.companyId)}
+                  className={`flex items-center gap-3 mb-4 ${post.isDbProject && post.companyId ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                >
+                  <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0 border border-[#333] text-white/60 font-bold overflow-hidden">
+                    {post.isDbProject && post.logoUrl ? (
+                      <img src={post.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{post.company.charAt(0)}</span>
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-white">{post.company}</h3>
+                    <h3 className={`text-sm font-semibold text-white ${post.isDbProject && post.companyId ? 'hover:text-[#00d2ff] hover:underline' : ''}`}>{post.company}</h3>
                     <p className="text-xs text-white/50 font-mono">{post.time}</p>
                   </div>
                 </div>
@@ -2781,9 +2810,25 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
         </div>
 
         {/* Top Companies */}
-        <h2 className="text-sm font-semibold mt-10 mb-5 text-white/80 uppercase tracking-widest">Top Companies</h2>
+        <h2 className="text-sm font-semibold mt-10 mb-5 text-white/80 uppercase tracking-widest">Registered Organizations</h2>
         <div className="space-y-3">
-          {['DataStream Inc.', 'NeuralForge AI', 'CloudVault', 'Lattice Security', 'SyncStack'].map(name => (
+          {dbProjects.filter((p, i, self) => p.companyId && self.findIndex(t => t.companyId === p.companyId) === i).map(p => (
+            <div 
+              key={p.companyId} 
+              onClick={() => setSelectedCompanyId(p.companyId)}
+              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded bg-white/5 border border-[#333] flex items-center justify-center text-xs font-bold text-white/60 shrink-0 overflow-hidden">
+                {p.logoUrl ? (
+                  <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{p.company.charAt(0)}</span>
+                )}
+              </div>
+              <span className="text-sm text-white/70 font-medium hover:text-[#00d2ff]">{p.company}</span>
+            </div>
+          ))}
+          {dbProjects.filter(p => p.companyId).length === 0 && ['DataStream Inc.', 'NeuralForge AI', 'CloudVault', 'Lattice Security', 'SyncStack'].map(name => (
             <div key={name} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded bg-white/5 border border-[#333] flex items-center justify-center text-xs font-bold text-white/60 shrink-0">{name.charAt(0)}</div>
               <span className="text-sm text-white/70 font-medium">{name}</span>
@@ -2791,6 +2836,271 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
           ))}
         </div>
       </div>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClose: () => void }) {
+  const [company, setCompany] = useState<any>(null);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    const fetchCompanyData = async () => {
+      setLoading(true);
+      try {
+        const { data: comp, error: compErr } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', companyId)
+          .single();
+
+        if (comp) {
+          setCompany(comp);
+          const { data: projs } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('company_id', companyId);
+
+          if (projs) {
+            const { data: skillsData } = await supabase
+              .from('required_skills')
+              .select('project_id, skill_name');
+
+            const projsWithSkills = projs.map(p => ({
+              ...p,
+              tags: skillsData?.filter(s => s.project_id === p.id).map(s => s.skill_name) || []
+            }));
+            setProjects(projsWithSkills);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading company profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCompanyData();
+  }, [companyId]);
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl border border-white/10 rounded-2xl bg-[#0c0c0c]/95 p-6 md:p-8 text-left relative flex flex-col max-h-[85vh] overflow-y-auto">
+        <button 
+          onClick={onClose}
+          className="absolute right-6 top-6 text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {loading ? (
+          <div className="flex items-center justify-center p-20">
+            <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+          </div>
+        ) : !company ? (
+          <div className="p-10 text-center text-white/50 font-mono">Company details not found</div>
+        ) : (
+          <div className="space-y-6 text-left">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-xl bg-white/5 border border-[#333] flex items-center justify-center text-2xl font-bold text-white shrink-0">
+                {company.logo_url ? (
+                  <img src={company.logo_url} alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <span>{company.name.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">{company.name}</h2>
+                {company.website && (
+                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00d2ff] hover:underline font-mono mt-1 block">
+                    {company.website}
+                  </a>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-2">About Organization</h3>
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
+                {company.description || 'No description provided by the organization.'}
+              </p>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-4">Active Opportunities</h3>
+              {projects.length === 0 ? (
+                <p className="text-xs text-white/40 font-mono">No active requirements posted at this time.</p>
+              ) : (
+                <div className="space-y-3">
+                  {projects.map(p => (
+                    <div key={p.id} className="bg-[#151820] border border-[#333] rounded-xl p-4 text-left">
+                      <h4 className="text-sm font-semibold text-white">{p.title}</h4>
+                      <p className="text-xs text-white/60 mt-1 leading-relaxed">{p.description}</p>
+                      {p.budget && (
+                        <p className="text-[10px] text-[#00d2ff] font-mono mt-2">Budget: {p.budget}</p>
+                      )}
+                      {p.tags?.length > 0 && (
+                        <div className="flex gap-1.5 mt-3 flex-wrap">
+                          {p.tags.map((t: string) => (
+                            <span key={t} className="px-1.5 py-0.5 text-[9px] font-mono bg-black border border-[#333] text-white/60 rounded-sm">{t}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose: () => void }) {
+  const commits = (() => {
+    const grid = [];
+    for (let col = 0; col < 26; col++) {
+      const column = [];
+      for (let row = 0; row < 7; row++) {
+        const val = Math.random();
+        let intensity = 0;
+        if (val > 0.9) intensity = 4;
+        else if (val > 0.7) intensity = 3;
+        else if (val > 0.5) intensity = 2;
+        else if (val > 0.3) intensity = 1;
+        column.push(intensity);
+      }
+      grid.push(column);
+    }
+    return grid;
+  })();
+
+  const getColor = (intensity: number) => {
+    switch(intensity) {
+      case 4: return 'bg-[#39d353] border-[#39d353]';
+      case 3: return 'bg-[#26a641] border-[#26a641]';
+      case 2: return 'bg-[#006d32] border-[#006d32]';
+      case 1: return 'bg-[#0e4429] border-[#0e4429]';
+      default: return 'bg-[#161b22] border-[#333]';
+    }
+  };
+
+  const name = developer.first_name && developer.last_name 
+    ? `${developer.first_name} ${developer.last_name}` 
+    : developer.name || 'Upzeal Developer';
+
+  const username = developer.username || 'developer';
+  const email = developer.email || 'No email shared';
+  const bio = developer.profile_details?.bio || developer.bio || 'No profile biography shared yet.';
+  const location = developer.profile_details?.location || developer.location || 'Remote-First';
+  const avatarUrl = developer.profile_details?.avatar_url || developer.avatar_url || '';
+  const skills = developer.dashboard_config?.tech_stack || developer.skills || [];
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl border border-white/10 rounded-2xl bg-[#0c0c0c]/95 p-6 md:p-8 text-left relative flex flex-col max-h-[85vh] overflow-y-auto">
+        <button 
+          onClick={onClose}
+          className="absolute right-6 top-6 text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="space-y-6 text-left">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0 font-semibold">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xl text-white">
+                  {developer.first_name && developer.last_name 
+                    ? `${developer.first_name[0]}${developer.last_name[0]}`.toUpperCase() 
+                    : developer.email?.[0]?.toUpperCase() || 'D'}
+                </div>
+              )}
+            </div>
+            <div className="overflow-hidden">
+              <h2 className="text-xl font-bold text-white tracking-tight truncate">{name}</h2>
+              <p className="text-xs text-white/50 font-mono mt-0.5">@{username}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-white/10 pt-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">Contact Email</span>
+              <span className="text-sm font-mono text-[#00d2ff] select-all">{email}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">Location</span>
+              <span className="text-sm text-white/80 font-mono">{location}</span>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-2">Tech Stack & Skills</span>
+            {skills.length === 0 ? (
+              <p className="text-xs text-white/40 font-mono">No skills set.</p>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                {skills.map((s: string) => (
+                  <span key={s} className="px-2.5 py-1 text-xs font-mono bg-black border border-[#333] text-white/70 rounded-md">{s}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-2">Biography</span>
+            <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">{bio}</p>
+          </div>
+
+          <div className="border-t border-white/10 pt-4">
+            <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-3">Activity Graph (Commits)</span>
+            <div className="flex gap-[3px] overflow-x-auto pb-2">
+              {commits.map((col, cIdx) => (
+                <div key={cIdx} className="flex flex-col gap-[3px]">
+                  {col.map((intensity, rIdx) => (
+                    <div 
+                      key={rIdx} 
+                      className={`w-[9px] h-[9px] rounded-sm border ${getColor(intensity)}`} 
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-end gap-1.5 text-[9px] text-white/30 font-mono mt-1">
+              <span>Less</span>
+              <div className="w-[8px] h-[8px] rounded bg-[#161b22] border border-[#333]" />
+              <div className="w-[8px] h-[8px] rounded bg-[#0e4429] border border-[#0e4429]" />
+              <div className="w-[8px] h-[8px] rounded bg-[#006d32] border border-[#006d32]" />
+              <div className="w-[8px] h-[8px] rounded bg-[#26a641] border border-[#26a641]" />
+              <div className="w-[8px] h-[8px] rounded bg-[#39d353] border border-[#39d353]" />
+              <span>More</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -3246,6 +3556,12 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
           </form>
         </div>
       </div>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -3434,8 +3750,309 @@ function PostJobView({ userId }: { userId: string }) {
   );
 }
 
+function CompanyProfileView({ userId }: { userId: string }) {
+  const [name, setName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [website, setWebsite] = useState('');
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'saving' | 'success' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [companyId, setCompanyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchCompany = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name, logo_url, website, description')
+          .eq('created_by', userId)
+          .maybeSingle();
+
+        if (error) {
+          setStatus('error');
+          setErrorMessage(error.message);
+          return;
+        }
+
+        if (data) {
+          setCompanyId(data.id);
+          setName(data.name || '');
+          setLogoUrl(data.logo_url || '');
+          setWebsite(data.website || '');
+          setDescription(data.description || '');
+        }
+        setStatus('idle');
+      } catch (err: any) {
+        setStatus('error');
+        setErrorMessage(err.message);
+      }
+    };
+    fetchCompany();
+  }, [userId]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setStatus('error');
+      setErrorMessage('Organization Name is required');
+      return;
+    }
+
+    setStatus('saving');
+    setErrorMessage('');
+
+    try {
+      if (companyId) {
+        const { error } = await supabase
+          .from('companies')
+          .update({
+            name: name.trim(),
+            logo_url: logoUrl.trim(),
+            website: website.trim(),
+            description: description.trim()
+          })
+          .eq('id', companyId);
+
+        if (error) {
+          setStatus('error');
+          setErrorMessage(error.message);
+        } else {
+          setStatus('success');
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('companies')
+          .insert({
+            name: name.trim(),
+            logo_url: logoUrl.trim(),
+            website: website.trim(),
+            description: description.trim(),
+            created_by: userId
+          })
+          .select('id')
+          .single();
+
+        if (error) {
+          setStatus('error');
+          setErrorMessage(error.message);
+        } else {
+          if (data) setCompanyId(data.id);
+          setStatus('success');
+        }
+      }
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMessage(err.message);
+    }
+  };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center p-20 w-full">
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl text-left bg-[#111318] border border-[#333] rounded-2xl p-8 shadow-xl w-full">
+      <h2 className="text-xl font-bold mb-1 text-white">Company Profile</h2>
+      <p className="text-xs text-white/50 mb-6 font-mono">Manage your organization details seen by candidates and other recruiters.</p>
+
+      {status === 'success' && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono">
+          Organization profile updated successfully!
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono">
+          {errorMessage}
+        </div>
+      )}
+
+      <form onSubmit={handleSave} className="space-y-5">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-white/60">Organization Name</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. AeroTech Labs"
+            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-white/60">Website URL</label>
+            <input
+              type="url"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="e.g. https://aerotech.io"
+              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-white/60">Logo Image URL</label>
+            <input
+              type="text"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="e.g. https://domain.com/logo.png"
+              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-white/60">Organization Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Provide a description of your organization, culture, and key domain areas..."
+            rows={5}
+            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none text-sm resize-none leading-relaxed"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={status === 'saving'}
+          className="w-full h-11 bg-white hover:bg-white/90 text-black font-semibold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-4 border-none"
+        >
+          {status === 'saving' ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Save Changes'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: string) => void }) {
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name, logo_url, website, description');
+
+        if (data) {
+          setCompanies(data);
+        }
+      } catch (err) {
+        console.error("Error loading directory:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCompanies();
+  }, []);
+
+  return (
+    <div className="w-full flex flex-col flex-1 text-left">
+      <header className="mb-8 shrink-0">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Company Directory</h1>
+        <p className="text-sm text-white/50 mt-1 font-mono">Browse profiles and active requirements of all registered client organizations.</p>
+      </header>
+
+      {loading ? (
+        <div className="flex items-center justify-center p-20 w-full">
+          <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+        </div>
+      ) : companies.length === 0 ? (
+        <div className="border border-dashed border-[#333] rounded-xl p-10 text-center text-white/40 w-full">
+          No registered companies found
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full items-start justify-start">
+          {companies.map(comp => (
+            <div 
+              key={comp.id} 
+              onClick={() => onSelectCompany(comp.id)}
+              className="bg-[#111318] border border-[#333] rounded-2xl p-6 hover:border-white/20 transition-all cursor-pointer group text-left flex flex-col gap-4 h-full"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-[#333] flex items-center justify-center text-lg font-bold text-white shrink-0 group-hover:bg-white/10 transition-colors">
+                  {comp.logo_url ? (
+                    <img src={comp.logo_url} alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    <span>{comp.name.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="overflow-hidden">
+                  <h3 className="text-sm font-semibold text-white truncate group-hover:text-[#00d2ff] transition-colors">{comp.name}</h3>
+                  {comp.website && (
+                    <p className="text-[10px] text-white/40 truncate font-mono mt-0.5">{comp.website}</p>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-white/60 line-clamp-3 leading-relaxed flex-1">
+                {comp.description || 'No description provided by the organization.'}
+              </p>
+              <div className="border-t border-[#333] pt-3 text-[10px] text-[#00d2ff] font-mono font-semibold flex items-center justify-between">
+                <span>View Details</span>
+                <span>→</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
-  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat'>('pipeline');
+  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory'>('pipeline');
+  const [dbCandidates, setDbCandidates] = useState<any[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDevelopers = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'developer');
+
+      if (error) {
+        console.error("Error loading developers:", error.message);
+        return;
+      }
+      if (data) {
+        setDbCandidates(data);
+      }
+    };
+    fetchDevelopers();
+  }, []);
+
+  const mappedDbCandidates = dbCandidates.map(u => {
+    const name = u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email;
+    const skills = u.dashboard_config?.tech_stack || [];
+    return {
+      id: u.id,
+      name,
+      role: 'Software Engineer',
+      avatar: u.profile_details?.avatar_url || '',
+      skills,
+      status: 'new',
+      xp: 10000,
+      match: 90,
+      isDbDeveloper: true,
+      email: u.email,
+      username: u.username,
+      profile_details: u.profile_details,
+      dashboard_config: u.dashboard_config
+    };
+  });
+
+  const allCandidates = [...mappedDbCandidates, ...candidates];
 
   const candidates = [
     { id: 1, name: 'John Doe', role: 'Full Stack Engineer', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['FastAPI', 'React'], status: 'new', xp: 12400, match: 94 },
@@ -3500,6 +4117,24 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
               <MessageSquare className="w-4 h-4" />
               <span className="font-medium text-sm hidden md:block text-left">Chat</span>
             </button>
+            <button
+              onClick={() => setRecruiterView('companies_directory')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'companies_directory' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block text-left">Companies</span>
+            </button>
+            <button
+              onClick={() => setRecruiterView('company_profile')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'company_profile' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block text-left">Profile</span>
+            </button>
           </nav>
         </div>
         <div className="p-4 md:p-6 border-t border-[#333] flex flex-col gap-4">
@@ -3542,7 +4177,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
             </header>
             <div className="flex gap-6 flex-1 overflow-x-auto pb-4 items-start">
               {columns.map(col => {
-                const colCandidates = candidates.filter(c => c.status === col.id);
+                const colCandidates = allCandidates.filter(c => c.status === col.id);
                 return (
                   <div key={col.id} className="w-[320px] shrink-0 flex flex-col bg-[#0a0a0a] border border-[#333] rounded-lg max-h-full">
                     <div className="p-3 border-b border-[#333] bg-[#111] flex items-center justify-between shrink-0 rounded-t-lg">
@@ -3551,9 +4186,17 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                     </div>
                     <div className="p-3 flex-1 overflow-y-auto space-y-3">
                       {colCandidates.map(candidate => (
-                        <div key={candidate.id} className="bg-[#151820] border border-[#333] rounded p-3 hover:border-white/20 transition-colors cursor-pointer group text-left">
+                        <div key={candidate.id} onClick={() => setSelectedCandidate(candidate)} className="bg-[#151820] border border-[#333] rounded p-3 hover:border-white/20 transition-colors cursor-pointer group text-left">
                           <div className="flex items-start gap-3">
-                            <img src={candidate.avatar} alt={candidate.name} className="w-10 h-10 rounded border border-[#333] object-cover shrink-0 grayscale group-hover:grayscale-0 transition-all" />
+                            <div className="w-10 h-10 rounded border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0">
+                              {candidate.avatar ? (
+                                <img src={candidate.avatar} alt={candidate.name} className="w-full h-full object-cover shrink-0 grayscale group-hover:grayscale-0 transition-all" />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xs text-white shrink-0">
+                                  {candidate.name.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
                             <div className="overflow-hidden">
                               <h3 className="text-sm font-semibold text-white truncate">{candidate.name}</h3>
                               <p className="text-xs text-white/50 truncate mb-2">{candidate.role}</p>
@@ -3576,6 +4219,10 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           <PostJobView userId={userId} />
         ) : recruiterView === 'chat' ? (
           <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+        ) : recruiterView === 'company_profile' ? (
+          <CompanyProfileView userId={userId} />
+        ) : recruiterView === 'companies_directory' ? (
+          <CompanyDirectoryView onSelectCompany={(id) => setSelectedCompanyId(id)} />
         ) : (
           /* ── Talent Pool View ── */
           <div className="w-full flex flex-col flex-1 text-left">
@@ -3612,7 +4259,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  {candidates.map(c => (
+                  {allCandidates.map(c => (
                     <tr key={c.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -3647,7 +4294,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                         }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
                       </td>
                       <td className="px-5 py-4">
-                        <button className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">View</button>
+                        <button onClick={() => setSelectedCandidate(c)} className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">View</button>
                       </td>
                     </tr>
                   ))}
@@ -3657,6 +4304,18 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           </div>
         )}
       </main>
+      {selectedCandidate && (
+        <DeveloperProfileModal 
+          developer={selectedCandidate} 
+          onClose={() => setSelectedCandidate(null)} 
+        />
+      )}
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
