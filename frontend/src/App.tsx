@@ -4052,8 +4052,6 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
     };
   });
 
-  const allCandidates = [...mappedDbCandidates, ...candidates];
-
   const candidates = [
     { id: 1, name: 'John Doe', role: 'Full Stack Engineer', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['FastAPI', 'React'], status: 'new', xp: 12400, match: 94 },
     { id: 2, name: 'Alice Chen', role: 'Backend Developer', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Go', 'Kubernetes'], status: 'new', xp: 9800, match: 91 },
@@ -4062,6 +4060,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
     { id: 5, name: 'David Kim', role: 'DevOps Engineer', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Docker', 'AWS'], status: 'screening', xp: 8700, match: 82 },
     { id: 6, name: 'Sarah Miller', role: 'Machine Learning', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['PyTorch', 'CUDA'], status: 'interviewing', xp: 18900, match: 97 },
   ];
+
+  const allCandidates = [...mappedDbCandidates, ...candidates];
 
   const columns = [
     { id: 'new', title: 'New Applicants' },
