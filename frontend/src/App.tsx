@@ -39,7 +39,8 @@ import {
   MapPin,
   Users,
   Edit3,
-  MessageSquare
+  MessageSquare,
+  ThumbsDown
 } from 'lucide-react';
 
 // ==========================================
@@ -1825,7 +1826,7 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
       {/* Main Content */}
       <main className="flex-1 overflow-hidden bg-[#0e1015] h-full">
         {currentView === 'dashboard' ? (
-          <StudentBentoDashboard />
+          <StudentBentoDashboard userId={userId} />
         ) : currentView === 'profile' ? (
           <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         ) : currentView === 'feed' ? (
@@ -1838,7 +1839,34 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
   );
 }
 
-function StudentBentoDashboard() {
+function StudentBentoDashboard({ userId }: { userId: string }) {
+  const [xp, setXp] = useState(23094);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchXp = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('profile_details')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error loading developer XP:", error.message);
+          return;
+        }
+
+        if (data && data.profile_details?.xp !== undefined) {
+          setXp(Number(data.profile_details.xp));
+        }
+      } catch (err) {
+        console.error("Error fetching developer XP:", err);
+      }
+    };
+    fetchXp();
+  }, [userId]);
+
   return (
     <div className="p-6 md:p-8 lg:p-10 space-y-6 max-w-[1400px] mx-auto">
       {/* Top Row: 3 column bento */}
@@ -1993,7 +2021,7 @@ function StudentBentoDashboard() {
           {/* XP Card */}
           <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-3xl font-bold font-mono">★ 23,094</span>
+              <span className="text-3xl font-bold font-mono">★ {xp.toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-white/40">Compared to last month</span>
@@ -2947,7 +2975,57 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
   );
 }
 
-function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose: () => void }) {
+function DeveloperProfileModal({ 
+  developer, 
+  recruiterUserId, 
+  onClose, 
+  onUpdateDeveloper 
+}: { 
+  developer: any; 
+  recruiterUserId?: string; 
+  onClose: () => void; 
+  onUpdateDeveloper?: (updatedDev: any) => void;
+}) {
+  const [recruiterProjects, setRecruiterProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [xpActionMessage, setXpActionMessage] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [currentXp, setCurrentXp] = useState<number>(Number(developer.profile_details?.xp !== undefined ? developer.profile_details.xp : (developer.xp || 23094)));
+
+  useEffect(() => {
+    if (!recruiterUserId) return;
+    const fetchRecruiterCompanyProjects = async () => {
+      try {
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('created_by', recruiterUserId)
+          .maybeSingle();
+
+        if (comp) {
+          const { data: projs } = await supabase
+            .from('projects')
+            .select('id, title')
+            .eq('company_id', comp.id);
+          if (projs) {
+            setRecruiterProjects(projs);
+            if (projs.length > 0) {
+              setSelectedProjectId(projs[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error loading recruiter projects:", err);
+      }
+    };
+    fetchRecruiterCompanyProjects();
+  }, [recruiterUserId, developer.id]);
+
+  useEffect(() => {
+    setCurrentXp(Number(developer.profile_details?.xp !== undefined ? developer.profile_details.xp : (developer.xp || 23094)));
+    setXpActionMessage('');
+  }, [developer.id, developer.profile_details?.xp, developer.xp]);
+
   const commits = (() => {
     const grid = [];
     for (let col = 0; col < 26; col++) {
@@ -2973,6 +3051,116 @@ function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose
       case 2: return 'bg-[#006d32] border-[#006d32]';
       case 1: return 'bg-[#0e4429] border-[#0e4429]';
       default: return 'bg-[#161b22] border-[#333]';
+    }
+  };
+
+  const handleSelectCandidate = async () => {
+    setActionLoading(true);
+    setXpActionMessage('');
+    try {
+      const nextXp = currentXp + 100;
+      setCurrentXp(nextXp);
+
+      if (developer.isDbDeveloper) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('profile_details')
+          .eq('id', developer.id)
+          .single();
+
+        const updatedDetails = {
+          ...(userData?.profile_details || {}),
+          xp: nextXp
+        };
+
+        const { error: userUpdateErr } = await supabase
+          .from('users')
+          .update({ profile_details: updatedDetails })
+          .eq('id', developer.id);
+
+        if (userUpdateErr) throw userUpdateErr;
+
+        if (selectedProjectId) {
+          await supabase
+            .from('applications')
+            .upsert({
+              project_id: selectedProjectId,
+              developer_id: developer.id,
+              status: 'hired'
+            }, { onConflict: 'project_id,developer_id' });
+        }
+
+        if (onUpdateDeveloper) {
+          onUpdateDeveloper({
+            ...developer,
+            profile_details: updatedDetails
+          });
+        }
+      } else {
+        if (onUpdateDeveloper) {
+          onUpdateDeveloper({
+            ...developer,
+            xp: nextXp
+          });
+        }
+      }
+
+      setXpActionMessage(`Successfully selected candidate! Added 100 XP (New Balance: ★${nextXp.toLocaleString()})`);
+    } catch (err: any) {
+      console.error(err);
+      setXpActionMessage(`Failed to select: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeductXp = async () => {
+    setActionLoading(true);
+    setXpActionMessage('');
+    try {
+      const nextXp = Math.max(0, currentXp - 5);
+      setCurrentXp(nextXp);
+
+      if (developer.isDbDeveloper) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('profile_details')
+          .eq('id', developer.id)
+          .single();
+
+        const updatedDetails = {
+          ...(userData?.profile_details || {}),
+          xp: nextXp
+        };
+
+        const { error: userUpdateErr } = await supabase
+          .from('users')
+          .update({ profile_details: updatedDetails })
+          .eq('id', developer.id);
+
+        if (userUpdateErr) throw userUpdateErr;
+
+        if (onUpdateDeveloper) {
+          onUpdateDeveloper({
+            ...developer,
+            profile_details: updatedDetails
+          });
+        }
+      } else {
+        if (onUpdateDeveloper) {
+          onUpdateDeveloper({
+            ...developer,
+            xp: nextXp
+          });
+        }
+      }
+
+      setXpActionMessage(`Deducted 5 XP. Current Balance: ★${nextXp.toLocaleString()}`);
+    } catch (err: any) {
+      console.error(err);
+      setXpActionMessage(`Failed to deduct: ${err.message}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -3012,7 +3200,10 @@ function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose
             </div>
             <div className="overflow-hidden">
               <h2 className="text-xl font-bold text-white tracking-tight truncate">{name}</h2>
-              <p className="text-xs text-white/50 font-mono mt-0.5">@{username}</p>
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                <span className="text-xs text-white/50 font-mono">@{username}</span>
+                <span className="text-xs font-mono font-bold text-[#00d2ff] bg-[#00d2ff]/10 px-2 py-0.5 rounded border border-[#00d2ff]/20">★ {currentXp.toLocaleString()} XP</span>
+              </div>
             </div>
           </div>
 
@@ -3044,6 +3235,55 @@ function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose
             <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-2">Biography</span>
             <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">{bio}</p>
           </div>
+
+          {recruiterUserId && (
+            <div className="border border-white/10 rounded-xl bg-[#151820]/40 p-4 space-y-3">
+              <div>
+                <h3 className="text-xs font-semibold text-white uppercase tracking-wider">Recruiter Action Center</h3>
+                <p className="text-[10px] text-white/50 mt-0.5 font-mono">Manage project selection and quality score adjustments</p>
+              </div>
+
+              {xpActionMessage && (
+                <div className="px-3 py-2 text-xs font-mono bg-black border border-[#333] text-[#00d2ff] rounded-lg">
+                  {xpActionMessage}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 flex gap-2">
+                  <select 
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="flex-1 bg-black border border-[#333] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#00d2ff]"
+                  >
+                    {recruiterProjects.length === 0 ? (
+                      <option value="">General Project Assign</option>
+                    ) : (
+                      recruiterProjects.map(p => (
+                        <option key={p.id} value={p.id}>{p.title}</option>
+                      ))
+                    )}
+                  </select>
+                  <button 
+                    disabled={actionLoading}
+                    onClick={handleSelectCandidate}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#10b981]/90 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                  >
+                    Select for Project (+100 XP)
+                  </button>
+                </div>
+                
+                <button 
+                  disabled={actionLoading}
+                  onClick={handleDeductXp}
+                  className="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 text-red-400 font-semibold text-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" />
+                  Deduct 5 XP (Did not like work)
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-white/10 pt-4">
             <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-3">Activity Graph (Commits)</span>
@@ -3978,21 +4218,22 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDevelopers = async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'developer');
+  const fetchDevelopers = async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('role', 'developer');
 
-      if (error) {
-        console.error("Error loading developers:", error.message);
-        return;
-      }
-      if (data) {
-        setDbCandidates(data);
-      }
-    };
+    if (error) {
+      console.error("Error loading developers:", error.message);
+      return;
+    }
+    if (data) {
+      setDbCandidates(data);
+    }
+  };
+
+  useEffect(() => {
     fetchDevelopers();
   }, []);
 
@@ -4006,7 +4247,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       avatar: u.profile_details?.avatar_url || '',
       skills,
       status: 'new',
-      xp: 10000,
+      xp: Number(u.profile_details?.xp !== undefined ? u.profile_details.xp : 23094),
       match: 90,
       isDbDeveloper: true,
       email: u.email,
@@ -4026,6 +4267,17 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   ];
 
   const allCandidates = [...mappedDbCandidates, ...candidates];
+
+  const handleDeveloperUpdate = (updatedDev: any) => {
+    if (updatedDev.isDbDeveloper) {
+      setDbCandidates(prev => prev.map(u => u.id === updatedDev.id ? { ...u, profile_details: updatedDev.profile_details } : u));
+    }
+    setSelectedCandidate(prev => prev && prev.id === updatedDev.id ? {
+      ...prev,
+      profile_details: updatedDev.profile_details,
+      xp: Number(updatedDev.profile_details?.xp !== undefined ? updatedDev.profile_details.xp : (updatedDev.xp || 23094))
+    } : prev);
+  };
 
   const columns = [
     { id: 'new', title: 'New Applicants' },
@@ -4271,7 +4523,9 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       {selectedCandidate && (
         <DeveloperProfileModal 
           developer={selectedCandidate} 
+          recruiterUserId={userId}
           onClose={() => setSelectedCandidate(null)} 
+          onUpdateDeveloper={handleDeveloperUpdate}
         />
       )}
       {selectedCompanyId && (
