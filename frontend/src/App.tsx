@@ -148,6 +148,117 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
+  interface AppToast {
+    id: string;
+    title: string;
+    message: string;
+    action?: {
+      label: string;
+      onClick: () => void;
+    };
+    type: 'success' | 'info';
+  }
+  const [toasts, setToasts] = useState<AppToast[]>([]);
+
+  // Real-time toast notifications for B2B and Developer applications and acceptances
+  useEffect(() => {
+    if (!user) return;
+
+    const appSubscription = supabase
+      .channel('applications-realtime-global')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'applications' },
+        async (payload) => {
+          const newApp = payload.new;
+
+          if (payload.eventType === 'INSERT') {
+            const { data: project } = await supabase
+              .from('projects')
+              .select('id, title, company_id')
+              .eq('id', newApp.project_id)
+              .maybeSingle();
+
+            if (project) {
+              const { data: company } = await supabase
+                .from('companies')
+                .select('name, created_by')
+                .eq('id', project.company_id)
+                .maybeSingle();
+
+              if (company && company.created_by === user.id) {
+                const { data: applicant } = await supabase
+                  .from('users')
+                  .select('first_name, last_name, username, email')
+                  .eq('id', newApp.developer_id)
+                  .maybeSingle();
+
+                const applicantName = applicant
+                  ? (applicant.first_name && applicant.last_name ? `${applicant.first_name} ${applicant.last_name}` : applicant.username || applicant.email)
+                  : 'Someone';
+
+                const toastId = `toast-${newApp.id}`;
+                setToasts(prev => {
+                  if (prev.find(t => t.id === toastId)) return prev;
+                  return [
+                    ...prev,
+                    {
+                      id: toastId,
+                      title: 'New Requirement Application',
+                      message: `${applicantName} applied to your requirement: "${project.title}"`,
+                      type: 'info',
+                      action: {
+                        label: 'Accept Application',
+                        onClick: async () => {
+                          const { error } = await supabase
+                            .from('applications')
+                            .update({ status: 'hired' })
+                            .eq('id', newApp.id);
+                          
+                          if (!error) {
+                            setToasts(current => current.filter(t => t.id !== toastId));
+                          } else {
+                            alert("Failed to accept application: " + error.message);
+                          }
+                        }
+                      }
+                    }
+                  ];
+                });
+              }
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            if (newApp.status === 'hired' && newApp.developer_id === user.id) {
+              const { data: project } = await supabase
+                .from('projects')
+                .select('title')
+                .eq('id', newApp.project_id)
+                .maybeSingle();
+
+              const toastId = `hired-${newApp.id}`;
+              setToasts(prev => {
+                if (prev.find(t => t.id === toastId)) return prev;
+                return [
+                  ...prev,
+                  {
+                    id: toastId,
+                    title: 'Requirement Accepted! 🎉',
+                    message: `Congratulations! Your partnership/application for "${project?.title || 'Project'}" has been accepted!`,
+                    type: 'success'
+                  }
+                ];
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appSubscription);
+    };
+  }, [user]);
+
   // Listen to Supabase Auth state shifts
   useEffect(() => {
     const handleUserMetadataSync = async (session: any) => {
@@ -1688,6 +1799,52 @@ export default function App() {
           </motion.div>
         </div>
       )}
+      {/* Real-time Toast Notifications list */}
+      <div className="fixed bottom-6 right-6 z-[250] flex flex-col gap-3.5 max-w-sm w-full pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(t => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+              className="pointer-events-auto w-full bg-[#111318] border border-[#333] rounded-2xl p-5 shadow-2xl flex flex-col gap-3 text-left relative"
+            >
+              <button 
+                onClick={() => setToasts(prev => prev.filter(toast => toast.id !== t.id))}
+                className="absolute right-4 top-4 text-white/30 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-start gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                  t.type === 'success' 
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                    : 'bg-[#00d2ff]/10 border-[#00d2ff]/20 text-[#00d2ff]'
+                }`}>
+                  {t.type === 'success' ? <Check className="w-4 h-4 stroke-[3.5]" /> : <Sparkles className="w-4 h-4" />}
+                </div>
+                <div className="overflow-hidden flex-1 pr-4">
+                  <h4 className="text-sm font-bold text-white">{t.title}</h4>
+                  <p className="text-xs text-white/50 mt-1 leading-normal">{t.message}</p>
+                </div>
+              </div>
+
+              {t.action && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={t.action.onClick}
+                    className="px-4 py-2 bg-white text-black hover:bg-white/95 rounded-xl font-bold text-xs transition-colors cursor-pointer border-none"
+                  >
+                    {t.action.label}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </AnimatePresence>
   );
 }
@@ -2517,11 +2674,31 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
   );
 }
 
+function SuccessTickOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 1500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="flex flex-col items-center justify-center p-8 bg-[#111318] border border-[#333] rounded-3xl shadow-2xl animate-pulse">
+        <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4">
+          <Check className="w-12 h-12 stroke-[3]" />
+        </div>
+        <h3 className="text-lg font-bold text-white tracking-tight">Application Submitted</h3>
+        <p className="text-xs text-white/50 mt-1 font-mono">Successfully sent to partner organization</p>
+      </div>
+    </div>
+  );
+}
+
 function StudentFeedView({ userId, developerSkills }: { userId: string; developerSkills: string[] }) {
   const [dbProjects, setDbProjects] = useState<any[]>([]);
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [showSuccessTick, setShowSuccessTick] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -2622,7 +2799,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
           alert(`Failed to apply: ${error.message}`);
         }
       } else {
-        alert(`Successfully applied to ${companyName}!`);
+        setShowSuccessTick(true);
         setAppliedProjectIds(prev => [...prev, projectId]);
       }
     } catch (err: any) {
@@ -2851,6 +3028,9 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
           companyId={selectedCompanyId} 
           onClose={() => setSelectedCompanyId(null)} 
         />
+      )}
+      {showSuccessTick && (
+        <SuccessTickOverlay onClose={() => setShowSuccessTick(false)} />
       )}
     </div>
   );
@@ -4217,6 +4397,7 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+  const [showSuccessTick, setShowSuccessTick] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -4290,6 +4471,7 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
 
       if (error) throw error;
 
+      setShowSuccessTick(true);
       setAppliedProjectIds(prev => {
         const next = new Set(prev);
         next.add(projectId);
@@ -4371,6 +4553,9 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
             );
           })}
         </div>
+      )}
+      {showSuccessTick && (
+        <SuccessTickOverlay onClose={() => setShowSuccessTick(false)} />
       )}
     </div>
   );
