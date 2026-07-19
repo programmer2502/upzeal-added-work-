@@ -1834,18 +1834,6 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
           <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
         )}
       </main>
-      {selectedCandidate && (
-        <DeveloperProfileModal 
-          developer={selectedCandidate} 
-          onClose={() => setSelectedCandidate(null)} 
-        />
-      )}
-      {selectedCompanyId && (
-        <CompanyProfileModal 
-          companyId={selectedCompanyId} 
-          onClose={() => setSelectedCompanyId(null)} 
-        />
-      )}
     </div>
   );
 }
@@ -2170,12 +2158,6 @@ function StudentBentoDashboard() {
           </table>
         </div>
       </div>
-      {selectedCompanyId && (
-        <CompanyProfileModal 
-          companyId={selectedCompanyId} 
-          onClose={() => setSelectedCompanyId(null)} 
-        />
-      )}
     </div>
   );
 }
