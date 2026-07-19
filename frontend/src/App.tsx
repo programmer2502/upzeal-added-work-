@@ -3526,12 +3526,6 @@ function StudentChatView({ userId, firstName, lastName, email }: { userId: strin
           </form>
         </div>
       </div>
-      {selectedCompanyId && (
-        <CompanyProfileModal 
-          companyId={selectedCompanyId} 
-          onClose={() => setSelectedCompanyId(null)} 
-        />
-      )}
     </div>
   );
 }
