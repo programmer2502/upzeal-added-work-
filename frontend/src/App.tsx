@@ -2701,45 +2701,39 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
   const [showSuccessTick, setShowSuccessTick] = useState(false);
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      // 1. Fetch projects with company details
-      const { data: projectsData, error: projErr } = await supabase
-        .from('projects')
-        .select(`
-          id,
-          title,
-          description,
-          budget,
-          created_at,
-          companies (
+    const loadFeedData = async () => {
+      try {
+        const [projectsRes, skillsRes, appsRes] = await Promise.all([
+          supabase.from('projects').select(`
             id,
-            name,
-            logo_url
-          )
-        `);
+            title,
+            description,
+            budget,
+            created_at,
+            companies (
+              id,
+              name,
+              logo_url
+            )
+          `),
+          supabase.from('required_skills').select('project_id, skill_name'),
+          userId 
+            ? supabase.from('applications').select('project_id').eq('developer_id', userId) 
+            : Promise.resolve({ data: null, error: null })
+        ]);
 
-      if (projErr) {
-        console.error("Error loading projects:", projErr.message);
-        return;
-      }
+        if (projectsRes.error) throw projectsRes.error;
+        if (skillsRes.error) throw skillsRes.error;
+        if (appsRes.error) throw appsRes.error;
 
-      if (projectsData) {
-        // Fetch all required skills for these projects
-        const { data: skillsData, error: skillErr } = await supabase
-          .from('required_skills')
-          .select('project_id, skill_name');
+        if (projectsRes.data) {
+          const matchedSkillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
+            if (!acc[item.project_id]) acc[item.project_id] = [];
+            acc[item.project_id].push(item.skill_name);
+            return acc;
+          }, {});
 
-        if (skillErr) {
-          console.error("Error loading required skills:", skillErr.message);
-          return;
-        }
-
-        const projectsWithSkills = projectsData.map((proj: any) => {
-          const matchedSkills = skillsData
-            ?.filter((s: any) => s.project_id === proj.id)
-            .map((s: any) => s.skill_name) || [];
-
-          return {
+          const projectsWithSkills = projectsRes.data.map((proj: any) => ({
             id: proj.id,
             companyId: proj.companies?.id || null,
             company: proj.companies?.name || 'Upzeal Client Partner',
@@ -2747,34 +2741,23 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
             time: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
             content: `${proj.title} - ${proj.description}`,
             budget: proj.budget || '',
-            tags: matchedSkills,
+            tags: matchedSkillsMap[proj.id] || [],
             highlight: true,
             isDbProject: true
-          };
-        });
+          }));
 
-        setDbProjects(projectsWithSkills);
+          setDbProjects(projectsWithSkills);
+        }
+
+        if (appsRes.data) {
+          setAppliedProjectIds(appsRes.data.map((a: any) => a.project_id));
+        }
+      } catch (err: any) {
+        console.error("Error loading feed data:", err.message || err);
       }
     };
 
-    const fetchApplications = async () => {
-      if (!userId) return;
-      const { data, error } = await supabase
-        .from('applications')
-        .select('project_id')
-        .eq('developer_id', userId);
-
-      if (error) {
-        console.error("Error loading applications:", error.message);
-        return;
-      }
-      if (data) {
-        setAppliedProjectIds(data.map((a: any) => a.project_id));
-      }
-    };
-
-    fetchProjects();
-    fetchApplications();
+    loadFeedData();
   }, [userId]);
 
   const handleApply = async (projectId: string, companyName: string) => {
@@ -3199,7 +3182,7 @@ function DeveloperProfileModal({
       }
     };
     fetchRecruiterCompanyProjects();
-  }, [recruiterUserId, developer.id]);
+  }, [recruiterUserId]);
 
   useEffect(() => {
     setCurrentXp(Number(developer.profile_details?.xp !== undefined ? developer.profile_details.xp : (developer.xp || 23094)));
@@ -4405,44 +4388,37 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
     const loadB2BData = async () => {
       setLoading(true);
       try {
-        const { data: myComp } = await supabase
-          .from('companies')
-          .select('id')
-          .eq('created_by', userId)
-          .maybeSingle();
+        const [myCompRes, allProjsRes, myAppsRes, skillsRes] = await Promise.all([
+          supabase.from('companies').select('id').eq('created_by', userId).maybeSingle(),
+          supabase.from('projects').select('*, companies(name, logo_url)').order('created_at', { ascending: false }),
+          supabase.from('applications').select('project_id').eq('developer_id', userId),
+          supabase.from('required_skills').select('project_id, skill_name')
+        ]);
+
+        if (allProjsRes.error) throw allProjsRes.error;
 
         let ownCompId = '';
-        if (myComp) {
-          setMyCompanyId(myComp.id);
-          ownCompId = myComp.id;
+        if (myCompRes.data) {
+          setMyCompanyId(myCompRes.data.id);
+          ownCompId = myCompRes.data.id;
         }
 
-        const { data: allProjs, error: projsErr } = await supabase
-          .from('projects')
-          .select('*, companies(name, logo_url)')
-          .order('created_at', { ascending: false });
-
-        if (projsErr) throw projsErr;
-
-        const { data: myApps } = await supabase
-          .from('applications')
-          .select('project_id')
-          .eq('developer_id', userId);
-
-        if (myApps) {
-          setAppliedProjectIds(new Set(myApps.map(a => a.project_id)));
+        if (myAppsRes.data) {
+          setAppliedProjectIds(new Set(myAppsRes.data.map(a => a.project_id)));
         }
 
-        if (allProjs) {
-          const filtered = allProjs.filter(p => p.company_id !== ownCompId);
+        if (allProjsRes.data) {
+          const filtered = allProjsRes.data.filter(p => p.company_id !== ownCompId);
 
-          const { data: skillsData } = await supabase
-            .from('required_skills')
-            .select('project_id, skill_name');
+          const matchedSkillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
+            if (!acc[item.project_id]) acc[item.project_id] = [];
+            acc[item.project_id].push(item.skill_name);
+            return acc;
+          }, {});
 
           const projsWithSkills = filtered.map(p => ({
             ...p,
-            tags: skillsData?.filter(s => s.project_id === p.id).map(s => s.skill_name) || [],
+            tags: matchedSkillsMap[p.id] || [],
             companyName: p.companies?.name || 'Partner Organization',
             logoUrl: p.companies?.logo_url || ''
           }));
