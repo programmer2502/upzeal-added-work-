@@ -2943,12 +2943,6 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
           </div>
         )}
       </div>
-      {selectedCompanyId && (
-        <CompanyProfileModal 
-          companyId={selectedCompanyId} 
-          onClose={() => setSelectedCompanyId(null)} 
-        />
-      )}
     </div>
   );
 }
@@ -3077,12 +3071,6 @@ function DeveloperProfileModal({ developer, onClose }: { developer: any; onClose
           </div>
         </div>
       </div>
-      {selectedCompanyId && (
-        <CompanyProfileModal 
-          companyId={selectedCompanyId} 
-          onClose={() => setSelectedCompanyId(null)} 
-        />
-      )}
     </div>
   );
 }
