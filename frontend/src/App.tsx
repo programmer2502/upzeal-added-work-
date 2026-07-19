@@ -4212,6 +4212,170 @@ function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: strin
   );
 }
 
+function B2BPartnerProjectsView({ userId }: { userId: string }) {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const loadB2BData = async () => {
+      setLoading(true);
+      try {
+        const { data: myComp } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('created_by', userId)
+          .maybeSingle();
+
+        let ownCompId = '';
+        if (myComp) {
+          setMyCompanyId(myComp.id);
+          ownCompId = myComp.id;
+        }
+
+        const { data: allProjs, error: projsErr } = await supabase
+          .from('projects')
+          .select('*, companies(name, logo_url)')
+          .order('created_at', { ascending: false });
+
+        if (projsErr) throw projsErr;
+
+        const { data: myApps } = await supabase
+          .from('applications')
+          .select('project_id')
+          .eq('developer_id', userId);
+
+        if (myApps) {
+          setAppliedProjectIds(new Set(myApps.map(a => a.project_id)));
+        }
+
+        if (allProjs) {
+          const filtered = allProjs.filter(p => p.company_id !== ownCompId);
+
+          const { data: skillsData } = await supabase
+            .from('required_skills')
+            .select('project_id, skill_name');
+
+          const projsWithSkills = filtered.map(p => ({
+            ...p,
+            tags: skillsData?.filter(s => s.project_id === p.id).map(s => s.skill_name) || [],
+            companyName: p.companies?.name || 'Partner Organization',
+            logoUrl: p.companies?.logo_url || ''
+          }));
+
+          setProjects(projsWithSkills);
+        }
+      } catch (err) {
+        console.error("Failed to load B2B marketplace projects:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadB2BData();
+  }, [userId]);
+
+  const handleApplyPartner = async (projectId: string) => {
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .insert({
+          project_id: projectId,
+          developer_id: userId,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      setAppliedProjectIds(prev => {
+        const next = new Set(prev);
+        next.add(projectId);
+        return next;
+      });
+    } catch (err: any) {
+      alert("Failed to submit B2B application: " + err.message);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col flex-1 text-left">
+      <header className="mb-8 shrink-0">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Partner Board</h1>
+        <p className="text-sm text-white/50 mt-1 font-mono">B2B marketplace: Browse and apply to opportunities posted by other organizations</p>
+      </header>
+
+      {loading ? (
+        <div className="flex items-center justify-center p-20 w-full">
+          <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="border border-[#333] rounded-2xl bg-[#111318] p-10 text-center text-white/40 font-mono text-xs">
+          No external partner projects listed at this time.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+          {projects.map(p => {
+            const hasApplied = appliedProjectIds.has(p.id);
+            return (
+              <div key={p.id} className="border border-[#333] rounded-2xl bg-[#111318] p-6 hover:border-white/20 transition-all flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-[#333] flex items-center justify-center font-bold text-sm shrink-0">
+                      {p.logoUrl ? (
+                        <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <span>{p.companyName.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white leading-normal">{p.companyName}</h3>
+                      <p className="text-[10px] text-[#00d2ff] font-mono mt-0.5">Budget: {p.budget || 'B2B Contract'}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-white/90">{p.title}</h4>
+                    <p className="text-xs text-white/60 mt-1.5 leading-relaxed">{p.description}</p>
+                  </div>
+
+                  {p.tags.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap pt-2">
+                      {p.tags.map((t: string) => (
+                        <span key={t} className="px-1.5 py-0.5 text-[9px] font-mono bg-black border border-[#333] text-white/50 rounded-sm">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-6">
+                  {hasApplied ? (
+                    <button 
+                      disabled
+                      className="w-full text-xs font-semibold text-white/40 bg-white/5 border border-white/5 rounded-xl py-2.5 transition-all text-center cursor-not-allowed font-mono"
+                    >
+                      Proposal Sent / Partnership Requested
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleApplyPartner(p.id)}
+                      className="w-full text-xs font-semibold text-black bg-white hover:bg-white/90 active:scale-[0.98] rounded-xl py-2.5 transition-all text-center cursor-pointer font-sans"
+                    >
+                      Apply as Partner
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
   const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory'>('pipeline');
   const [dbCandidates, setDbCandidates] = useState<any[]>([]);
@@ -4334,6 +4498,15 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
               <span className="font-medium text-sm hidden md:block text-left">Chat</span>
             </button>
             <button
+              onClick={() => setRecruiterView('partner_projects')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'partner_projects' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block text-left">Partner Board</span>
+            </button>
+            <button
               onClick={() => setRecruiterView('companies_directory')}
               className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'companies_directory' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
@@ -4439,6 +4612,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           <CompanyProfileView userId={userId} />
         ) : recruiterView === 'companies_directory' ? (
           <CompanyDirectoryView onSelectCompany={(id) => setSelectedCompanyId(id)} />
+        ) : recruiterView === 'partner_projects' ? (
+          <B2BPartnerProjectsView userId={userId} />
         ) : (
           /* ── Talent Pool View ── */
           <div className="w-full flex flex-col flex-1 text-left">
