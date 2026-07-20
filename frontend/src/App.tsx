@@ -1715,6 +1715,7 @@ export default function App() {
           lastName={lastName} 
           email={email} 
           developerSkills={selectedTech}
+          setToasts={setToasts}
           onLogout={async () => {
             await supabase.auth.signOut();
             setView('landing');
@@ -1915,46 +1916,72 @@ function InputGroup({
   );
 }
 // ==========================================
-// SEPARATE DASHBOARD COMPONENTS
-// ==========================================
-
 function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
+  const [toasts, setToasts] = useState<any[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string>(() => {
+    return localStorage.getItem(`upzeal_user_avatar_${userId}`) || '';
+  });
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchAvatar = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (data?.profile_details?.avatar_url) {
+        setAvatarUrl(data.profile_details.avatar_url);
+        localStorage.setItem(`upzeal_user_avatar_${userId}`, data.profile_details.avatar_url);
+      }
+    };
+    fetchAvatar();
+  }, [userId, currentView]);
+
+  const handleAvatarChange = (newUrl: string) => {
+    setAvatarUrl(newUrl);
+    if (userId) {
+      localStorage.setItem(`upzeal_user_avatar_${userId}`, newUrl);
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden">
+    <div className="flex h-screen w-screen bg-[#0a0a0a] text-white overflow-hidden font-sans antialiased text-left">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[#333] bg-[#0a0a0a] flex flex-col justify-between shrink-0">
+      <aside className="w-64 border-r border-[#333] bg-[#111318] flex flex-col justify-between shrink-0">
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-10">
-            <Code2 className="w-6 h-6 text-[#00d2ff]" />
-            <span className="font-bold text-lg tracking-tight">Upzeal</span>
+          <div className="flex items-center gap-2 mb-8">
+            <span className="text-xl font-bold font-mono tracking-wider text-white flex items-center gap-1">
+              <span className="text-[#00d2ff]">&lt;/&gt;</span> Upzeal
+            </span>
           </div>
-          <nav className="flex flex-col gap-2">
+          <nav className="space-y-1">
             <button 
               onClick={() => setCurrentView('dashboard')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               <span className="font-medium text-sm">Dashboard</span>
             </button>
             <button 
               onClick={() => setCurrentView('profile')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'profile' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'profile' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <User className="w-4 h-4" />
               <span className="font-medium text-sm">Profile</span>
             </button>
             <button 
               onClick={() => setCurrentView('feed')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'feed' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'feed' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <Activity className="w-4 h-4" />
               <span className="font-medium text-sm">Company Feed</span>
             </button>
             <button 
               onClick={() => setCurrentView('chat')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'chat' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'chat' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <MessageSquare className="w-4 h-4" />
               <span className="font-medium text-sm">Chat</span>
@@ -1963,8 +1990,14 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
         </div>
         <div className="p-6 border-t border-[#333] flex flex-col gap-4">
            <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-white shadow-none border border-[#333] shrink-0">
-                {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
+             <div className="w-10 h-10 rounded-full overflow-hidden border border-[#333] shrink-0 bg-[#151820]">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-white text-xs">
+                    {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
              </div>
              <div className="overflow-hidden flex-1">
                <p className="text-sm font-semibold truncate">{firstName && lastName ? `${firstName} ${lastName}` : email}</p>
@@ -1977,15 +2010,15 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
            >
              Log Out
            </button>
-        </div>
+         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden bg-[#0e1015] h-full">
+      <main className={`flex-1 bg-[#0e1015] ${currentView === 'chat' ? 'overflow-hidden h-full' : 'overflow-y-auto h-full'}`}>
         {currentView === 'dashboard' ? (
-          <StudentBentoDashboard userId={userId} />
+          <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} />
         ) : currentView === 'profile' ? (
-          <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+          <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
         ) : currentView === 'feed' ? (
           <StudentFeedView userId={userId} developerSkills={developerSkills} />
         ) : (
@@ -1996,8 +2029,115 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
   );
 }
 
-function StudentBentoDashboard({ userId }: { userId: string }) {
-  const [xp, setXp] = useState(23094);
+function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }: { userId: string; firstName: string; developerSkills: string[]; setToasts: React.Dispatch<React.SetStateAction<any[]>> }) {
+  const [xp, setXp] = useState(0);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [challengeFilter, setChallengeFilter] = useState<'all' | 'matched'>('all');
+  const [skillScores, setSkillScores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mentorInput, setMentorInput] = useState('');
+  const [mentorMessage, setMentorMessage] = useState('');
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(() => {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  });
+
+  useEffect(() => {
+    setMentorMessage(`Hi ${firstName || 'Developer'}. Ask me a technical question and I will explain it clearly, give examples, and suggest what to practice next.`);
+  }, [firstName]);
+
+  const formatSkillTitle = (rawName: string) => {
+    const mapping: Record<string, string> = {
+      'react': 'React Best Practices',
+      'react-best-practices': 'React Best Practices',
+      'node': 'NodeJS Best Practices',
+      'nodejs-best-practices': 'NodeJS Best Practices',
+      'aws': 'AWS Cloud Architecture',
+      'aws-skills': 'AWS Cloud Architecture',
+      'database': 'Database Design & Postgres',
+      'database-design': 'Database Design & Postgres',
+      'python': 'Python Pro',
+      'python-pro': 'Python Pro',
+      'fastapi': 'FastAPI Pro',
+      'fastapi-pro': 'FastAPI Pro',
+      'docker': 'Docker Expert',
+      'docker-expert': 'Docker Expert',
+      'kubernetes': 'Kubernetes Architect',
+      'kubernetes-architect': 'Kubernetes Architect',
+      'systematic-debugging': 'Systematic Debugging',
+      'ui-ux-pro-max': 'UI/UX Pro Max'
+    };
+
+    const key = rawName.toLowerCase().trim();
+    if (mapping[key]) return mapping[key];
+
+    return rawName.split(/[-_]/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  const handleUpgrade = () => {
+    setToasts(prev => [
+      ...prev,
+      {
+        id: `upgrade-${Date.now()}`,
+        title: 'Upzeal Pro Activated! ⚡',
+        message: 'Your developer profile now has 40% bonus XP multiplier and priority recruiter visibility.',
+        type: 'success'
+      }
+    ]);
+    setXp(prev => Math.round(prev + 50));
+  };
+
+  const handleMentorSend = (query?: string) => {
+    const q = query || mentorInput;
+    if (!q.trim()) return;
+    setIsAiThinking(true);
+    if (!query) setMentorInput('');
+    setTimeout(() => {
+      let response = `Here is a tip on "${q}": Focus on mastering core fundamentals and building real-world projects. Practice clean code standards and write tests!`;
+      const lower = q.toLowerCase();
+      if (lower.includes('react')) {
+        response = `For React: Master hooks like useEffect and useMemo, state composition patterns, and scalable React application architectures.`;
+      } else if (lower.includes('dsa') || lower.includes('algorithm')) {
+        response = `For DSA Prep: Practice Big-O complexity, hash tables, linked lists, sliding window array problems, and binary search trees.`;
+      } else if (lower.includes('project')) {
+        response = `Project Idea: Build a collaborative dev tools app with WebSocket communication, state syncing, and structured SQL/NoSQL storage.`;
+      } else if (lower.includes('aws') || lower.includes('cloud')) {
+        response = `For AWS: Focus on S3 asset delivery, Lambda serverless endpoints, API Gateway routing, and VPC networks.`;
+      } else if (lower.includes('database') || lower.includes('postgres')) {
+        response = `For Database: Learn database indexes, transaction isolation, connection pools, and query optimization.`;
+      }
+      setMentorMessage(response);
+      setIsAiThinking(false);
+    }, 500);
+  };
+
+  const formatDate = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  // Dynamic Chart SVG calculations based on user's real XP
+  const maxScale = Math.max(100, xp);
+  const getY = (val: number) => 120 - (val / maxScale) * 100;
+
+  const p0 = 0;
+  const p1 = Math.round(xp * 0.2);
+  const p2 = Math.round(xp * 0.5);
+  const p3 = Math.round(xp * 0.8);
+  const p4 = xp;
+
+  const y0 = getY(p0);
+  const y1 = getY(p1);
+  const y2 = getY(p2);
+  const y3 = getY(p3);
+  const y4 = getY(p4);
+
+  const chartStrokeD = `M 0 ${y0} C 55 ${y0}, 55 ${y1}, 110 ${y1} C 165 ${y1}, 165 ${y2}, 220 ${y2} C 275 ${y2}, 275 ${y3}, 330 ${y3} C 385 ${y3}, 385 ${y4}, 440 ${y4}`;
+  const chartFillD = `${chartStrokeD} L 440 140 L 0 140 Z`;
+
+  const focusX = 330;
+  const focusY = y3;
 
   useEffect(() => {
     if (!userId) return;
@@ -2023,6 +2163,205 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
     };
     fetchXp();
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchChallenges = async () => {
+      try {
+        setLoading(true);
+        const [projectsRes, skillsRes, appsRes, scoresRes] = await Promise.all([
+          supabase.from('projects').select(`
+            id,
+            title,
+            description,
+            budget,
+            status,
+            created_at,
+            companies (
+              id,
+              name,
+              logo_url
+            )
+          `),
+          supabase.from('required_skills').select('project_id, skill_name'),
+          supabase.from('applications').select('project_id, status').eq('developer_id', userId),
+          supabase.from('skill_scores').select('*').eq('user_id', userId)
+        ]);
+
+        if (projectsRes.error) throw projectsRes.error;
+        if (skillsRes.error) throw skillsRes.error;
+        if (appsRes.error) throw appsRes.error;
+        if (scoresRes.error) throw scoresRes.error;
+
+        const skillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
+          if (!acc[item.project_id]) acc[item.project_id] = [];
+          acc[item.project_id].push(item.skill_name);
+          return acc;
+        }, {});
+
+        const userAppsMap = (appsRes.data || []).reduce((acc: any, item: any) => {
+          acc[item.project_id] = item.status;
+          return acc;
+        }, {});
+
+        const { data: allApps } = await supabase.from('applications').select('project_id');
+        const participantCountMap = (allApps || []).reduce((acc: any, item: any) => {
+          acc[item.project_id] = (acc[item.project_id] || 0) + 1;
+          return acc;
+        }, {});
+
+        if (projectsRes.data) {
+          const normalizedDevSkills = (developerSkills || []).map(s => s.toLowerCase());
+
+          const mapped = projectsRes.data.map((proj: any, index: number) => {
+            const projSkills = skillsMap[proj.id] || [];
+            const userAppStatus = userAppsMap[proj.id] || null;
+            const participantsCount = participantCountMap[proj.id] || 0;
+            const isMatched = projSkills.some((s: string) => 
+              normalizedDevSkills.some(ds => ds.includes(s.toLowerCase()) || s.toLowerCase().includes(ds))
+            );
+
+            return {
+              id: proj.id,
+              rank: `#${index + 1}`,
+              name: proj.title,
+              author: proj.companies?.name || 'Upzeal Client Partner',
+              avatar: proj.companies?.logo_url || `https://i.pravatar.cc/150?u=${proj.companies?.name || 'company'}`,
+              date: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+              stack: projSkills.map(formatSkillTitle).join(', '),
+              participants: participantsCount.toString(),
+              status: proj.status === 'open' || proj.status === 'public' ? 'Public' : '🔒 Private',
+              statusColor: proj.status === 'open' || proj.status === 'public' ? 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' : 'text-white/50 bg-white/5 border-[#333]',
+              appStatus: userAppStatus,
+              skills: projSkills,
+              isMatched
+            };
+          });
+
+          setChallenges(mapped);
+        }
+
+        // Initialize and set skill scores starting from 0
+        let userScores = scoresRes.data || [];
+        if (userScores.length === 0 && developerSkills && developerSkills.length > 0) {
+          const rowsToInsert = developerSkills.map(skill => ({
+            user_id: userId,
+            skill_name: skill,
+            score: 0,
+            verified: false
+          }));
+          const { data: inserted, error: insertError } = await supabase
+            .from('skill_scores')
+            .insert(rowsToInsert)
+            .select();
+          if (!insertError && inserted) {
+            userScores = inserted;
+          } else {
+            userScores = rowsToInsert;
+          }
+        }
+        setSkillScores(userScores);
+
+      } catch (err) {
+        console.error("Error loading active challenges:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchChallenges();
+  }, [userId, developerSkills]);
+
+  const handleJoin = async (projectId: string) => {
+    try {
+      const { error } = await supabase.from('applications').insert({
+        project_id: projectId,
+        developer_id: userId,
+        status: 'pending'
+      });
+      if (error) {
+        alert("Failed to join challenge: " + error.message);
+        return;
+      }
+      
+      setChallenges(prev => prev.map(c => {
+        if (c.id === projectId) {
+          return { ...c, appStatus: 'pending', participants: (parseInt(c.participants) + 1).toString() };
+        }
+        return c;
+      }));
+
+      // Award +50 points (XP) for joining/completing the challenge
+      const targetChallenge = challenges.find(c => c.id === projectId);
+      const challengeSkillsList = targetChallenge?.skills || [];
+
+      // 1. Add 50 points to each skill score required for this project
+      for (const skill of challengeSkillsList) {
+        const { data: currentScoreData } = await supabase
+          .from('skill_scores')
+          .select('id, score')
+          .eq('user_id', userId)
+          .eq('skill_name', skill)
+          .maybeSingle();
+
+        if (currentScoreData) {
+          const newScore = (currentScoreData.score || 0) + 50;
+          await supabase
+            .from('skill_scores')
+            .update({ score: newScore })
+            .eq('id', currentScoreData.id);
+        } else {
+          await supabase
+            .from('skill_scores')
+            .insert({
+              user_id: userId,
+              skill_name: skill,
+              score: 50,
+              verified: false
+            });
+        }
+      }
+
+      // 2. Fetch updated skill scores to update the UI cards
+      const { data: updatedScores } = await supabase
+        .from('skill_scores')
+        .select('*')
+        .eq('user_id', userId);
+      if (updatedScores) {
+        setSkillScores(updatedScores);
+      }
+
+      // 3. Add 50 XP to total user XP while preserving existing profile_details (avatar_url, bio, location)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = {
+        ...(userData?.profile_details || {}),
+        xp: (Number(userData?.profile_details?.xp) || 0) + 50
+      };
+
+      await supabase
+        .from('users')
+        .update({ profile_details: details })
+        .eq('id', userId);
+
+      setXp(details.xp);
+
+      setToasts(prev => [
+        ...prev,
+        {
+          id: `joined-${projectId}`,
+          title: 'Project Joined! 🚀',
+          message: 'You registered for this project. +50 XP added to your total balance and skills!',
+          type: 'success'
+        }
+      ]);
+    } catch (err: any) {
+      console.error("Error joining challenge:", err);
+    }
+  };
 
   return (
     <div className="p-6 md:p-8 lg:p-10 space-y-6 max-w-[1400px] mx-auto">
@@ -2056,11 +2395,11 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">Commit throughput</span>
-                <p className="text-sm text-white/80 mt-0.5">2x increase to last month</p>
+                <p className="text-sm text-white/80 mt-0.5">{challenges.filter(c => c.appStatus).length} joined challenge{challenges.filter(c => c.appStatus).length === 1 ? '' : 's'}</p>
               </div>
               <div className="text-right">
                 <span className="text-[11px] text-white/40 uppercase tracking-wider font-medium">Growth rate</span>
-                <p className="text-sm font-mono text-[#00d2ff] mt-0.5">+ 12.83 %</p>
+                <p className="text-sm font-mono text-[#00d2ff] mt-0.5">+ {(skillScores.reduce((acc, s) => acc + (s.score || 0), 0) / 10).toFixed(1)} %</p>
               </div>
             </div>
 
@@ -2083,31 +2422,34 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
                 <line x1="0" y1="35" x2="440" y2="35" stroke="rgba(255,255,255,0.04)"/>
                 <line x1="0" y1="70" x2="440" y2="70" stroke="rgba(255,255,255,0.04)"/>
                 <line x1="0" y1="105" x2="440" y2="105" stroke="rgba(255,255,255,0.04)"/>
-                <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18 L440 140 L0 140Z" fill="url(#gFill)"/>
-                <path d="M0 120 C25 115,40 125,60 105 C80 85,95 105,115 90 C135 75,150 88,170 72 C190 56,210 75,235 58 C260 40,275 40,295 38 C295 38,310 18,310 18 L325 45 C345 55,360 38,380 38 C400 38,415 20,440 18" fill="none" stroke="#00d2ff" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="310" cy="18" r="4.5" fill="#111318" stroke="#00d2ff" strokeWidth="2.5"/>
-                <circle cx="310" cy="18" r="1.5" fill="white"/>
-                <line x1="310" y1="18" x2="310" y2="140" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3 3"/>
+                <path d={chartFillD} fill="url(#gFill)"/>
+                <path d={chartStrokeD} fill="none" stroke="#00d2ff" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx={focusX} cy={focusY} r="4.5" fill="#111318" stroke="#00d2ff" strokeWidth="2.5"/>
+                <circle cx={focusX} cy={focusY} r="1.5" fill="white"/>
+                <line x1={focusX} y1={focusY} x2={focusX} y2="140" stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3 3"/>
               </svg>
               {/* Tooltip */}
-              <div className="absolute top-0 left-[65%] -translate-x-1/2 bg-[#1a1d24] border border-[#333] rounded-lg px-3 py-2 pointer-events-none">
-                <span className="text-[10px] text-white/50 block font-mono">Jun 4</span>
-                <span className="text-sm font-semibold font-mono">5,538 XP</span>
-                <span className="text-[10px] text-[#00d2ff] font-mono ml-1">+ 9.41 %</span>
+              <div 
+                className="absolute bg-[#1a1d24] border border-[#333] rounded-lg px-3 py-2 pointer-events-none transition-all"
+                style={{ left: `${(focusX / 440) * 100}%`, transform: 'translateX(-50%)', top: `${Math.max(0, focusY - 50)}px` }}
+              >
+                <span className="text-[10px] text-white/50 block font-mono">{formatDate(10)}</span>
+                <span className="text-sm font-semibold font-mono">★ {p3} XP</span>
+                <span className="text-[10px] text-[#00d2ff] font-mono ml-1">+ {xp > 0 ? '10.0' : '0.0'} %</span>
               </div>
             </div>
 
             {/* Chart X-axis */}
             <div className="flex justify-between text-[10px] text-white/30 font-mono -mt-1">
-              <span>May 8</span><span>May 18</span><span>May 28</span><span>Jun 8</span>
+              <span>{formatDate(30)}</span><span>{formatDate(20)}</span><span>{formatDate(10)}</span><span>Today</span>
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-3 border-t border-[#333]">
-              <span className="text-2xl font-bold font-mono text-[#00d2ff]">+ 19.23 <span className="text-base">%</span></span>
+              <span className="text-2xl font-bold font-mono text-[#00d2ff]">+ {(skillScores.reduce((acc, s) => acc + (s.score || 0), 0) / 10).toFixed(1)} <span className="text-base">%</span></span>
               <div className="text-right">
                 <span className="text-[10px] text-white/30 block">Last updated</span>
-                <span className="text-xs text-white/60 font-mono">Today, 06:49 AM</span>
+                <span className="text-xs text-white/60 font-mono">Today, {lastUpdated}</span>
               </div>
             </div>
           </div>
@@ -2116,7 +2458,9 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight">My Top Skills</h2>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-white/40 font-mono">02 of 5</span>
+              <span className="text-xs text-white/40 font-mono">
+                {String(Math.min(5, skillScores.length)).padStart(2, '0')} of {skillScores.length}
+              </span>
               <button className="w-7 h-7 border border-[#333] rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer">
                 <ChevronRight className="w-3.5 h-3.5 rotate-180" />
               </button>
@@ -2128,37 +2472,48 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
 
           {/* Skill Cards Row */}
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { name: 'FastAPI', xp: '3,074', change: '9.23', color: 'bg-[#00d2ff]' },
-              { name: 'WebSockets', xp: '2,931', change: '7.59', color: 'bg-[#10b981]' },
-            ].map(skill => (
-              <div key={skill.name} className="border border-[#333] rounded-2xl bg-[#111318] p-4 hover:border-white/20 transition-colors cursor-pointer group">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${skill.color}`} />
-                    <span className="text-sm font-semibold">{skill.name}</span>
-                  </div>
-                  <button className="text-white/30 hover:text-white/60 transition-colors cursor-pointer">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-lg font-bold font-mono"># {skill.xp} XP</span>
-                  <span className="text-xs font-mono text-[#10b981]">↑ {skill.change} %</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {[1,2,3].map(i => (
-                      <img key={i} src={`https://i.pravatar.cc/150?u=a${skill.name}${i}`} alt="" className="w-6 h-6 rounded-full border-2 border-[#111318] object-cover" />
-                    ))}
-                    <span className="w-6 h-6 rounded-full bg-[#1a1d24] border-2 border-[#111318] flex items-center justify-center text-[8px] font-bold text-white/60">99+</span>
-                  </div>
-                  <button className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform cursor-pointer">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  </button>
-                </div>
+            {skillScores.length === 0 ? (
+              <div className="col-span-2 border border-dashed border-[#333] rounded-2xl p-6 text-center text-white/40 font-mono text-xs">
+                No skills set. Select your skills in profile setup!
               </div>
-            ))}
+            ) : (
+              skillScores.slice(0, 4).map((skill, index) => {
+                const colors = ['bg-[#00d2ff]', 'bg-[#10b981]', 'bg-[#fbbf24]', 'bg-[#2563eb]'];
+                const color = colors[index % colors.length];
+                const capitalizedName = formatSkillTitle(skill.skill_name);
+                const points = skill.score;
+                const changeMetric = skill.score > 0 ? (skill.score / 5 + (index + 1) * 1.2).toFixed(2) : '0.00';
+
+                return (
+                  <div key={skill.id || skill.skill_name} className="border border-[#333] rounded-2xl bg-[#111318] p-4 hover:border-white/20 transition-colors cursor-pointer group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${color}`} />
+                        <span className="text-sm font-semibold">{capitalizedName}</span>
+                      </div>
+                      <button className="text-white/30 hover:text-white/60 transition-colors cursor-pointer bg-transparent border-none">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-lg font-bold font-mono"># {points.toLocaleString()} XP</span>
+                      <span className="text-xs font-mono text-[#10b981]">↑ {changeMetric} %</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex -space-x-2">
+                        {[1,2,3].map(i => (
+                          <img key={i} src={`https://i.pravatar.cc/150?u=a${skill.skill_name}${i}`} alt="" className="w-6 h-6 rounded-full border-2 border-[#111318] object-cover" />
+                        ))}
+                        <span className="w-6 h-6 rounded-full bg-[#1a1d24] border-2 border-[#111318] flex items-center justify-center text-[8px] font-bold text-white/60">99+</span>
+                      </div>
+                      <button className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform cursor-pointer border-none">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
@@ -2182,14 +2537,14 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-white/40">Compared to last month</span>
-              <span className="text-sm font-mono text-red-400">- 37.16 %</span>
+              <span className="text-sm font-mono text-[#10b981]">+ {(skillScores.length * 3.5).toFixed(1)} %</span>
             </div>
             <div className="flex items-center justify-between py-3 border-t border-b border-[#333]">
               <span className="text-xs text-white/50 flex items-center gap-1.5">
-                Yearly avg: <strong className="text-white font-mono">★ 34,502</strong>
+                Yearly avg: <strong className="text-white font-mono">★ {(xp * 1.5).toFixed(0)}</strong>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
               </span>
-              <a href="#" className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1 transition-colors">
+              <a href="#" onClick={(e) => { e.preventDefault(); handleUpgrade(); }} className="text-xs text-white/40 hover:text-white/70 flex items-center gap-1 transition-colors">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 How it works?
               </a>
@@ -2212,15 +2567,26 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
 
               {/* Chat bubble */}
               <div className="bg-[#0a0a0a] border border-[#333] rounded-xl p-3">
-                <p className="text-xs text-white/80 leading-relaxed">
-                  <strong>Hi Hruday.</strong> Ask me a technical question and I will explain it clearly, give examples, and suggest what to practice next.
-                </p>
+                {isAiThinking ? (
+                  <div className="flex items-center gap-2 text-xs text-white/50 py-1 font-mono">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00d2ff]" />
+                    <span>AI Mentor is analyzing...</span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/80 leading-relaxed">
+                    {mentorMessage}
+                  </p>
+                )}
               </div>
 
               {/* Suggestion pills */}
               <div className="flex flex-wrap gap-2">
                 {['React hooks', 'DSA prep', 'Project idea'].map(tag => (
-                  <button key={tag} className="text-[11px] font-medium px-2.5 py-1 border border-[#333] rounded-full text-white/60 hover:text-white hover:border-[#00d2ff]/40 hover:bg-[#00d2ff]/5 transition-colors cursor-pointer">
+                  <button 
+                    key={tag} 
+                    onClick={() => handleMentorSend(tag)}
+                    className="text-[11px] font-medium px-2.5 py-1 border border-[#333] rounded-full text-white/60 hover:text-white hover:border-[#00d2ff]/40 hover:bg-[#00d2ff]/5 transition-colors cursor-pointer"
+                  >
                     {tag}
                   </button>
                 ))}
@@ -2232,9 +2598,15 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
                   type="text"
                   autoComplete="off"
                   placeholder="Ask about React, Node.js, DSA, projects..."
+                  value={mentorInput}
+                  onChange={e => setMentorInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleMentorSend()}
                   className="flex-1 bg-[#0a0a0a] border border-[#333] rounded-xl h-10 px-3 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-[#00d2ff]/40"
                 />
-                <button className="h-10 px-4 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">
+                <button 
+                  onClick={() => handleMentorSend()}
+                  className="h-10 px-4 bg-white text-black text-xs font-bold rounded-xl hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer"
+                >
                   Send
                 </button>
               </div>
@@ -2271,7 +2643,10 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
 
             <div className="flex items-center justify-between pt-4 border-t border-[#333]">
               <span className="text-[11px] text-white/30 cursor-pointer hover:text-white/50 transition-colors">Don't show again</span>
-              <button className="text-xs font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">
+              <button 
+                onClick={handleUpgrade}
+                className="text-xs font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer"
+              >
                 Get started
               </button>
             </div>
@@ -2281,64 +2656,116 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
 
       {/* ── Bottom Row: Active Challenges Table (full width) ── */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold tracking-tight">Active Challenges</h2>
-          <button className="flex items-center gap-1.5 text-xs font-medium text-white/60 border border-[#333] rounded-full px-3 py-1.5 hover:bg-white/5 transition-colors cursor-pointer">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            as List
-            <ChevronRight className="w-3 h-3 rotate-90" />
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Active Challenges</h2>
+            <p className="text-xs text-white/40 mt-0.5">Explore open projects posted by partner companies and clients</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 bg-[#0a0a0a] rounded-lg p-1 border border-[#333]">
+              <button 
+                onClick={() => setChallengeFilter('all')}
+                className={`text-[11px] font-medium px-3 py-1.5 rounded-md cursor-pointer transition-colors ${challengeFilter === 'all' ? 'bg-[#1a1d24] text-white border border-[#333]' : 'text-white/40 hover:text-white/70'}`}
+              >
+                All Projects ({challenges.length})
+              </button>
+              <button 
+                onClick={() => setChallengeFilter('matched')}
+                className={`text-[11px] font-medium px-3 py-1.5 rounded-md cursor-pointer transition-colors ${challengeFilter === 'matched' ? 'bg-[#1a1d24] text-white border border-[#333]' : 'text-white/40 hover:text-white/70'}`}
+              >
+                Matched ({challenges.filter(c => c.isMatched).length})
+              </button>
+            </div>
+          </div>
         </div>
 
+        {/* Table Container */}
         <div className="border border-[#333] rounded-2xl bg-[#111318] overflow-hidden">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[#333] text-[11px] uppercase tracking-wider text-white/30 font-medium">
-                <th className="px-5 py-3">Rank</th>
+              <tr className="border-b border-[#333] text-[11px] text-white/40 uppercase tracking-wider font-medium bg-[#0a0a0a]/50">
+                <th className="px-5 py-3 w-12">#</th>
                 <th className="px-5 py-3">Challenge</th>
-                <th className="px-5 py-3">Author</th>
+                <th className="px-5 py-3">Company / Author</th>
                 <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Stack</th>
-                <th className="px-5 py-3">Participants</th>
+                <th className="px-5 py-3">Required Tech Stack</th>
+                <th className="px-5 py-3">Applicants</th>
                 <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Action</th>
+                <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {[
-                { rank: '#1', name: 'Smart City Noise Map (Real-time)', author: 'Samuel', avatar: 'sam', date: '02/14/2024', stack: 'Go', participants: '99+', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
-                { rank: '#2', name: 'Design System from Scratch', author: 'You', avatar: 'hoss', date: '09/23/2023', stack: 'React', participants: '64', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
-                { rank: '#3', name: 'K8s Cluster Autoscaler', author: 'Maria', avatar: 'maria', date: '04/05/2024', stack: 'DevOps', participants: '91', status: '🔒 Private', statusColor: 'text-white/50 bg-white/5 border-[#333]' },
-                { rank: '#4', name: 'GraphQL Federation Gateway', author: 'Steph', avatar: 'steph', date: '11/18/2023', stack: 'Node', participants: '42', status: 'Public', statusColor: 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' },
-              ].map(row => (
-                <tr key={row.rank} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-4 font-mono font-bold text-white/40">{row.rank}</td>
-                  <td className="px-5 py-4 font-semibold text-white/90">{row.name}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <img src={`https://i.pravatar.cc/150?u=${row.avatar}`} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
-                      <span className="text-white/70">{row.author}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
-                  <td className="px-5 py-4">
-                    <span className="px-2 py-0.5 text-[10px] font-mono font-medium bg-black border border-[#333] text-white/70 rounded">{row.stack}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex -space-x-1.5">
-                      <img src={`https://i.pravatar.cc/150?u=p${row.rank}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                      <img src={`https://i.pravatar.cc/150?u=p${row.rank}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                      <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <button className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">Join</button>
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-10 text-center">
+                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-white/40" />
                   </td>
                 </tr>
-              ))}
+              ) : (challenges.filter(c => challengeFilter === 'all' || c.isMatched)).length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-8 text-center text-white/40 font-mono text-xs">
+                    {challengeFilter === 'matched' ? 'No projects match your exact tech stack. Click "All Projects" to view all company postings!' : 'No open challenges posted yet.'}
+                  </td>
+                </tr>
+              ) : (
+                challenges
+                  .filter(c => challengeFilter === 'all' || c.isMatched)
+                  .map(row => (
+                    <tr key={row.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                      <td className="px-5 py-4 font-mono font-bold text-white/40">{row.rank}</td>
+                      <td className="px-5 py-4 font-semibold text-white/90">
+                        <div className="flex items-center gap-2">
+                          <span>{row.name}</span>
+                          {row.isMatched && (
+                            <span className="text-[10px] font-bold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-2 py-0.5 rounded-full">
+                              ★ Recommended
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <img src={row.avatar} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
+                          <span className="text-white/80 font-medium">{row.author}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {row.skills.map((skill: string) => (
+                            <span key={skill} className="px-2 py-0.5 text-[10px] font-mono font-medium bg-[#0a0a0a] border border-[#333] text-white/70 rounded">
+                              {formatSkillTitle(skill)}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex -space-x-1.5 items-center">
+                          <img src={`https://i.pravatar.cc/150?u=p${row.id}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                          <img src={`https://i.pravatar.cc/150?u=p${row.id}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                          <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        {row.appStatus ? (
+                          <span className="inline-block text-xs font-semibold text-white/40 bg-white/5 border border-[#333] px-3.5 py-1.5 rounded-lg select-none">
+                            {row.appStatus === 'hired' ? 'Hired' : row.appStatus === 'shortlisted' ? 'Shortlisted' : row.appStatus === 'rejected' ? 'Rejected' : 'Applied'}
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => handleJoin(row.id)}
+                            className="text-xs font-semibold text-black bg-white px-4 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer"
+                          >
+                            Join
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              )}
             </tbody>
           </table>
         </div>
@@ -2347,7 +2774,7 @@ function StudentBentoDashboard({ userId }: { userId: string }) {
   );
 }
 
-function StudentProfileView({ userId, firstName, lastName, email }: { userId: string; firstName: string; lastName: string; email: string }) {
+function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange }: { userId: string; firstName: string; lastName: string; email: string; onAvatarChange?: (url: string) => void }) {
   const [commits] = useState(() => {
     const grid = [];
     for (let col = 0; col < 52; col++) {
@@ -2413,6 +2840,7 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
         if (details.avatar_url) {
           setAvatarUrl(details.avatar_url);
           setTempAvatarUrl(details.avatar_url);
+          if (onAvatarChange) onAvatarChange(details.avatar_url);
         }
       }
     };
@@ -2463,14 +2891,23 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
     setIsSaving(true);
     setEditError(null);
     try {
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const mergedDetails = {
+        ...(currentData?.profile_details || {}),
+        bio: tempBio,
+        location: tempLocation,
+        avatar_url: tempAvatarUrl
+      };
+
       const { error } = await supabase
         .from('users')
         .update({
-          profile_details: {
-            bio: tempBio,
-            location: tempLocation,
-            avatar_url: tempAvatarUrl
-          }
+          profile_details: mergedDetails
         })
         .eq('id', userId);
 
@@ -2480,6 +2917,7 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
         setBio(tempBio);
         setLocation(tempLocation);
         setAvatarUrl(tempAvatarUrl);
+        if (onAvatarChange) onAvatarChange(tempAvatarUrl);
         setIsEditing(false);
       }
     } catch (e: any) {
@@ -2528,6 +2966,25 @@ function StudentProfileView({ userId, firstName, lastName, email }: { userId: st
                 >
                   Upload File
                 </label>
+              </div>
+              <input
+                type="text"
+                value={tempAvatarUrl}
+                onChange={e => setTempAvatarUrl(e.target.value)}
+                placeholder="Or paste URL..."
+                className="w-full bg-[#1b1e28] border border-[#333] rounded-md h-7 px-2 text-[10px] text-white placeholder:text-white/20 focus:outline-none mb-2"
+              />
+              <span className="text-[10px] text-white/40 block mb-1">Presets:</span>
+              <div className="flex justify-center gap-1.5">
+                {['dev1', 'dev2', 'dev3', 'dev4'].map(u => (
+                  <img
+                    key={u}
+                    src={`https://i.pravatar.cc/150?u=${u}`}
+                    alt=""
+                    onClick={() => setTempAvatarUrl(`https://i.pravatar.cc/150?u=${u}`)}
+                    className="w-6 h-6 rounded-full border border-white/20 hover:border-[#00d2ff] cursor-pointer object-cover hover:scale-110 transition-transform"
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -4222,6 +4679,46 @@ function CompanyProfileView({ userId }: { userId: string }) {
     );
   }
 
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 256;
+        const MAX_HEIGHT = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setLogoUrl(dataUrl);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="max-w-2xl text-left bg-[#111318] border border-[#333] rounded-2xl p-8 shadow-xl w-full">
       <h2 className="text-xl font-bold mb-1 text-white">Company Profile</h2>
@@ -4240,6 +4737,49 @@ function CompanyProfileView({ userId }: { userId: string }) {
       )}
 
       <form onSubmit={handleSave} className="space-y-5">
+        {/* Logo / Profile Avatar Header */}
+        <div className="flex items-center gap-5 p-4 border border-[#333] rounded-xl bg-[#1b1e28]/50">
+          <div className="w-16 h-16 rounded-2xl border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Company Logo" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xl text-white">
+                {name ? name[0].toUpperCase() : 'C'}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <label className="text-xs font-semibold text-white/60 block">Organization Logo / Profile Picture</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoFileChange}
+                id="company-logo-upload"
+                className="hidden"
+              />
+              <label
+                htmlFor="company-logo-upload"
+                className="text-xs bg-white text-black font-semibold rounded-lg px-3 py-1.5 hover:bg-white/90 transition-all cursor-pointer"
+              >
+                Upload Logo Image
+              </label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-white/40">Presets:</span>
+                {['company1', 'company2', 'company3', 'tech1'].map(p => (
+                  <img
+                    key={p}
+                    src={`https://i.pravatar.cc/150?u=${p}`}
+                    alt=""
+                    onClick={() => setLogoUrl(`https://i.pravatar.cc/150?u=${p}`)}
+                    className="w-6 h-6 rounded-lg border border-white/20 hover:border-[#00d2ff] cursor-pointer object-cover hover:scale-110 transition-transform"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-semibold text-white/60">Organization Name</label>
           <input

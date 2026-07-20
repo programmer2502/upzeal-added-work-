@@ -24,3 +24,11 @@ yarn-error.log*
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# Python & virtualenv & scratch
+__pycache__/
+**/__pycache__/
+*.db
+**/venv/
+venv/
+scratch/
