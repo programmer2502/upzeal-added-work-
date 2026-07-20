@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: upzeal_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=https://sdgdovzmjpyycaaunagp.supabase.co
+      - SUPABASE_KEY=sb_secret_lR7O85wAk-_Sx4jWg9OPaA_MYFhDTdZ
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: upzeal_frontend
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
