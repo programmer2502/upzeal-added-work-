@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/logo.png';
 import { supabase } from './supabaseClient';
+import { apiService } from './services/api';
 import {
   ChevronRight,
   Search,
@@ -2087,11 +2088,20 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
     setXp(prev => Math.round(prev + 50));
   };
 
-  const handleMentorSend = (query?: string) => {
+  const handleMentorSend = async (query?: string) => {
     const q = query || mentorInput;
     if (!q.trim()) return;
     setIsAiThinking(true);
     if (!query) setMentorInput('');
+
+    // Attempt professional API service call to backend AI mentor
+    const backendReply = await apiService.askMentor(q);
+    if (backendReply) {
+      setMentorMessage(backendReply);
+      setIsAiThinking(false);
+      return;
+    }
+
     setTimeout(() => {
       let response = `Here is a tip on "${q}": Focus on mastering core fundamentals and building real-world projects. Practice clean code standards and write tests!`;
       const lower = q.toLowerCase();
@@ -2108,7 +2118,7 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
       }
       setMentorMessage(response);
       setIsAiThinking(false);
-    }, 500);
+    }, 400);
   };
 
   const formatDate = (daysAgo: number) => {

@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List, Dict, Any
 
 class UserResponseSchema(BaseModel):
     id: str
@@ -17,9 +17,29 @@ class UserResponseSchema(BaseModel):
         from_attributes = True
 
 class DashboardConfigUpdate(BaseModel):
-    tech_stack: list[str]
+    tech_stack: List[str] = Field(..., max_items=20)
 
 class ProfileUpdate(BaseModel):
-    bio: Optional[str] = None
-    location: Optional[str] = None
-    avatar_url: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=1000)
+    location: Optional[str] = Field(None, max_length=200)
+    avatar_url: Optional[str] = Field(None, max_length=100000)
+
+class JoinChallengeRequest(BaseModel):
+    project_id: str
+
+class SkillScoreSchema(BaseModel):
+    skill_name: str
+    score: int = Field(0, ge=0, le=10000)
+    verified: bool = False
+
+class MentorQueryRequest(BaseModel):
+    query: str = Field(..., max_length=500)
+
+class MentorResponse(BaseModel):
+    reply: str
+
+class CompanyProfileSchema(BaseModel):
+    name: str = Field(..., max_length=150)
+    logo_url: Optional[str] = Field(None, max_length=100000)
+    website: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field(None, max_length=2000)
