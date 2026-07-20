@@ -12,22 +12,18 @@ from app.routers import challenges, mentor, company
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup actions
     yield
-    # Shutdown actions: Close connection pools safely
     await supabase_client.close()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Upzeal Structured & Secured FastAPI Microservice.",
+    description="Upzeal Structured & Secured FastAPI Microservice with /api/v1 versioning and RBAC.",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# 1. Security Headers Middleware
+# Security Headers Middleware & CORS
 app.add_middleware(SecurityHeadersMiddleware)
-
-# 2. CORS configurations with configured origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -36,7 +32,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# User Profile Router
+# Version 1 Master Router (/api/v1)
+v1_router = APIRouter(prefix="/api/v1")
+
 user_router = APIRouter(prefix="/users", tags=["Users"])
 
 @user_router.get("/me", response_model=UserResponseSchema)
@@ -65,11 +63,18 @@ async def update_profile(
         avatar_url=profile.avatar_url
     )
 
-app.include_router(user_router)
-app.include_router(challenges.router)
-app.include_router(mentor.router)
-app.include_router(company.router)
+v1_router.include_router(user_router)
+v1_router.include_router(challenges.router)
+v1_router.include_router(mentor.router)
+v1_router.include_router(company.router)
+
+app.include_router(v1_router)
 
 @app.get("/")
 async def root():
-    return {"status": "Upzeal API is running", "security": "enhanced", "version": "1.0.0"}
+    return {
+        "status": "Upzeal API is running",
+        "api_version": "v1",
+        "docs_url": "/docs",
+        "security": "RBAC & Headers Enabled"
+    }

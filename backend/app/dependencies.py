@@ -7,19 +7,16 @@ security_scheme = HTTPBearer()
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme)) -> dict:
     token = credentials.credentials
     try:
-        # Verify user token with Supabase Auth API
         auth_user = await supabase_client.verify_token(token)
         user_id = auth_user.get("id")
         if not user_id:
             raise Exception("No user ID found in session credentials")
             
-        # Fetch matching record from our public users table
         user_profile = await supabase_client.get_single(
             "users", 
             {"id": f"eq.{user_id}"}
         )
         if not user_profile:
-            # Fallback if trigger hasn't completed or profile details are not created
             return {
                 "id": user_id,
                 "email": auth_user.get("email"),
@@ -38,3 +35,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+def require_role(allowed_roles: list[str]):
+    async def role_checker(current_user: dict = Depends(get_current_user)):
+        user_role = current_user.get("role", "developer")
+        if user_role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. User role '{user_role}' does not have permission to perform this action."
+            )
+        return current_user
+    return role_checker

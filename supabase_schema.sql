@@ -259,3 +259,14 @@ CREATE POLICY "Allow users to insert their own messages"
 
 -- Enable Supabase Realtime for messages table
 alter publication supabase_realtime add table public.messages;
+
+-- =========================================================================
+-- 9. HIGH-PERFORMANCE B-TREE INDEXES
+-- =========================================================================
+CREATE INDEX IF NOT EXISTS idx_applications_dev_proj ON public.applications (developer_id, project_id);
+CREATE INDEX IF NOT EXISTS idx_skill_scores_user ON public.skill_scores (user_id, skill_name);
+CREATE INDEX IF NOT EXISTS idx_projects_company ON public.projects (company_id, status);
+CREATE INDEX IF NOT EXISTS idx_required_skills_proj ON public.required_skills (project_id);
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.users (role);
+CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON public.messages (sender_id, receiver_id, created_at);
+

@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 class ApiService {
   private async getAuthHeader(): Promise<Record<string, string>> {
