@@ -3257,58 +3257,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
     }
   };
 
-  const feedPosts = [
-    {
-      id: 'static-1',
-      company: 'DataStream Inc.',
-      time: '2 hours ago',
-      content: 'Just scaled our real-time streaming infrastructure to handle 10k concurrent WebSocket connections. Read the post-mortem here.',
-      tags: ['WebSockets', 'Scaling', 'Infrastructure'],
-      highlight: true,
-      budget: '',
-      isDbProject: false
-    },
-    {
-      id: 'static-2',
-      company: 'NeuralForge AI',
-      time: '5 hours ago',
-      content: 'We\'re open-sourcing our internal model evaluation framework. 12k lines of Python, battle-tested across 200+ LLM deployments. Star us on GitHub.',
-      tags: ['Python', 'AI/ML', 'Open Source'],
-      highlight: false,
-      budget: '',
-      isDbProject: false
-    },
-    {
-      id: 'static-3',
-      company: 'CloudVault',
-      time: '8 hours ago',
-      content: 'Migrated our entire Kubernetes fleet from EKS to bare-metal. Reduced cloud costs by 68% while improving p99 latency. Here\'s exactly how we did it.',
-      tags: ['Kubernetes', 'DevOps', 'Cost Optimization'],
-      highlight: false,
-      budget: '',
-      isDbProject: false
-    },
-    {
-      id: 'static-4',
-      company: 'Lattice Security',
-      time: '1 day ago',
-      content: 'Hiring: Senior Rust Engineer to work on our zero-knowledge proof infrastructure. Remote-first, competitive equity. We process 2M+ transactions/day.',
-      tags: ['Rust', 'Cryptography', 'Hiring'],
-      highlight: false,
-      budget: '',
-      isDbProject: false
-    },
-    {
-      id: 'static-5',
-      company: 'SyncStack',
-      time: '2 days ago',
-      content: 'Our GraphQL Federation gateway now handles 50k req/s with sub-10ms overhead. Published a deep dive into our custom DataLoader batching strategy.',
-      tags: ['GraphQL', 'Node.js', 'Performance'],
-      highlight: false,
-      budget: '',
-      isDbProject: false
-    },
-  ];
+  const feedPosts: any[] = [];
 
   const allPosts = [...dbProjects, ...feedPosts];
 

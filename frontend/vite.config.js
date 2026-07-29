@@ -104,6 +104,9 @@ export default defineConfig(({ mode }) => {
           recruiter: resolve(__dirname, 'recruiter.html')
         }
       }
+    },
+    server: {
+      port: 5200
     }
   };
 });
