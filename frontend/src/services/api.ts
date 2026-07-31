@@ -69,6 +69,27 @@ class ApiService {
     return null;
   }
 
+  async acceptApplication(appId: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/applications/${appId}/accept`, {
+        method: 'POST',
+        headers
+      });
+      if (res.ok) return await res.json();
+      throw new Error(`Failed to accept application (Status ${res.status})`);
+    } catch (err) {
+      console.error("Error accepting application:", err);
+      throw err;
+    }
+  }
+
+  getWsBaseUrl(): string {
+    const isLocal = API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1');
+    const wsProtocol = isLocal ? 'ws://' : 'wss://';
+    return API_BASE_URL.replace(/^https?:\/\//, wsProtocol);
+  }
+
   async askMentor(query: string): Promise<string | null> {
     try {
       const headers = await this.getAuthHeader();

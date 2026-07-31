@@ -131,7 +131,7 @@ export default function App() {
   const [accountType, setAccountType] = useState<'developer' | 'recruiter' | null>(null);
 
   // Supabase & dynamic user details states
-  const [session, setSession] = useState<any>(null);
+  const [, setSession] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -171,7 +171,7 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'applications' },
         async (payload) => {
-          const newApp = payload.new;
+          const newApp = payload.new as any;
 
           if (payload.eventType === 'INSERT') {
             const { data: project } = await supabase
@@ -211,15 +211,11 @@ export default function App() {
                       action: {
                         label: 'Accept Application',
                         onClick: async () => {
-                          const { error } = await supabase
-                            .from('applications')
-                            .update({ status: 'hired' })
-                            .eq('id', newApp.id);
-                          
-                          if (!error) {
+                          try {
+                            await apiService.acceptApplication(newApp.id);
                             setToasts(current => current.filter(t => t.id !== toastId));
-                          } else {
-                            alert("Failed to accept application: " + error.message);
+                          } catch (error: any) {
+                            alert(error.message || "Failed to accept application");
                           }
                         }
                       }
@@ -227,28 +223,6 @@ export default function App() {
                   ];
                 });
               }
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            if (newApp.status === 'hired' && newApp.developer_id === user.id) {
-              const { data: project } = await supabase
-                .from('projects')
-                .select('title')
-                .eq('id', newApp.project_id)
-                .maybeSingle();
-
-              const toastId = `hired-${newApp.id}`;
-              setToasts(prev => {
-                if (prev.find(t => t.id === toastId)) return prev;
-                return [
-                  ...prev,
-                  {
-                    id: toastId,
-                    title: 'Requirement Accepted! 🎉',
-                    message: `Congratulations! Your partnership/application for "${project?.title || 'Project'}" has been accepted!`,
-                    type: 'success'
-                  }
-                ];
-              });
             }
           }
         }
@@ -260,13 +234,65 @@ export default function App() {
     };
   }, [user]);
 
+  // FastAPI WebSocket connection for real-time push events from the backend
+  useEffect(() => {
+    if (!user) return;
+
+    const wsUrl = `${apiService.getWsBaseUrl()}/ws/${user.id}`;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: number;
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'APPLICATION_ACCEPTED' && data.payload) {
+            const { app_id, project_title } = data.payload;
+            const toastId = `ws-hired-${app_id}`;
+            setToasts(prev => {
+              if (prev.find(t => t.id === toastId)) return prev;
+              return [
+                ...prev,
+                {
+                  id: toastId,
+                  title: 'Requirement Accepted! 🎉',
+                  message: `Congratulations! Your partnership/application for "${project_title}" has been accepted!`,
+                  type: 'success'
+                }
+              ];
+            });
+          }
+        } catch (e) {
+          console.error("Error parsing WebSocket message:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        // Simple reconnect logic
+        reconnectTimeout = window.setTimeout(connectWebSocket, 3000);
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null; // Prevent reconnect on unmount
+        ws.close();
+      }
+    };
+  }, [user]);
+
   // Listen to Supabase Auth state shifts
   useEffect(() => {
     const handleUserMetadataSync = async (session: any) => {
       if (!session?.user) return;
       const userIdVal = session.user.id;
       
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from('users')
         .select('first_name, last_name, role, onboarding_phase, dashboard_config')
         .eq('id', userIdVal)
@@ -521,7 +547,7 @@ export default function App() {
       return;
     }
     
-    const { data: companyData, error: companyError } = await supabase
+    const { data: _companyData, error: companyError } = await supabase
       .from('companies')
       .insert({
         name: companyName,
@@ -1716,7 +1742,7 @@ export default function App() {
           lastName={lastName} 
           email={email} 
           developerSkills={selectedTech}
-          setToasts={setToasts}
+
           onLogout={async () => {
             await supabase.auth.signOut();
             setView('landing');
@@ -1919,7 +1945,7 @@ function InputGroup({
 // ==========================================
 function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
-  const [toasts, setToasts] = useState<any[]>([]);
+  const [, setToasts] = useState<any[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(() => {
     return localStorage.getItem(`upzeal_user_avatar_${userId}`) || '';
   });
@@ -2039,7 +2065,7 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
   const [mentorInput, setMentorInput] = useState('');
   const [mentorMessage, setMentorMessage] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(() => {
+  const [lastUpdated] = useState(() => {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
 
@@ -2831,7 +2857,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
   useEffect(() => {
     if (!userId) return;
     const loadProfile = async () => {
-      const { data, error } = await supabase
+      const { data, error: _error } = await supabase
         .from('users')
         .select('profile_details')
         .eq('id', userId)
@@ -3227,7 +3253,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
     loadFeedData();
   }, [userId]);
 
-  const handleApply = async (projectId: string, companyName: string) => {
+  const handleApply = async (projectId: string, _companyName: string) => {
     if (!userId) {
       alert("Please log in to apply");
       return;
@@ -3266,7 +3292,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
     if (!developerSkills || developerSkills.length === 0) return true;
 
     const normalizedDevSkills = developerSkills.map(s => s.toLowerCase());
-    return post.tags.some(tag => normalizedDevSkills.includes(tag.toLowerCase()));
+    return post.tags.some((tag: any) => normalizedDevSkills.includes(tag.toLowerCase()));
   });
 
   return (
@@ -3336,7 +3362,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
                   <p className="text-xs text-[#00d2ff] font-mono mb-4">Budget: {post.budget}</p>
                 )}
                 <div className="flex items-center gap-2 mb-5 flex-wrap">
-                  {post.tags.map(tag => {
+                  {post.tags.map((tag: any) => {
                     const isDeveloperSkill = developerSkills.map(s => s.toLowerCase()).includes(tag.toLowerCase());
                     return (
                       <span 
@@ -3445,7 +3471,7 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
     const fetchCompanyData = async () => {
       setLoading(true);
       try {
-        const { data: comp, error: compErr } = await supabase
+        const { data: comp, error: _compErr } = await supabase
           .from('companies')
           .select('*')
           .eq('id', companyId)
@@ -3894,7 +3920,7 @@ function DeveloperProfileModal({
   );
 }
 
-function StudentChatView({ userId, firstName, lastName, email }: { userId: string; firstName: string; lastName: string; email: string }) {
+function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, email: _email }: { userId: string; firstName: string; lastName: string; email: string }) {
   const [conversations, setConversations] = useState([
     { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 1, avatar: '⚡' },
     { id: '2', name: 'HR - Microsoft', lastMessage: 'We reviewed your React assessment. Let\'s schedule a call.', unread: 0, avatar: '💼' },
@@ -4805,7 +4831,7 @@ function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: strin
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error: _error } = await supabase
           .from('companies')
           .select('id, name, logo_url, website, description');
 
@@ -4878,7 +4904,7 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+  const [_myCompanyId, setMyCompanyId] = useState<string | null>(null);
   const [showSuccessTick, setShowSuccessTick] = useState(false);
 
   useEffect(() => {
@@ -5096,7 +5122,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
     if (updatedDev.isDbDeveloper) {
       setDbCandidates(prev => prev.map(u => u.id === updatedDev.id ? { ...u, profile_details: updatedDev.profile_details } : u));
     }
-    setSelectedCandidate(prev => prev && prev.id === updatedDev.id ? {
+    setSelectedCandidate((prev: any) => prev && prev.id === updatedDev.id ? {
       ...prev,
       profile_details: updatedDev.profile_details,
       xp: Number(updatedDev.profile_details?.xp !== undefined ? updatedDev.profile_details.xp : (updatedDev.xp || 23094))
@@ -5158,9 +5184,9 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
               <span className="font-medium text-sm hidden md:block text-left">Chat</span>
             </button>
             <button
-              onClick={() => setRecruiterView('partner_projects')}
+              onClick={() => setRecruiterView('partner_projects' as any)}
               className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
-                recruiterView === 'partner_projects' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+                recruiterView === ('partner_projects' as any) ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <Layers className="w-4 h-4" />
@@ -5250,7 +5276,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                               <h3 className="text-sm font-semibold text-white truncate">{candidate.name}</h3>
                               <p className="text-xs text-white/50 truncate mb-2">{candidate.role}</p>
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                {candidate.skills.map(skill => (
+                                {candidate.skills.map((skill: any) => (
                                   <span key={skill} className="px-1.5 py-0.5 text-[10px] font-mono font-medium bg-black border border-[#333] text-white/70 rounded-sm">{skill}</span>
                                 ))}
                               </div>
@@ -5272,7 +5298,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           <CompanyProfileView userId={userId} />
         ) : recruiterView === 'companies_directory' ? (
           <CompanyDirectoryView onSelectCompany={(id) => setSelectedCompanyId(id)} />
-        ) : recruiterView === 'partner_projects' ? (
+        ) : recruiterView === ('partner_projects' as any) ? (
           <B2BPartnerProjectsView userId={userId} />
         ) : (
           /* ── Talent Pool View ── */
@@ -5323,7 +5349,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                       <td className="px-5 py-4 text-white/60">{c.role}</td>
                       <td className="px-5 py-4">
                         <div className="flex gap-1.5">
-                          {c.skills.map(s => (
+                          {c.skills.map((s: any) => (
                             <span key={s} className="px-1.5 py-0.5 text-[10px] font-mono bg-black border border-[#333] text-white/70 rounded-sm">{s}</span>
                           ))}
                         </div>
