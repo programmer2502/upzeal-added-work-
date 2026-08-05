@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import logo from './assets/logo.png';
 import { supabase } from './supabaseClient';
@@ -2056,6 +2056,46 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
   );
 }
 
+function MarkdownReportViewer({ reportText }: { reportText: string }) {
+  if (!reportText) return null;
+  const lines = reportText.split('\n');
+  return (
+    <div className="space-y-3 text-xs leading-relaxed text-white/70 font-sans">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('### ')) {
+          return <h3 key={idx} className="text-sm font-bold text-white border-b border-[#333] pb-1.5 mt-4 mb-2">{trimmed.slice(4)}</h3>;
+        }
+        if (trimmed.startsWith('#### ')) {
+          return <h4 key={idx} className="text-xs font-bold text-[#00d2ff] mt-3 mb-1">{trimmed.slice(5)}</h4>;
+        }
+        if (trimmed.startsWith('- ')) {
+          const content = trimmed.slice(2);
+          const parts = content.split('**');
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-1 my-1">
+              <span className="text-[#00d2ff] select-none">•</span>
+              <span>
+                {parts.map((part, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} className="text-white font-semibold">{part}</strong> : part)}
+              </span>
+            </div>
+          );
+        }
+        if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
+          return <p key={idx} className="font-semibold text-white mt-1.5">{trimmed.slice(2, -2)}</p>;
+        }
+        if (trimmed === '') return <div key={idx} className="h-1.5" />;
+        const parts = trimmed.split('**');
+        return (
+          <p key={idx} className="mt-1">
+            {parts.map((part, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} className="text-white font-semibold">{part}</strong> : part)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }: { userId: string; firstName: string; developerSkills: string[]; setToasts: React.Dispatch<React.SetStateAction<any[]>> }) {
   const [xp, setXp] = useState(0);
   const [challenges, setChallenges] = useState<any[]>([]);
@@ -2068,6 +2108,9 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
   const [lastUpdated] = useState(() => {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
+  const [evaluationReport, setEvaluationReport] = useState<any>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
     setMentorMessage(`Hi ${firstName || 'Developer'}. Ask me a technical question and I will explain it clearly, give examples, and suggest what to practice next.`);
@@ -2175,29 +2218,84 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
   const focusX = 330;
   const focusY = y3;
 
+  const handleTriggerEvaluation = async () => {
+    try {
+      setIsEvaluating(true);
+      const evalData = await apiService.triggerEvaluation();
+      if (evalData) {
+        setEvaluationReport(evalData);
+        if (evalData.xp !== undefined) {
+          setXp(evalData.xp);
+        }
+        if (evalData.skills) {
+          setSkillScores(evalData.skills.map((s: any) => ({
+            id: s.name,
+            skill_name: s.name,
+            score: s.score,
+            verified: s.verified
+          })));
+        }
+        setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        setToasts(prev => [
+          ...prev,
+          {
+            id: `eval-${Date.now()}`,
+            title: 'AI Evaluation Complete! 🎯',
+            message: 'Your developer ranking, percentile, and skills scores have been updated.',
+            type: 'success'
+          }
+        ]);
+      }
+    } catch (err) {
+      console.error("Error triggering evaluation:", err);
+      setToasts(prev => [
+        ...prev,
+        {
+          id: `eval-err-${Date.now()}`,
+          title: 'Evaluation Failed ⚠️',
+          message: 'Unable to run AI evaluation. Please try again later.',
+          type: 'error'
+        }
+      ]);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) return;
-    const fetchXp = async () => {
+    const fetchEvaluationAndXp = async () => {
       try {
-        const { data, error } = await supabase
-          .from('users')
-          .select('profile_details')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (error) {
-          console.error("Error loading developer XP:", error.message);
-          return;
-        }
-
-        if (data && data.profile_details?.xp !== undefined) {
-          setXp(Number(data.profile_details.xp));
+        const evalData = await apiService.getEvaluation();
+        if (evalData) {
+          setEvaluationReport(evalData);
+          if (evalData.xp !== undefined) {
+            setXp(evalData.xp);
+          }
+          if (evalData.skills) {
+            setSkillScores(evalData.skills.map((s: any) => ({
+              id: s.name,
+              skill_name: s.name,
+              score: s.score,
+              verified: s.verified
+            })));
+          }
+        } else {
+          // Fallback to fetch raw XP if no evaluation exists yet
+          const { data, error } = await supabase
+            .from('users')
+            .select('profile_details')
+            .eq('id', userId)
+            .maybeSingle();
+          if (!error && data && data.profile_details?.xp !== undefined) {
+            setXp(Number(data.profile_details.xp));
+          }
         }
       } catch (err) {
-        console.error("Error fetching developer XP:", err);
+        console.error("Error fetching evaluation report on mount:", err);
       }
     };
-    fetchXp();
+    fetchEvaluationAndXp();
   }, [userId]);
 
   useEffect(() => {
@@ -2650,42 +2748,111 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
           </div>
         </div>
 
-        {/* ── Column 3: Upgrade Promo (spans 3 cols) ── */}
+        {/* ── Column 3: AI Evaluation (spans 3 cols) ── */}
         <div className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Upgrade</h2>
-              <p className="text-xs text-white/40 mt-0.5">Powered by Upzeal</p>
+              <h2 className="text-lg font-semibold tracking-tight">AI Evaluation</h2>
+              <p className="text-xs text-white/40 mt-0.5">Powered by AI Engine</p>
             </div>
-            <button className="text-xs text-white/40 hover:text-white transition-colors cursor-pointer">Next →</button>
+            <button 
+              onClick={handleTriggerEvaluation} 
+              disabled={isEvaluating}
+              className={`text-xs text-[#00d2ff] hover:text-[#00d2ff]/80 transition-colors cursor-pointer flex items-center gap-1 bg-transparent border-none ${isEvaluating ? 'animate-pulse' : ''}`}
+            >
+              {isEvaluating ? 'Syncing...' : 'Sync Now'}
+            </button>
           </div>
 
-          <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-4 relative overflow-hidden">
+          <div className="border border-[#333] rounded-2xl bg-[#111318] p-5 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[300px]">
             {/* Decorative gradient blob */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#00d2ff]/10 rounded-full blur-3xl pointer-events-none" />
 
-            <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-[#00d2ff] bg-[#00d2ff]/10 px-2.5 py-1 rounded-full border border-[#00d2ff]/20">
-              Just for today!
-            </span>
+            {isEvaluating ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-3 py-10">
+                <Loader2 className="w-8 h-8 animate-spin text-[#00d2ff]" />
+                <p className="text-xs text-white/60 font-mono animate-pulse">Running AI evaluation...</p>
+              </div>
+            ) : evaluationReport ? (
+              <>
+                <div className="space-y-4 relative z-10">
+                  <div className="flex items-center justify-between">
+                    <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-[#00d2ff] bg-[#00d2ff]/10 px-2.5 py-1 rounded-full border border-[#00d2ff]/20">
+                      Evaluation Active
+                    </span>
+                    <span className="text-[10px] text-white/40 font-mono">Synced</span>
+                  </div>
 
-            <h3 className="text-xl font-bold tracking-tight">
-              ⚡ Let's Go Pro with <span className="text-[#f59e0b] bg-[#f59e0b]/10 px-1.5 py-0.5 rounded">40%</span>
-            </h3>
-            <p className="text-xs text-white/50 font-medium">This is your amazing chance!</p>
-            <p className="text-xs text-white/60 leading-relaxed">
-              Premium unlocks unlimited AI mentorship, recruiter visibility, and advanced analytics for your developer profile.
-            </p>
-            <a href="#" className="text-xs text-[#00d2ff] hover:underline">Learn more →</a>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Global Rank</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-lg font-bold font-mono text-white">
+                          🏆 {evaluationReport.ranking.split(' of ')[0].replace('Rank ', '')}
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">
+                          of {evaluationReport.ranking.split(' of ')[1] || 'devs'}
+                        </span>
+                      </div>
+                    </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#333]">
-              <span className="text-[11px] text-white/30 cursor-pointer hover:text-white/50 transition-colors">Don't show again</span>
-              <button 
-                onClick={handleUpgrade}
-                className="text-xs font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer"
-              >
-                Get started
-              </button>
-            </div>
+                    <div>
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Percentile Grade</span>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-lg font-bold font-mono text-[#10b981]">
+                          ★ {evaluationReport.percentile}%
+                        </span>
+                        <span className="text-xs text-white/40 font-mono">percentile</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-white/60 leading-relaxed line-clamp-3">
+                    Your skills and XP are verified by the AI Engine. View the full report to check Strengths, Improvements, and Actionable Steps.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#333] mt-auto relative z-10">
+                  <button 
+                    onClick={handleTriggerEvaluation}
+                    className="text-[11px] text-white/40 cursor-pointer hover:text-white/60 transition-colors bg-transparent border-none"
+                  >
+                    Re-run
+                  </button>
+                  <button 
+                    onClick={() => setShowReportModal(true)}
+                    className="text-xs font-bold bg-white text-black px-4 py-2 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer border-none"
+                  >
+                    View Report
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-4 relative z-10">
+                  <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-[#f59e0b] bg-[#f59e0b]/10 px-2.5 py-1 rounded-full border border-[#f59e0b]/20">
+                    Not Evaluated Yet
+                  </span>
+
+                  <h3 className="text-lg font-bold tracking-tight text-white">
+                    🎯 Run AI Diagnostics
+                  </h3>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    Verify your skill scores, receive actionable career guidelines, and compute your official ranking and percentile grade on Upzeal.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-[#333] mt-auto relative z-10">
+                  <span className="text-[11px] text-white/30">Free verification</span>
+                  <button 
+                    onClick={handleTriggerEvaluation}
+                    className="text-xs font-bold bg-[#00d2ff] text-black px-4 py-2 rounded-lg hover:bg-[#00d2ff]/90 active:scale-[0.97] transition-all cursor-pointer border-none shadow-lg shadow-[#00d2ff]/20"
+                  >
+                    Evaluate Now
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -2806,29 +2973,181 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
           </table>
         </div>
       </div>
+
+      {/* AI Evaluation Report Modal */}
+      <AnimatePresence>
+        {showReportModal && evaluationReport && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowReportModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            {/* Modal Content */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl max-h-[85vh] bg-[#111318] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col z-10"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-[#333] bg-[#0a0a0a]/50">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#00d2ff]" />
+                  <h3 className="text-base font-bold text-white">AI Evaluation Insights</h3>
+                </div>
+                <button 
+                  onClick={() => setShowReportModal(false)}
+                  className="w-8 h-8 rounded-full border border-[#333] flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer bg-transparent"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scrollable Report Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Stats Summary Panel */}
+                <div className="grid grid-cols-2 gap-4 bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Global Ranking</span>
+                    <p className="text-sm font-bold text-white font-mono">{evaluationReport.ranking}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Percentile Grade</span>
+                    <p className="text-sm font-bold text-[#10b981] font-mono">{evaluationReport.percentile}% percentile</p>
+                  </div>
+                </div>
+
+                {/* Markdown Viewer */}
+                <div className="border border-[#333] rounded-2xl bg-[#0a0a0a] p-5">
+                  <MarkdownReportViewer reportText={evaluationReport.feedback_report} />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-[#333] flex justify-end bg-[#0a0a0a]/50">
+                <button 
+                  onClick={() => setShowReportModal(false)}
+                  className="px-5 py-2.5 bg-white text-black font-semibold text-xs rounded-xl hover:bg-white/90 transition-all cursor-pointer border-none"
+                >
+                  Close Insights
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
+interface UserProject {
+  id: string;
+  title: string;
+  company: string;
+  budget: string;
+  status: string;
+  projectStatus: string;
+  dateStr: string;
+}
+
+interface TimelineEvent {
+  id: string;
+  dateStr: string;
+  timestamp: number;
+  title: string;
+  description: string;
+  isHighlight: boolean;
+}
+
+interface PostItem {
+  id: string;
+  imageUrl: string;
+  caption: string;
+  likes: number;
+  likedByUser?: boolean;
+  createdAt: string;
+}
+
 function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange }: { userId: string; firstName: string; lastName: string; email: string; onAvatarChange?: (url: string) => void }) {
-  const [commits] = useState(() => {
+  const [xp, setXp] = useState(0);
+  const [contributionsMap, setContributionsMap] = useState<Record<string, number>>({});
+  const [onboardedProjects, setOnboardedProjects] = useState<UserProject[]>([]);
+  const [activeProjects, setActiveProjects] = useState<UserProject[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+
+  // Instagram Gallery states
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
+  const [isEditingCaption, setIsEditingCaption] = useState(false);
+  const [editCaptionText, setEditCaptionText] = useState('');
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+
+  // Post creation states
+  const [postImage, setPostImage] = useState('');
+  const [postCaption, setPostCaption] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  // Image Cropping states
+  const [originalImage, setOriginalImage] = useState('');
+  const [cropScale, setCropScale] = useState(1.0);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const commits = React.useMemo(() => {
     const grid = [];
+    const today = new Date();
+
     for (let col = 0; col < 52; col++) {
       const column = [];
       for (let row = 0; row < 7; row++) {
-        const val = Math.random();
+        const diffDays = 363 - (col * 7 + row);
+        const cellDate = new Date(today);
+        cellDate.setDate(today.getDate() - diffDays);
+
+        const year = cellDate.getFullYear();
+        const month = String(cellDate.getMonth() + 1).padStart(2, '0');
+        const day = String(cellDate.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+
+        const count = contributionsMap[dateKey] || 0;
+
         let intensity = 0;
-        if (val > 0.9) intensity = 4;
-        else if (val > 0.7) intensity = 3;
-        else if (val > 0.5) intensity = 2;
-        else if (val > 0.3) intensity = 1;
-        
+        if (count >= 4) intensity = 4;
+        else if (count === 3) intensity = 3;
+        else if (count === 2) intensity = 2;
+        else if (count === 1) intensity = 1;
+
         column.push(intensity);
       }
       grid.push(column);
     }
     return grid;
-  });
+  }, [contributionsMap]);
+
+  const totalContributions = React.useMemo(() => {
+    let total = 0;
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    Object.entries(contributionsMap).forEach(([dateStr, count]) => {
+      const cellDate = new Date(dateStr);
+      const diffDays = Math.floor((today.getTime() - cellDate.getTime()) / oneDayMs);
+      if (diffDays >= 0 && diffDays < 364) {
+        total += count;
+      }
+    });
+    return total;
+  }, [contributionsMap]);
 
   const getColor = (intensity: number) => {
     switch(intensity) {
@@ -2857,31 +3176,488 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
   useEffect(() => {
     if (!userId) return;
     const loadProfile = async () => {
-      const { data, error: _error } = await supabase
+      // 1. Fetch user registration and details
+      const { data: userData } = await supabase
         .from('users')
-        .select('profile_details')
+        .select('created_at, profile_details')
         .eq('id', userId)
         .single();
 
-      if (data?.profile_details) {
-        const details = data.profile_details;
-        if (details.bio) {
-          setBio(details.bio);
-          setTempBio(details.bio);
-        }
-        if (details.location) {
-          setLocation(details.location);
-          setTempLocation(details.location);
-        }
-        if (details.avatar_url) {
-          setAvatarUrl(details.avatar_url);
-          setTempAvatarUrl(details.avatar_url);
-          if (onAvatarChange) onAvatarChange(details.avatar_url);
+      // 2. Fetch applications with joined project and company details
+      const { data: appsData } = await supabase
+        .from('applications')
+        .select(`
+          created_at,
+          status,
+          project:projects (
+            title,
+            status,
+            budget,
+            company:companies (
+              name
+            )
+          )
+        `)
+        .eq('developer_id', userId);
+
+      // 3. Fetch reviews received
+      const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select('created_at')
+        .eq('reviewee_id', userId);
+
+      const map: Record<string, number> = {};
+
+      const addDate = (dateStr: string | null) => {
+        if (!dateStr) return;
+        const dateKey = dateStr.slice(0, 10); // YYYY-MM-DD
+        map[dateKey] = (map[dateKey] || 0) + 1;
+      };
+
+      const formatMonthYear = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return `${months[d.getMonth()]} ${d.getFullYear()}`;
+      };
+
+      const eventsList: TimelineEvent[] = [];
+      const onboarded: UserProject[] = [];
+      const active: UserProject[] = [];
+
+      if (userData) {
+        addDate(userData.created_at);
+        
+        eventsList.push({
+          id: 'signup',
+          dateStr: formatMonthYear(userData.created_at),
+          timestamp: new Date(userData.created_at).getTime(),
+          title: 'Joined the Upzeal Platform',
+          description: 'Started tracking Git history, building developer profile, and accessing AI mentor sessions.',
+          isHighlight: false
+        });
+
+        if (userData.profile_details) {
+          const details = userData.profile_details;
+          if (details.bio) {
+            setBio(details.bio);
+            setTempBio(details.bio);
+          }
+          if (details.location) {
+            setLocation(details.location);
+            setTempLocation(details.location);
+          }
+          if (details.avatar_url) {
+            setAvatarUrl(details.avatar_url);
+            setTempAvatarUrl(details.avatar_url);
+            if (onAvatarChange) onAvatarChange(details.avatar_url);
+          }
+          if (details.xp) {
+            setXp(Number(details.xp) || 0);
+          }
+          if (details.posts) {
+            setPosts(Array.isArray(details.posts) ? details.posts : []);
+          }
         }
       }
+
+      if (appsData) {
+        const apps = appsData as any[];
+        apps.forEach((app, index) => {
+          addDate(app.created_at);
+          
+          const proj = app.project;
+          if (!proj) return;
+          
+          const companyName = proj.company?.name || 'Upzeal Client';
+          const budget = proj.budget || 'N/A';
+          const isHired = app.status === 'hired';
+          const isCompleted = proj.status === 'completed';
+
+          const mappedProj = {
+            id: app.created_at,
+            title: proj.title,
+            company: companyName,
+            budget: budget,
+            status: app.status,
+            projectStatus: proj.status,
+            dateStr: formatMonthYear(app.created_at)
+          };
+
+          if (isHired) {
+            onboarded.push(mappedProj);
+          }
+          
+          if (!isCompleted && (app.status === 'pending' || app.status === 'shortlisted' || app.status === 'hired')) {
+            active.push(mappedProj);
+          }
+
+          if (isHired && isCompleted) {
+            eventsList.push({
+              id: `finished-${app.created_at}-${index}`,
+              dateStr: formatMonthYear(app.created_at),
+              timestamp: new Date(app.created_at).getTime() + 10,
+              title: `Finished Project: ${proj.title}`,
+              description: `Successfully completed code asset delivery and final review requirements for ${companyName}.`,
+              isHighlight: true
+            });
+          } else {
+            const titlePrefix = isHired ? 'Onboarded to Project' : 'Applied to Project';
+            const statusDesc = isHired ? 'Hired and actively working on the challenge.' : 'Application submitted and pending recruiter review.';
+            
+            eventsList.push({
+              id: `onboarded-${app.created_at}-${index}`,
+              dateStr: formatMonthYear(app.created_at),
+              timestamp: new Date(app.created_at).getTime(),
+              title: `${titlePrefix}: ${proj.title}`,
+              description: `Partnered with ${companyName} for technical challenges. Current Status: ${statusDesc}`,
+              isHighlight: isHired
+            });
+          }
+        });
+      }
+
+      if (reviewsData) {
+        reviewsData.forEach(rev => addDate(rev.created_at));
+      }
+
+      eventsList.sort((a, b) => b.timestamp - a.timestamp);
+      if (eventsList.length > 0) {
+        eventsList[0].isHighlight = true;
+      }
+
+      setContributionsMap(map);
+      setOnboardedProjects(onboarded);
+      setActiveProjects(active);
+      setTimelineEvents(eventsList);
     };
     loadProfile();
   }, [userId]);
+
+  const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200; // Load higher res image for cropping
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          setPostImage(dataUrl);
+          setOriginalImage(dataUrl);
+          // Reset crop adjustments
+          setCropScale(1.0);
+          setCropRotation(0);
+          setCropX(0);
+          setCropY(0);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUrlChange = (url: string) => {
+    setPostImage(url);
+    setOriginalImage(url);
+    // Reset crop adjustments
+    setCropScale(1.0);
+    setCropRotation(0);
+    setCropX(0);
+    setCropY(0);
+  };
+
+  // Drag and touch handlers for panning crop box
+  const handleDragStart = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - cropX, y: e.clientY - cropY });
+  };
+
+  const handleDragMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setCropX(e.clientX - dragStart.x);
+    setCropY(e.clientY - dragStart.y);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({ x: touch.clientX - cropX, y: touch.clientY - cropY });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    setCropX(touch.clientX - dragStart.x);
+    setCropY(touch.clientY - dragStart.y);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const generateCroppedImage = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!originalImage) {
+        resolve(postImage);
+        return;
+      }
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const cropSize = 600; // Final square output size
+        canvas.width = cropSize;
+        canvas.height = cropSize;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, cropSize, cropSize);
+
+        ctx.save();
+        ctx.translate(cropSize / 2, cropSize / 2);
+        ctx.rotate((cropRotation * Math.PI) / 180);
+        ctx.scale(cropScale, cropScale);
+
+        const screenSize = 280; // matches crop container aspect-square width on screen
+        const scaleFactor = cropSize / screenSize;
+        ctx.translate((cropX * scaleFactor) / cropScale, (cropY * scaleFactor) / cropScale);
+
+        const imgWidth = img.width;
+        const imgHeight = img.height;
+        let drawWidth = cropSize;
+        let drawHeight = cropSize;
+
+        if (imgWidth > imgHeight) {
+          drawWidth = cropSize * (imgWidth / imgHeight);
+        } else {
+          drawHeight = cropSize * (imgHeight / imgWidth);
+        }
+
+        ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        ctx.restore();
+
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(croppedDataUrl);
+      };
+      img.onerror = () => {
+        resolve(originalImage || postImage);
+      };
+      img.src = originalImage;
+    });
+  };
+
+  const handleCreatePost = async () => {
+    if (!postImage.trim()) {
+      setPostError("Please select or paste an image.");
+      return;
+    }
+    setIsPosting(true);
+    setPostError(null);
+
+    try {
+      // Generate the final cropped/adjusted Base64
+      const croppedImage = await generateCroppedImage();
+
+      const newPost: PostItem = {
+        id: `post_${Date.now()}`,
+        imageUrl: croppedImage,
+        caption: postCaption.trim(),
+        likes: 0,
+        likedByUser: false,
+        createdAt: new Date().toISOString()
+      };
+
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const currentPosts = Array.isArray(details.posts) ? details.posts : [];
+      const updatedPosts = [newPost, ...currentPosts];
+
+      const mergedDetails = {
+        ...details,
+        posts: updatedPosts
+      };
+
+      const { error } = await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      if (error) {
+        setPostError(error.message);
+      } else {
+        setPosts(updatedPosts);
+        setPostImage('');
+        setOriginalImage('');
+        setPostCaption('');
+        setShowCreatePostModal(false);
+      }
+    } catch (err: any) {
+      setPostError(err.message || "An error occurred");
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleLikePost = async (postId: string) => {
+    try {
+      const updatedPosts = posts.map(p => {
+        if (p.id === postId) {
+          const liked = !p.likedByUser;
+          return {
+            ...p,
+            likedByUser: liked,
+            likes: liked ? p.likes + 1 : Math.max(0, p.likes - 1)
+          };
+        }
+        return p;
+      });
+
+      if (selectedPost && selectedPost.id === postId) {
+        const liked = !selectedPost.likedByUser;
+        setSelectedPost({
+          ...selectedPost,
+          likedByUser: liked,
+          likes: liked ? selectedPost.likes + 1 : Math.max(0, selectedPost.likes - 1)
+        });
+      }
+
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        posts: updatedPosts
+      };
+
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error("Error liking post:", err);
+    }
+  };
+
+  const handleSavePostCaption = async (postId: string) => {
+    try {
+      const updatedPosts = posts.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            caption: editCaptionText.trim()
+          };
+        }
+        return p;
+      });
+
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost({
+          ...selectedPost,
+          caption: editCaptionText.trim()
+        });
+      }
+
+      // Fetch current profile details
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        posts: updatedPosts
+      };
+
+      // Save to database
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+      setIsEditingCaption(false);
+    } catch (err) {
+      console.error("Error updating caption:", err);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      const updatedPosts = posts.filter(p => p.id !== postId);
+
+      // Fetch current profile details
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        posts: updatedPosts
+      };
+
+      // Save to database
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+      setSelectedPost(null);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      console.error("Error deleting post:", err);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -3120,7 +3896,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
             ))}
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-white/50">
-            <span className="font-mono">842 contributions in the last year</span>
+            <span className="font-mono">{totalContributions} contributions in the last year</span>
             <div className="flex items-center gap-1.5 font-mono">
               <span>Less</span>
               <div className="w-3 h-3 rounded-[2px] bg-[#161b22] border border-[#333]" />
@@ -3134,34 +3910,388 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         </div>
       </div>
 
-      {/* Timeline / Achievements */}
-      <div>
-        <h2 className="text-lg font-semibold mb-6">Timeline</h2>
-        <div className="relative border-l border-[#333] ml-3 space-y-10 pb-8">
-          
-          <div className="relative pl-8">
-            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#00d2ff] border-2 border-[#0e1015]" />
-            <div className="text-sm font-mono text-[#00d2ff] mb-1">June 2026</div>
-            <h3 className="text-base font-medium">Presented project at techno meet</h3>
-            <p className="text-sm text-white/60 mt-1">Showcased the Smart City Noise Map architecture to a local group of 150+ developers, detailing the WebSocket implementation for low-latency streaming.</p>
+      {/* Onboarded and Active Projects Lists */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+        {/* Onboarded Projects Column */}
+        <div className="border border-[#333] rounded-2xl bg-[#0d1117] p-6 space-y-4 text-left">
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
+            <Briefcase className="w-5 h-5 text-[#00d2ff]" />
+            Onboarded Projects
+          </h3>
+          <div className="space-y-4">
+            {onboardedProjects.length === 0 ? (
+              <p className="text-xs text-white/40 italic">No onboarded projects yet.</p>
+            ) : (
+              onboardedProjects.map((proj, idx) => (
+                <div key={idx} className="border border-[#333] rounded-xl p-4 bg-[#07090e] hover:border-[#00d2ff]/30 transition-all space-y-2">
+                  <div className="flex justify-between items-start">
+                    <h4 className="text-sm font-semibold text-white">{proj.title}</h4>
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20">
+                      Hired
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs text-white/50">
+                    <p>Client: <strong className="text-white/80">{proj.company}</strong></p>
+                    <p>Budget: <strong className="text-white/80">{proj.budget}</strong></p>
+                    <p>Hired on: <span className="font-mono">{proj.dateStr}</span></p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+        </div>
 
-          <div className="relative pl-8">
-            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#333] border-2 border-[#0e1015]" />
-            <div className="text-sm font-mono text-white/50 mb-1">March 2026</div>
-            <h3 className="text-base font-medium text-white/80">Completed Advanced FastAPI Certification</h3>
-            <p className="text-sm text-white/60 mt-1">Verified via Upzeal with a 98% technical accuracy score.</p>
+        {/* Active Projects Column */}
+        <div className="border border-[#333] rounded-2xl bg-[#0d1117] p-6 space-y-4 text-left">
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
+            <Code2 className="w-5 h-5 text-[#10b981]" />
+            Active Projects
+          </h3>
+          <div className="space-y-4">
+            {activeProjects.length === 0 ? (
+              <p className="text-xs text-white/40 italic">No active projects yet.</p>
+            ) : (
+              activeProjects.map((proj, idx) => (
+                <div key={idx} className="border border-[#333] rounded-xl p-4 bg-[#07090e] hover:border-[#10b981]/30 transition-all space-y-2">
+                  <div className="flex justify-between items-start">
+                    <h4 className="text-sm font-semibold text-white">{proj.title}</h4>
+                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border ${
+                      proj.status === 'hired'
+                        ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
+                        : proj.status === 'shortlisted'
+                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                        : 'bg-white/5 text-white/60 border-white/10'
+                    }`}>
+                      {proj.status}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1 text-xs text-white/50">
+                    <p>Client: <strong className="text-white/80">{proj.company}</strong></p>
+                    <p>Budget: <strong className="text-white/80">{proj.budget}</strong></p>
+                    <p>Applied: <span className="font-mono">{proj.dateStr}</span></p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-
-          <div className="relative pl-8">
-            <div className="absolute -left-1.5 top-1.5 w-3 h-3 rounded-full bg-[#333] border-2 border-[#0e1015]" />
-            <div className="text-sm font-mono text-white/50 mb-1">January 2026</div>
-            <h3 className="text-base font-medium text-white/80">Joined the Upzeal Platform</h3>
-            <p className="text-sm text-white/60 mt-1">Started tracking Git history and building the technical portfolio.</p>
-          </div>
-
         </div>
       </div>
+
+      {/* Posts Section */}
+      <div className="mt-16 space-y-6">
+        <div className="flex justify-between items-center border-b border-[#333] pb-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Posts
+          </h2>
+          <button
+            onClick={() => setShowCreatePostModal(true)}
+            className="text-xs font-semibold px-4 py-2 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border-none"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Post
+          </button>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="border border-dashed border-[#333] rounded-2xl p-12 text-center text-white/40 space-y-2 bg-[#0d1117]/30">
+            <p className="text-sm">No posts yet.</p>
+            <p className="text-xs text-white/30">Share screenshots of your workstation, project architectures, or certificates!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <AnimatePresence mode="popLayout">
+              {posts.map((post) => (
+                <motion.div
+                  key={post.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 15 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  onClick={() => setSelectedPost(post)}
+                  className="relative group aspect-square rounded-xl overflow-hidden border border-[#333] cursor-pointer bg-[#0d1117]"
+                >
+                  <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  
+                  {/* Instagram Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center select-none animate-fade-in">
+                    <div className="flex items-center gap-1.5 text-white font-mono text-sm mb-2">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {post.likes}
+                    </div>
+                    {post.caption && (
+                      <p className="text-white/80 text-[11px] leading-snug line-clamp-3 max-w-full font-medium">
+                        {post.caption}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* New Post Upload Modal */}
+      {showCreatePostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0e1015] border border-[#333] w-full max-w-md rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-[#333] flex justify-between items-center bg-[#07090e]">
+              <h3 className="text-base font-semibold text-white">Create New Post</h3>
+              <button onClick={() => { setShowCreatePostModal(false); setPostImage(''); setPostCaption(''); setPostError(null); }} className="text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-white/60">Image Upload</label>
+                {originalImage ? (
+                  <div className="flex flex-col items-center gap-4">
+                    {/* Cropper Viewport Container */}
+                    <div className="relative w-full aspect-square max-w-[280px] mx-auto overflow-hidden rounded-xl border border-[#333] bg-[#07090e] select-none group">
+                      <div 
+                        className="w-full h-full flex items-center justify-center pointer-events-none"
+                        style={{
+                          transform: `translate(${cropX}px, ${cropY}px) scale(${cropScale}) rotate(${cropRotation}deg)`,
+                          transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                        }}
+                      >
+                        <img src={originalImage} alt="Crop preview" className="max-w-none max-h-none select-none pointer-events-none" style={{ width: '100%', height: 'auto' }} />
+                      </div>
+                      {/* Drag overlay receiver */}
+                      <div 
+                        className="absolute inset-0 z-10 cursor-move"
+                        onMouseDown={handleDragStart}
+                        onMouseMove={handleDragMove}
+                        onMouseUp={handleDragEnd}
+                        onMouseLeave={handleDragEnd}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                      />
+                      {/* Delete file button */}
+                      <button 
+                        onClick={() => { setPostImage(''); setOriginalImage(''); }} 
+                        className="absolute top-2 right-2 z-20 bg-black/60 text-white rounded-full p-1 hover:bg-black transition-colors cursor-pointer border-none"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+
+                    {/* Adjustments Panel */}
+                    <div className="w-full max-w-[280px] space-y-3">
+                      {/* Zoom/Scale Slider */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-semibold text-white/50 w-8 text-left">Zoom</span>
+                        <input 
+                          type="range" 
+                          min="1.0" 
+                          max="3.0" 
+                          step="0.05"
+                          value={cropScale}
+                          onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                          className="flex-1 accent-[#00d2ff] bg-white/10 h-1 rounded-lg cursor-pointer appearance-none"
+                        />
+                        <span className="text-[10px] font-mono text-white/50 w-6 text-right">{cropScale.toFixed(2)}x</span>
+                      </div>
+
+                      {/* Rotation controls & Reset */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCropRotation((prev) => (prev + 90) % 360)}
+                          className="flex-1 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-semibold text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                          Rotate 90°
+                        </button>
+                        <button
+                          onClick={() => { setCropScale(1.0); setCropRotation(0); setCropX(0); setCropY(0); }}
+                          className="flex-1 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-semibold text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="border border-dashed border-[#333] rounded-xl p-8 text-center hover:border-white/20 transition-all bg-[#07090e] relative flex flex-col items-center justify-center min-h-[160px]">
+                      <input type="file" accept="image/*" onChange={handlePostFileChange} id="post-file-upload" className="hidden" />
+                      <label htmlFor="post-file-upload" className="flex flex-col items-center gap-2 text-white/50 hover:text-white cursor-pointer select-none">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <span className="text-xs font-semibold">Upload Photo</span>
+                      </label>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={postImage}
+                        onChange={(e) => handleUrlChange(e.target.value)}
+                        placeholder="Or paste image URL..."
+                        className="flex-1 bg-[#1b1e28] border border-[#333] rounded-xl h-10 px-4 text-xs text-white placeholder:text-white/20 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-white/60">Caption</label>
+                <textarea
+                  value={postCaption}
+                  onChange={(e) => setPostCaption(e.target.value)}
+                  placeholder="Write a caption..."
+                  rows={3}
+                  className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none resize-none"
+                />
+              </div>
+
+              {postError && (
+                <div className="text-red-400 text-xs text-left">
+                  {postError}
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-[#333] flex gap-3 justify-end bg-[#07090e]">
+              <button
+                onClick={() => { setShowCreatePostModal(false); setPostImage(''); setPostCaption(''); setPostError(null); }}
+                className="h-10 px-5 border border-white/10 text-white/70 hover:text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePost}
+                disabled={isPosting || !postImage.trim()}
+                className="h-10 px-6 bg-[#00d2ff] disabled:bg-[#00d2ff]/50 disabled:text-black/50 text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5 border-none"
+              >
+                {isPosting ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post Zoom Detail Modal */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
+          <div className="bg-[#0e1015] border border-[#333] w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[400px] max-h-[85vh]">
+            {/* Image display */}
+            <div className="md:w-3/5 bg-black flex items-center justify-center overflow-hidden min-h-[300px]">
+              <img src={selectedPost.imageUrl} alt={selectedPost.caption} className="max-w-full max-h-full object-contain" />
+            </div>
+
+            {/* Sidebar content */}
+            <div className="md:w-2/5 flex flex-col border-l border-[#333] bg-[#0e1015]">
+              <div className="p-4 border-b border-[#333] flex justify-between items-center bg-[#07090e]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xs text-white shrink-0">
+                    {firstName ? firstName[0].toUpperCase() : 'U'}
+                  </div>
+                  <span className="text-xs font-semibold text-white">{firstName && lastName ? `${firstName} ${lastName}` : email}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {/* Edit Caption Button */}
+                  <button 
+                    onClick={() => {
+                      setIsEditingCaption(true);
+                      setEditCaptionText(selectedPost.caption || '');
+                    }}
+                    title="Edit Caption"
+                    className="text-white/60 hover:text-white transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+
+                  {/* Delete Post Button */}
+                  <button 
+                    onClick={() => handleDeletePost(selectedPost.id)}
+                    title="Delete Post"
+                    className="text-red-400 hover:text-red-500 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+
+                  <div className="w-[1px] h-4 bg-[#333] mx-0.5" />
+
+                  {/* Close Modal Button */}
+                  <button onClick={() => { setSelectedPost(null); setIsEditingCaption(false); }} className="text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 p-4 overflow-y-auto text-left space-y-4">
+                {isEditingCaption ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editCaptionText}
+                      onChange={(e) => setEditCaptionText(e.target.value)}
+                      placeholder="Edit caption..."
+                      rows={4}
+                      className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none resize-none"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setIsEditingCaption(false)}
+                        className="h-8 px-3 border border-white/10 hover:bg-white/5 rounded-lg text-[10px] font-semibold text-white/70 hover:text-white cursor-pointer transition-all border-none bg-transparent"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSavePostCaption(selectedPost.id)}
+                        className="h-8 px-4 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black rounded-lg text-[10px] font-semibold transition-all cursor-pointer border-none"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedPost.caption ? (
+                  <div className="flex gap-2.5 items-start">
+                    <div className="w-6 h-6 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-[10px] text-white shrink-0">
+                      {firstName ? firstName[0].toUpperCase() : 'U'}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="text-white/90 leading-relaxed">
+                        <strong className="text-white mr-1.5">{firstName || 'User'}</strong>
+                        {selectedPost.caption}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/30 italic">No caption provided.</p>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-[#333] bg-[#07090e] space-y-3 text-left">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleLikePost(selectedPost.id)}
+                    className={`transition-all hover:scale-110 cursor-pointer border-none bg-transparent ${
+                      selectedPost.likedByUser ? 'text-red-500' : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill={selectedPost.likedByUser ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <span className="text-xs text-white/50">
+                    Shared on <span className="font-mono">{new Date(selectedPost.createdAt).toLocaleDateString()}</span>
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white font-mono">
+                  {selectedPost.likes} {selectedPost.likes === 1 ? 'like' : 'likes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Success Confirmation Overlay */}
+      {showDeleteSuccess && (
+        <DeleteSuccessOverlay onClose={() => setShowDeleteSuccess(false)} />
+      )}
 
     </div>
   );
@@ -3181,6 +4311,25 @@ function SuccessTickOverlay({ onClose }: { onClose: () => void }) {
         </div>
         <h3 className="text-lg font-bold text-white tracking-tight">Application Submitted</h3>
         <p className="text-xs text-white/50 mt-1 font-mono">Successfully sent to partner organization</p>
+      </div>
+    </div>
+  );
+}
+
+function DeleteSuccessOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 1500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div className="flex flex-col items-center justify-center p-8 bg-[#111318] border border-[#333] rounded-3xl shadow-2xl scale-up">
+        <div className="w-20 h-20 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400 mb-4 animate-bounce">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </div>
+        <h3 className="text-lg font-bold text-white tracking-tight">Post Deleted</h3>
+        <p className="text-xs text-white/50 mt-1 font-mono">Removed successfully from your profile</p>
       </div>
     </div>
   );
@@ -3286,6 +4435,37 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
   const feedPosts: any[] = [];
 
   const allPosts = [...dbProjects, ...feedPosts];
+
+  const trendingTags = (() => {
+    const counts: Record<string, number> = {};
+    dbProjects.forEach(p => {
+      if (p.tags && Array.isArray(p.tags)) {
+        p.tags.forEach((tag: string) => {
+          // Normalize formatting (e.g. capitalize nicely)
+          const formatted = tag.trim().split(/[-_ ]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+          if (formatted) {
+            counts[formatted] = (counts[formatted] || 0) + 1;
+          }
+        });
+      }
+    });
+
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .map(entry => entry[0]);
+
+    const defaults = ['FastAPI', 'React', 'TypeScript', 'NodeJS', 'PostgreSQL', 'Docker', 'AWS', 'Python', 'Go', 'Rust', 'Kubernetes', 'GraphQL'];
+    const unique = new Set(sorted);
+    for (const d of defaults) {
+      if (unique.size >= 12) break;
+      const lowerD = d.toLowerCase();
+      const exists = Array.from(unique).some(u => u.toLowerCase() === lowerD);
+      if (!exists) {
+        unique.add(d);
+      }
+    }
+    return Array.from(unique).slice(0, 12);
+  })();
 
   const matchedPosts = allPosts.filter(post => {
     if (showAllOpportunities) return true;
@@ -3414,7 +4594,7 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
       <div className="w-full lg:w-[40%] p-6 md:p-10 relative z-10 bg-[#0a0a0a] text-left">
         <h2 className="text-sm font-semibold mb-6 text-white/80 uppercase tracking-widest">Trending Tags</h2>
         <div className="flex flex-wrap gap-2">
-          {['FastAPI', 'React', 'WebSockets', 'GraphQL', 'PostgreSQL', 'Docker', 'Kubernetes', 'Go', 'Rust', 'Python', 'AI/ML', 'TypeScript'].map(tag => (
+          {trendingTags.map(tag => (
             <button key={tag} className="px-2.5 py-1 text-xs font-mono border border-[#333] bg-[#151820] text-white/70 hover:text-white hover:border-white/40 hover:bg-white/5 transition-none cursor-pointer">
               #{tag}
             </button>
@@ -3465,6 +4645,8 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
   const [company, setCompany] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [companyPosts, setCompanyPosts] = useState<any[]>([]);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -3495,6 +4677,21 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
             }));
             setProjects(projsWithSkills);
           }
+
+          // Fetch company posts from creator's user record
+          if (comp.created_by) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('profile_details')
+              .eq('id', comp.created_by)
+              .maybeSingle();
+            if (userData && userData.profile_details) {
+              const posts = Array.isArray(userData.profile_details.company_posts)
+                ? userData.profile_details.company_posts
+                : [];
+              setCompanyPosts(posts);
+            }
+          }
         }
       } catch (err) {
         console.error("Error loading company profile:", err);
@@ -3504,6 +4701,54 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
     };
     fetchCompanyData();
   }, [companyId]);
+
+  const handleLikePost = async (postId: string) => {
+    try {
+      const updatedPosts = companyPosts.map(p => {
+        if (p.id === postId) {
+          const liked = !p.likedByUser;
+          return {
+            ...p,
+            likedByUser: liked,
+            likes: liked ? p.likes + 1 : Math.max(0, p.likes - 1)
+          };
+        }
+        return p;
+      });
+
+      if (selectedPost && selectedPost.id === postId) {
+        const liked = !selectedPost.likedByUser;
+        setSelectedPost({
+          ...selectedPost,
+          likedByUser: liked,
+          likes: liked ? selectedPost.likes + 1 : Math.max(0, selectedPost.likes - 1)
+        });
+      }
+
+      if (company?.created_by) {
+        const { data: currentData } = await supabase
+          .from('users')
+          .select('profile_details')
+          .eq('id', company.created_by)
+          .maybeSingle();
+
+        const details = currentData?.profile_details || {};
+        const mergedDetails = {
+          ...details,
+          company_posts: updatedPosts
+        };
+
+        await supabase
+          .from('users')
+          .update({ profile_details: mergedDetails })
+          .eq('id', company.created_by);
+
+        setCompanyPosts(updatedPosts);
+      }
+    } catch (err) {
+      console.error("Error liking post:", err);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -3573,9 +4818,100 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
                 </div>
               )}
             </div>
+
+            {/* Public Company Posts Section */}
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-4">Company Posts</h3>
+              {companyPosts.length === 0 ? (
+                <p className="text-xs text-white/40 font-mono">No posts published by this organization yet.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {companyPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      onClick={() => setSelectedPost(post)}
+                      className="relative group aspect-square rounded-xl overflow-hidden border border-[#333] cursor-pointer bg-[#0d1117]"
+                    >
+                      <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center select-none animate-fade-in">
+                        <div className="flex items-center gap-1.5 text-white font-mono text-[10px] mb-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          {post.likes}
+                        </div>
+                        {post.caption && (
+                          <p className="text-white/80 text-[9px] line-clamp-2 max-w-full truncate">{post.caption}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Post Zoom Detail Modal */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
+          <div className="bg-[#0e1015] border border-[#333] w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[400px] max-h-[85vh]">
+            <div className="md:w-3/5 bg-black flex items-center justify-center overflow-hidden min-h-[300px]">
+              <img src={selectedPost.imageUrl} alt={selectedPost.caption} className="max-w-full max-h-full object-contain" />
+            </div>
+
+            <div className="md:w-2/5 flex flex-col border-l border-[#333] bg-[#0e1015]">
+              <div className="p-4 border-b border-[#333] flex justify-between items-center bg-[#07090e]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xs text-white shrink-0">
+                    {company?.name ? company.name[0].toUpperCase() : 'C'}
+                  </div>
+                  <span className="text-xs font-semibold text-white">{company?.name || 'Company Profile'}</span>
+                </div>
+                <button onClick={() => setSelectedPost(null)} className="text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+
+              <div className="flex-1 p-4 overflow-y-auto text-left space-y-4">
+                {selectedPost.caption ? (
+                  <div className="flex gap-2.5 items-start">
+                    <div className="w-6 h-6 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-[10px] text-white shrink-0">
+                      {company?.name ? company.name[0].toUpperCase() : 'C'}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="text-white/90 leading-relaxed">
+                        <strong className="text-white mr-1.5">{company?.name || 'Company'}</strong>
+                        {selectedPost.caption}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/30 italic">No caption provided.</p>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-[#333] bg-[#07090e] space-y-3 text-left">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleLikePost(selectedPost.id)}
+                    className={`transition-all hover:scale-110 cursor-pointer border-none bg-transparent ${
+                      selectedPost.likedByUser ? 'text-red-500' : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill={selectedPost.likedByUser ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <span className="text-xs text-white/50">
+                    Shared on <span className="font-mono">{new Date(selectedPost.createdAt).toLocaleDateString()}</span>
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white font-mono">
+                  {selectedPost.likes} {selectedPost.likes === 1 ? 'like' : 'likes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3854,37 +5190,26 @@ function DeveloperProfileModal({
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 flex gap-2">
-                  <select 
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="flex-1 bg-black border border-[#333] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#00d2ff]"
-                  >
-                    {recruiterProjects.length === 0 ? (
-                      <option value="">General Project Assign</option>
-                    ) : (
-                      recruiterProjects.map(p => (
-                        <option key={p.id} value={p.id}>{p.title}</option>
-                      ))
-                    )}
-                  </select>
-                  <button 
-                    disabled={actionLoading}
-                    onClick={handleSelectCandidate}
-                    className="px-3.5 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#10b981]/90 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50"
-                  >
-                    Select for Project (+100 XP)
-                  </button>
-                </div>
-                
+              <div className="flex gap-2 w-full">
+                <select 
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="flex-1 bg-black border border-[#333] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#00d2ff]"
+                >
+                  {recruiterProjects.length === 0 ? (
+                    <option value="">General Project Assign</option>
+                  ) : (
+                    recruiterProjects.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))
+                  )}
+                </select>
                 <button 
                   disabled={actionLoading}
-                  onClick={handleDeductXp}
-                  className="px-3 py-1.5 rounded-lg bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 text-red-400 font-semibold text-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  onClick={handleSelectCandidate}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#10b981] hover:bg-[#10b981]/90 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer disabled:opacity-50"
                 >
-                  <ThumbsDown className="w-3.5 h-3.5" />
-                  Deduct 5 XP (Did not like work)
+                  Select for Project (+100 XP)
                 </button>
               </div>
             </div>
@@ -3954,6 +5279,16 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
 
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
   const activeMessages = messages[activeConvId] || [];
+
+  const messageEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [activeMessages]);
 
   // Load existing messages and distinct chat users on mount/user shift
   useEffect(() => {
@@ -4252,22 +5587,27 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
   return (
     <div className="flex h-full bg-[#0e1015] w-full overflow-hidden">
       {/* Channels List */}
-      <div className="w-80 border-r border-[#333] bg-[#0a0a0a]/50 flex flex-col shrink-0">
-        <div className="p-6 border-b border-[#333] flex flex-col gap-3 bg-[#0d0e12]">
-          <h2 className="text-lg font-bold text-left">Messages</h2>
+      <div className="w-80 border-r border-white/5 bg-[#0a0c10]/40 flex flex-col shrink-0">
+        <div className="p-6 border-b border-white/5 flex flex-col gap-4 bg-[#0a0c10]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-extrabold tracking-tight text-white/95">Messages</h2>
+            <span className="text-[10px] bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-mono font-bold px-2 py-0.5 rounded-full">
+              Live Chat
+            </span>
+          </div>
           <form onSubmit={handleSearchUser} className="relative flex items-center">
             <input
               type="text"
-              placeholder="Search by username..."
+              placeholder="Search username to chat..."
               value={searchUsername}
               onChange={(e) => setSearchUsername(e.target.value)}
-              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl py-2 px-3 text-xs text-white placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:outline-none"
+              className="w-full bg-[#12151f] border border-white/10 rounded-xl py-2.5 pl-4 pr-10 text-xs text-white placeholder:text-white/30 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
             />
             <button
               type="submit"
-              className="absolute right-2 text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent"
+              className="absolute right-3 text-white/40 hover:text-[#00d2ff] transition-colors cursor-pointer border-none bg-transparent"
             >
-              <Search className="w-3.5 h-3.5" />
+              <Search className="w-4 h-4" />
             </button>
           </form>
           {searchStatus === 'searching' && (
@@ -4277,7 +5617,7 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
             <p className="text-[10px] text-red-400 font-mono">{searchMessage}</p>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">
           {conversations.map((c) => {
             const isActive = c.id === activeConvId;
             return (
@@ -4287,23 +5627,27 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
                   setActiveConvId(c.id);
                   setConversations(prev => prev.map(conv => conv.id === c.id ? { ...conv, unread: 0 } : conv));
                 }}
-                className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all text-left cursor-pointer border ${
+                className={`w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all duration-300 text-left cursor-pointer border ${
                   isActive 
-                    ? 'bg-white/10 border-[#333] shadow-md' 
-                    : 'border-transparent hover:bg-white/5 hover:border-white/5 text-white/70 hover:text-white'
+                    ? 'bg-gradient-to-r from-white/[0.07] to-transparent border-white/10 shadow-lg backdrop-blur-md' 
+                    : 'border-transparent hover:bg-white/[0.02] text-white/70 hover:text-white'
                 }`}
               >
-                <div className="w-10 h-10 rounded-full bg-[#1b1e28] flex items-center justify-center text-lg border border-[#333] shrink-0">
+                <div className={`w-11 h-11 rounded-full flex items-center justify-center text-lg shrink-0 transition-all border ${
+                  isActive
+                    ? 'bg-gradient-to-tr from-cyan-500/20 to-cyan-500/5 border-cyan-500/40 shadow-[0_0_12px_rgba(0,210,255,0.15)] scale-105'
+                    : 'bg-white/5 border-white/10'
+                }`}>
                   {c.avatar}
                 </div>
                 <div className="overflow-hidden flex-1">
-                  <div className="flex justify-between items-baseline mb-0.5">
-                    <span className="font-semibold text-sm truncate">{c.name}</span>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className={`font-semibold text-sm truncate transition-colors ${isActive ? 'text-[#00d2ff]' : 'text-white/90'}`}>{c.name}</span>
                     {c.unread > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-[#00d2ff]" />
+                      <span className="w-2 h-2 rounded-full bg-[#00d2ff] shadow-[0_0_8px_#00d2ff]" />
                     )}
                   </div>
-                  <p className="text-xs text-white/40 truncate leading-normal">{c.lastMessage}</p>
+                  <p className={`text-xs truncate leading-normal transition-colors ${isActive ? 'text-white/65' : 'text-white/40'}`}>{c.lastMessage}</p>
                 </div>
               </button>
             );
@@ -4314,59 +5658,61 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
       {/* Main Messaging pane */}
       <div className="flex-1 flex flex-col bg-[#0e1015] justify-between relative h-full min-w-0 overflow-hidden">
         {/* Chat Header */}
-        <div className="h-[73px] border-b border-[#333] bg-[#0d0e12] px-6 flex items-center justify-between shrink-0">
+        <div className="h-[73px] border-b border-white/5 bg-[#0a0c10] px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1b1e28] flex items-center justify-center text-md border border-[#333]">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 flex items-center justify-center text-lg">
               {activeConv.avatar}
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold">{activeConv.name}</p>
-              <p className="text-[10px] text-[#00d2ff] font-mono">online</p>
+              <p className="text-sm font-bold text-white/95 leading-tight">{activeConv.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
+                <span className="text-[9px] text-emerald-400 font-bold font-mono tracking-wider uppercase">online</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Message bubbles list */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 flex flex-col justify-end min-h-0 pb-24">
-          <div className="space-y-4 overflow-y-auto max-h-full pr-1">
-            {activeMessages.map((m) => {
-              const isMe = m.sender === 'me';
-              return (
-                <div 
-                  key={m.id} 
-                  className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}
-                >
-                  <div className={`max-w-[70%] rounded-2xl px-4 py-3 text-sm leading-relaxed border ${
-                    isMe 
-                      ? 'bg-white text-black border-white text-left font-medium' 
-                      : 'bg-[#1b1e28] text-white border-[#333] text-left'
-                  }`}>
-                    <p>{m.text}</p>
-                    <span className={`text-[9px] mt-1.5 block text-right font-mono ${
-                      isMe ? 'text-black/50' : 'text-white/40'
-                    }`}>{m.time}</span>
-                  </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0 pb-28 text-left">
+          {activeMessages.map((m) => {
+            const isMe = m.sender === 'me';
+            return (
+              <div 
+                key={m.id} 
+                className={`flex ${isMe ? 'justify-end' : 'justify-start'} w-full`}
+              >
+                <div className={`max-w-[70%] rounded-2xl px-4.5 py-3.5 text-sm leading-relaxed border transition-all duration-300 shadow-md ${
+                  isMe 
+                    ? 'bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] text-white border-transparent shadow-[0_4px_12px_rgba(0,210,255,0.15)] rounded-br-none font-medium' 
+                    : 'bg-[#12151f]/80 backdrop-blur-md text-white/90 border-white/5 rounded-bl-none shadow-[0_4px_12px_rgba(0,0,0,0.1)]'
+                }`}>
+                  <p className="whitespace-pre-wrap">{m.text}</p>
+                  <span className={`text-[11px] mt-2 block text-right font-mono tracking-tight font-semibold ${
+                    isMe ? 'text-white/80' : 'text-white/50'
+                  }`}>{m.time}</span>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+          <div ref={messageEndRef} />
         </div>
 
         {/* Message Input box */}
         <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-[#0e1015] via-[#0e1015]/95 to-transparent shrink-0">
-          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-center gap-3 p-2 bg-[#0a0a0a] border border-[#333] rounded-2xl relative shadow-lg">
+          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-center gap-3 p-1.5 bg-[#0a0c10]/90 border border-white/10 backdrop-blur-md rounded-2xl relative shadow-2xl focus-within:border-cyan-500/40 transition-colors">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={`Message ${activeConv.name}...`}
-              className="flex-1 bg-transparent border-none py-2 px-3 text-white placeholder:text-white/20 focus:ring-0 focus:outline-none text-sm"
+              className="flex-1 bg-transparent border-none py-2.5 px-4 text-white placeholder:text-white/20 focus:ring-0 focus:outline-none text-sm"
             />
             <button
               type="submit"
-              className="w-10 h-10 rounded-xl bg-white text-black hover:bg-white/90 flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-95 border-none"
+              className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] hover:shadow-[0_0_12px_rgba(0,210,255,0.35)] text-white flex items-center justify-center transition-all shrink-0 cursor-pointer active:scale-95 border-none"
             >
-              <Send className="w-4 h-4 text-black" />
+              <Send className="w-4 h-4 text-white" />
             </button>
           </form>
         </div>
@@ -4481,68 +5827,86 @@ function PostJobView({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="max-w-2xl text-left bg-[#111318] border border-[#333] rounded-2xl p-8 shadow-xl w-full">
-      <h2 className="text-xl font-bold mb-1 text-white">Post Requirement</h2>
-      <p className="text-xs text-white/50 mb-6 font-mono">Matched automatically to developers with matching skill sets.</p>
+    <div className="max-w-2xl text-left bg-[#0e111a]/85 border border-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 relative overflow-hidden w-full">
+      {/* Decorative top laser line */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#00d2ff] to-transparent" />
+      
+      <div className="flex items-start gap-4 mb-8">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#00d2ff]/20 to-[#00d2ff]/5 border border-[#00d2ff]/30 flex items-center justify-center text-xl shrink-0">
+          💼
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-white/95">Post Requirement</h2>
+          <p className="text-xs text-white/40 mt-1 font-mono">Matched automatically to developers with matching skill sets.</p>
+        </div>
+      </div>
 
       {status === 'success' && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono">
-          Requirement posted successfully! Developers with matching skills will now see this opportunity in their feeds.
+        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
+          <span className="text-base select-none mt-0.5">✓</span>
+          <div>
+            <p className="font-semibold text-emerald-300">Success!</p>
+            <p className="mt-0.5 text-white/70">Requirement posted successfully! Developers with matching skills will now see this opportunity in their feeds.</p>
+          </div>
         </div>
       )}
 
       {status === 'error' && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono">
-          {errorMessage}
+        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
+          <span className="text-base select-none mt-0.5">⚠</span>
+          <div>
+            <p className="font-semibold text-rose-300">Error</p>
+            <p className="mt-0.5 text-white/70">{errorMessage}</p>
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-white/60">Opportunity Title</label>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Opportunity Title</label>
           <input
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Senior Backend Engineer (FastAPI)"
-            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+            className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-white/60">Requirement Description</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Requirement Description</label>
           <textarea
             required
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Outline role responsibilities, deliverables, and team context..."
             rows={5}
-            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none text-sm resize-none leading-relaxed"
+            className="w-full bg-[#12151f] border border-white/10 rounded-xl p-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300 resize-none leading-relaxed"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60">Estimated Budget / Salary</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Estimated Budget / Salary</label>
             <input
               type="text"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="e.g. $120k - $140k"
-              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+              className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60">Required Tech Skills (comma-separated)</label>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Required Tech Skills (comma-separated)</label>
             <input
               type="text"
               required
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="e.g. fastapi, react, python"
-              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+              className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
             />
           </div>
         </div>
@@ -4550,9 +5914,16 @@ function PostJobView({ userId }: { userId: string }) {
         <button
           type="submit"
           disabled={status === 'submitting'}
-          className="w-full h-11 bg-white hover:bg-white/90 text-black font-semibold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-4 border-none"
+          className="w-full h-12 bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] hover:shadow-[0_0_15px_rgba(0,210,255,0.35)] text-white font-bold rounded-xl active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 mt-6 border-none"
         >
-          {status === 'submitting' ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Publish Requirement'}
+          {status === 'submitting' ? (
+            <Loader2 className="w-5 h-5 animate-spin text-white" />
+          ) : (
+            <>
+              Publish Requirement
+              <span>→</span>
+            </>
+          )}
         </button>
       </form>
     </div>
@@ -4568,9 +5939,32 @@ function CompanyProfileView({ userId }: { userId: string }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [companyId, setCompanyId] = useState<string | null>(null);
 
+  // Company Posts states
+  const [posts, setPosts] = useState<any[]>([]);
+  const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [isEditingCaption, setIsEditingCaption] = useState(false);
+  const [editCaptionText, setEditCaptionText] = useState('');
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+
+  // Post creation states
+  const [postImage, setPostImage] = useState('');
+  const [postCaption, setPostCaption] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  // Image Cropping states
+  const [originalImage, setOriginalImage] = useState('');
+  const [cropScale, setCropScale] = useState(1.0);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   useEffect(() => {
     if (!userId) return;
-    const fetchCompany = async () => {
+    const fetchCompanyAndPosts = async () => {
       try {
         const { data, error } = await supabase
           .from('companies')
@@ -4591,13 +5985,28 @@ function CompanyProfileView({ userId }: { userId: string }) {
           setWebsite(data.website || '');
           setDescription(data.description || '');
         }
+
+        // Fetch company posts from recruiter's profile_details
+        const { data: userData } = await supabase
+          .from('users')
+          .select('profile_details')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (userData && userData.profile_details) {
+          const compPosts = Array.isArray(userData.profile_details.company_posts)
+            ? userData.profile_details.company_posts
+            : [];
+          setPosts(compPosts);
+        }
+
         setStatus('idle');
       } catch (err: any) {
         setStatus('error');
         setErrorMessage(err.message);
       }
     };
-    fetchCompany();
+    fetchCompanyAndPosts();
   }, [userId]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -4656,14 +6065,6 @@ function CompanyProfileView({ userId }: { userId: string }) {
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center p-20 w-full">
-        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
-      </div>
-    );
-  }
-
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -4704,122 +6105,732 @@ function CompanyProfileView({ userId }: { userId: string }) {
     reader.readAsDataURL(file);
   };
 
+  // Drag and Touch crop listeners
+  const handleDragStart = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - cropX, y: e.clientY - cropY });
+  };
+
+  const handleDragMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setCropX(e.clientX - dragStart.x);
+    setCropY(e.clientY - dragStart.y);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - cropX, y: e.touches[0].clientY - cropY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    setCropX(e.touches[0].clientX - dragStart.x);
+    setCropY(e.touches[0].clientY - dragStart.y);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setOriginalImage(event.target?.result as string);
+      setPostImage(event.target?.result as string);
+      setCropScale(1.0);
+      setCropRotation(0);
+      setCropX(0);
+      setCropY(0);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUrlChange = (url: string) => {
+    setPostImage(url);
+    setOriginalImage(url);
+    setCropScale(1.0);
+    setCropRotation(0);
+    setCropX(0);
+    setCropY(0);
+  };
+
+  const generateCroppedImage = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error("Could not get 2d context"));
+          return;
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, 600, 600);
+
+        ctx.save();
+        ctx.translate(300, 300);
+        ctx.rotate((cropRotation * Math.PI) / 180);
+        ctx.scale(cropScale, cropScale);
+
+        const screenFactor = 600 / 280;
+        const tx = cropX * screenFactor;
+        const ty = cropY * screenFactor;
+        ctx.translate(tx / cropScale, ty / cropScale);
+
+        const aspect = img.width / img.height;
+        let drawW = 600;
+        let drawH = 600;
+
+        if (aspect > 1) {
+          drawW = 600 * aspect;
+        } else {
+          drawH = 600 / aspect;
+        }
+
+        ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+        ctx.restore();
+
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => reject(new Error("Could not load original image"));
+      img.src = originalImage;
+    });
+  };
+
+  const handleCreatePost = async () => {
+    if (!originalImage.trim()) return;
+    setIsPosting(true);
+    setPostError(null);
+
+    try {
+      const finalImage = await generateCroppedImage();
+      const newPost = {
+        id: Math.random().toString(36).substring(2, 11),
+        imageUrl: finalImage,
+        caption: postCaption.trim(),
+        likes: 0,
+        likedByUser: false,
+        createdAt: new Date().toISOString()
+      };
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = userData?.profile_details || {};
+      const currentPosts = Array.isArray(details.company_posts) ? details.company_posts : [];
+      const updatedPosts = [newPost, ...currentPosts];
+
+      const mergedDetails = {
+        ...details,
+        company_posts: updatedPosts
+      };
+
+      const { error } = await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      if (error) {
+        setPostError(error.message);
+      } else {
+        setPosts(updatedPosts);
+        setPostImage('');
+        setOriginalImage('');
+        setPostCaption('');
+        setShowCreatePostModal(false);
+      }
+    } catch (err: any) {
+      setPostError(err.message || "An error occurred");
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const handleLikePost = async (postId: string) => {
+    try {
+      const updatedPosts = posts.map(p => {
+        if (p.id === postId) {
+          const liked = !p.likedByUser;
+          return {
+            ...p,
+            likedByUser: liked,
+            likes: liked ? p.likes + 1 : Math.max(0, p.likes - 1)
+          };
+        }
+        return p;
+      });
+
+      if (selectedPost && selectedPost.id === postId) {
+        const liked = !selectedPost.likedByUser;
+        setSelectedPost({
+          ...selectedPost,
+          likedByUser: liked,
+          likes: liked ? selectedPost.likes + 1 : Math.max(0, selectedPost.likes - 1)
+        });
+      }
+
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        company_posts: updatedPosts
+      };
+
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error("Error liking post:", err);
+    }
+  };
+
+  const handleSavePostCaption = async (postId: string) => {
+    try {
+      const updatedPosts = posts.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            caption: editCaptionText.trim()
+          };
+        }
+        return p;
+      });
+
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost({
+          ...selectedPost,
+          caption: editCaptionText.trim()
+        });
+      }
+
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        company_posts: updatedPosts
+      };
+
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+      setIsEditingCaption(false);
+    } catch (err) {
+      console.error("Error updating caption:", err);
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+
+    try {
+      const updatedPosts = posts.filter(p => p.id !== postId);
+
+      const { data: currentData } = await supabase
+        .from('users')
+        .select('profile_details')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const details = currentData?.profile_details || {};
+      const mergedDetails = {
+        ...details,
+        company_posts: updatedPosts
+      };
+
+      await supabase
+        .from('users')
+        .update({ profile_details: mergedDetails })
+        .eq('id', userId);
+
+      setPosts(updatedPosts);
+      setSelectedPost(null);
+      setShowDeleteSuccess(true);
+    } catch (err) {
+      console.error("Error deleting post:", err);
+    }
+  };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center p-20 w-full">
+        <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl text-left bg-[#111318] border border-[#333] rounded-2xl p-8 shadow-xl w-full">
-      <h2 className="text-xl font-bold mb-1 text-white">Company Profile</h2>
-      <p className="text-xs text-white/50 mb-6 font-mono">Manage your organization details seen by candidates and other recruiters.</p>
+    <div className="w-full text-left bg-[#0e111a]/85 border border-white/5 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden relative">
+      {/* Glow overlays */}
+      <div className="absolute top-0 right-0 w-80 h-80 bg-[#00d2ff]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-      {status === 'success' && (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono">
-          Organization profile updated successfully!
+      {/* Modern Cover Banner */}
+      <div className="h-40 bg-gradient-to-r from-[#0a1e3a] via-[#040d1a] to-[#02050b] relative border-b border-white/5 overflow-hidden flex items-end px-8 pb-4">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(0,210,255,0.15),rgba(255,255,255,0))]" />
+        <div className="absolute top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase select-none">Organization Profile</div>
+      </div>
+
+      {/* Overlapping Avatar & Setup Header */}
+      <div className="px-8 pb-2 flex flex-col sm:flex-row sm:items-end gap-5 -mt-12 relative z-10">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-4 border-[#0e1015] bg-[#151820] shadow-xl overflow-hidden flex items-center justify-center shrink-0 relative group">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Company Logo" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-2xl text-white">
+              {name ? name[0].toUpperCase() : 'C'}
+            </div>
+          )}
         </div>
-      )}
-
-      {status === 'error' && (
-        <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono">
-          {errorMessage}
-        </div>
-      )}
-
-      <form onSubmit={handleSave} className="space-y-5">
-        {/* Logo / Profile Avatar Header */}
-        <div className="flex items-center gap-5 p-4 border border-[#333] rounded-xl bg-[#1b1e28]/50">
-          <div className="w-16 h-16 rounded-2xl border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Company Logo" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xl text-white">
-                {name ? name[0].toUpperCase() : 'C'}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 space-y-2">
-            <label className="text-xs font-semibold text-white/60 block">Organization Logo / Profile Picture</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoFileChange}
-                id="company-logo-upload"
-                className="hidden"
-              />
-              <label
-                htmlFor="company-logo-upload"
-                className="text-xs bg-white text-black font-semibold rounded-lg px-3 py-1.5 hover:bg-white/90 transition-all cursor-pointer"
-              >
-                Upload Logo Image
-              </label>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-white/40">Presets:</span>
-                {['company1', 'company2', 'company3', 'tech1'].map(p => (
-                  <img
-                    key={p}
-                    src={`https://i.pravatar.cc/150?u=${p}`}
-                    alt=""
-                    onClick={() => setLogoUrl(`https://i.pravatar.cc/150?u=${p}`)}
-                    className="w-6 h-6 rounded-lg border border-white/20 hover:border-[#00d2ff] cursor-pointer object-cover hover:scale-110 transition-transform"
-                  />
-                ))}
-              </div>
+        
+        <div className="flex-1 text-left sm:mb-2 space-y-2">
+          <h3 className="text-xl font-bold text-white tracking-tight">
+            {name || 'New Organization'}
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoFileChange}
+              id="company-logo-upload-premium"
+              className="hidden"
+            />
+            <label
+              htmlFor="company-logo-upload-premium"
+              className="text-[10px] bg-white hover:bg-white/90 text-black font-bold rounded-lg px-3 py-1.5 transition-all cursor-pointer select-none"
+            >
+              Upload Logo
+            </label>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Presets:</span>
+              {['company1', 'company2', 'company3', 'tech1'].map(p => (
+                <img
+                  key={p}
+                  src={`https://i.pravatar.cc/150?u=${p}`}
+                  alt=""
+                  onClick={() => setLogoUrl(`https://i.pravatar.cc/150?u=${p}`)}
+                  className="w-6 h-6 rounded border border-white/10 hover:border-[#00d2ff] cursor-pointer object-cover hover:scale-110 transition-transform"
+                />
+              ))}
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-white/60">Organization Name</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. AeroTech Labs"
-            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
-          />
-        </div>
+      {/* Status Notifications */}
+      <div className="px-8 mt-4">
+        {status === 'success' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-xs font-mono">
+            Profile changes successfully saved and synchronized.
+          </div>
+        )}
+        {status === 'error' && (
+          <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs font-mono">
+            {errorMessage}
+          </div>
+        )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60">Website URL</label>
+      {/* Main Settings Form */}
+      <form onSubmit={handleSave} className="p-8 space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Name field */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Organization Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. AeroTech Labs"
+              className="w-full bg-[#161922] border border-white/5 rounded-xl h-11 px-4 text-white text-sm placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:border-[#00d2ff] focus:outline-none transition-all"
+            />
+          </div>
+
+          {/* Website URL field */}
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Website URL</label>
             <input
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="e.g. https://aerotech.io"
-              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60">Logo Image URL</label>
-            <input
-              type="text"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="e.g. https://domain.com/logo.png"
-              className="w-full bg-[#1b1e28] border border-[#333] rounded-xl h-11 px-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+              className="w-full bg-[#161922] border border-white/5 rounded-xl h-11 px-4 text-white text-sm placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:border-[#00d2ff] focus:outline-none transition-all"
             />
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-white/60">Organization Description</label>
+
+
+        {/* Description field */}
+        <div className="flex flex-col gap-1.5 text-left">
+          <label className="text-[10px] font-bold text-white/50 uppercase tracking-wider">Organization Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Provide a description of your organization, culture, and key domain areas..."
-            rows={5}
-            className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none text-sm resize-none leading-relaxed"
+            rows={4}
+            className="w-full bg-[#161922] border border-white/5 rounded-xl p-4 text-white text-sm placeholder:text-white/20 focus:ring-1 focus:ring-[#00d2ff] focus:border-[#00d2ff] focus:outline-none transition-all resize-none leading-relaxed"
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={status === 'saving'}
-          className="w-full h-11 bg-white hover:bg-white/90 text-black font-semibold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-4 border-none"
-        >
-          {status === 'saving' ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Save Changes'}
-        </button>
+        {/* Save button */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            disabled={status === 'saving'}
+            className="h-11 px-8 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 border-none font-sans text-xs"
+          >
+            {status === 'saving' ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Save Changes'}
+          </button>
+        </div>
       </form>
+
+      {/* Posts Section */}
+      <div className="px-8 pb-8 space-y-6 border-t border-white/5 pt-8">
+        <div className="flex justify-between items-center pb-2">
+          <div className="text-left">
+            <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Company Posts
+            </h2>
+            <p className="text-[10px] text-white/40 mt-0.5">Publish office workspaces, team photos, or certifications</p>
+          </div>
+          <button
+            onClick={() => setShowCreatePostModal(true)}
+            className="text-xs font-bold px-4 py-2 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border-none"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Post
+          </button>
+        </div>
+
+        {posts.length === 0 ? (
+          <div className="border border-dashed border-[#333] rounded-2xl p-12 text-center text-white/40 space-y-2 bg-[#0d1117]/30">
+            <p className="text-sm">No posts yet.</p>
+            <p className="text-xs text-white/30">Share photos of your workspace, team events, or company announcements!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3 max-w-3xl">
+            <AnimatePresence mode="popLayout">
+              {posts.map((post) => (
+                <motion.div
+                  key={post.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 15 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  onClick={() => setSelectedPost(post)}
+                  className="relative group aspect-square rounded-xl overflow-hidden border border-[#333] cursor-pointer bg-[#0d1117]"
+                >
+                  <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  
+                  {/* Instagram Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center select-none animate-fade-in">
+                    <div className="flex items-center gap-1.5 text-white font-mono text-xs mb-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {post.likes}
+                    </div>
+                    {post.caption && (
+                      <p className="text-white/80 text-[10px] leading-snug line-clamp-3 max-w-full font-medium">
+                        {post.caption}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* New Post Upload Modal */}
+      {showCreatePostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0e1015] border border-[#333] w-full max-w-md rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-5 border-b border-[#333] flex justify-between items-center bg-[#07090e]">
+              <h3 className="text-base font-semibold text-white">Create New Post</h3>
+              <button onClick={() => { setShowCreatePostModal(false); setPostImage(''); setPostCaption(''); setPostError(null); }} className="text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-white/60">Image Upload</label>
+                {originalImage ? (
+                  <div className="flex flex-col items-center gap-4">
+                    {/* Cropper Viewport Container */}
+                    <div className="relative w-full aspect-square max-w-[280px] mx-auto overflow-hidden rounded-xl border border-[#333] bg-[#07090e] select-none group">
+                      <div 
+                        className="w-full h-full flex items-center justify-center pointer-events-none"
+                        style={{
+                          transform: `translate(${cropX}px, ${cropY}px) scale(${cropScale}) rotate(${cropRotation}deg)`,
+                          transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                        }}
+                      >
+                        <img src={originalImage} alt="Crop preview" className="max-w-none max-h-none select-none pointer-events-none" style={{ width: '100%', height: 'auto' }} />
+                      </div>
+                      {/* Drag overlay receiver */}
+                      <div 
+                        className="absolute inset-0 z-10 cursor-move"
+                        onMouseDown={handleDragStart}
+                        onMouseMove={handleDragMove}
+                        onMouseUp={handleDragEnd}
+                        onMouseLeave={handleDragEnd}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                      />
+                      {/* Delete file button */}
+                      <button 
+                        onClick={() => { setPostImage(''); setOriginalImage(''); }} 
+                        className="absolute top-2 right-2 z-20 bg-black/60 text-white rounded-full p-1 hover:bg-black transition-colors cursor-pointer border-none"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+
+                    {/* Adjustments Panel */}
+                    <div className="w-full max-w-[280px] space-y-3">
+                      {/* Zoom/Scale Slider */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-semibold text-white/50 w-8 text-left">Zoom</span>
+                        <input 
+                          type="range" 
+                          min="1.0" 
+                          max="3.0" 
+                          step="0.05"
+                          value={cropScale}
+                          onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                          className="flex-1 accent-[#00d2ff] bg-white/10 h-1 rounded-lg cursor-pointer appearance-none"
+                        />
+                        <span className="text-[10px] font-mono text-white/50 w-6 text-right">{cropScale.toFixed(2)}x</span>
+                      </div>
+
+                      {/* Rotation controls & Reset */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCropRotation((prev) => (prev + 90) % 360)}
+                          className="flex-1 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-semibold text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                          Rotate 90°
+                        </button>
+                        <button
+                          onClick={() => { setCropScale(1.0); setCropRotation(0); setCropX(0); setCropY(0); }}
+                          className="flex-1 h-8 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-semibold text-white transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="border border-dashed border-[#333] rounded-xl p-8 text-center hover:border-white/20 transition-all bg-[#07090e] relative flex flex-col items-center justify-center min-h-[160px]">
+                      <input type="file" accept="image/*" onChange={handlePostFileChange} id="company-post-file-upload-premium" className="hidden" />
+                      <label htmlFor="company-post-file-upload-premium" className="flex flex-col items-center gap-2 text-white/50 hover:text-white cursor-pointer select-none">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <span className="text-xs font-semibold">Upload Photo</span>
+                      </label>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={postImage}
+                        onChange={(e) => handleUrlChange(e.target.value)}
+                        placeholder="Or paste image URL..."
+                        className="flex-1 bg-[#1b1e28] border border-[#333] rounded-xl h-10 px-4 text-xs text-white placeholder:text-white/20 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1 text-left">
+                <label className="text-xs font-semibold text-white/60">Caption</label>
+                <textarea
+                  value={postCaption}
+                  onChange={(e) => setPostCaption(e.target.value)}
+                  placeholder="Write a caption..."
+                  rows={3}
+                  className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none resize-none"
+                />
+              </div>
+
+              {postError && (
+                <div className="text-red-400 text-xs text-left">
+                  {postError}
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-[#333] flex gap-3 justify-end bg-[#07090e]">
+              <button
+                onClick={() => { setShowCreatePostModal(false); setPostImage(''); setPostCaption(''); setPostError(null); }}
+                className="h-10 px-5 border border-white/10 text-white/70 hover:text-white font-semibold rounded-xl hover:bg-white/5 transition-all cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreatePost}
+                disabled={isPosting || !postImage.trim()}
+                className="h-10 px-6 bg-[#00d2ff] disabled:bg-[#00d2ff]/50 disabled:text-black/50 text-black font-semibold rounded-xl hover:bg-[#00d2ff]/90 active:scale-[0.98] transition-all cursor-pointer text-xs flex items-center justify-center gap-1.5 border-none"
+              >
+                {isPosting ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : 'Publish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post Zoom Detail Modal */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm p-4">
+          <div className="bg-[#0e1015] border border-[#333] w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[400px] max-h-[85vh]">
+            <div className="md:w-3/5 bg-black flex items-center justify-center overflow-hidden min-h-[300px]">
+              <img src={selectedPost.imageUrl} alt={selectedPost.caption} className="max-w-full max-h-full object-contain" />
+            </div>
+
+            <div className="md:w-2/5 flex flex-col border-l border-[#333] bg-[#0e1015]">
+              <div className="p-4 border-b border-[#333] flex justify-between items-center bg-[#07090e]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xs text-white shrink-0">
+                    {name ? name[0].toUpperCase() : 'C'}
+                  </div>
+                  <span className="text-xs font-semibold text-white">{name || 'Company Profile'}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {/* Edit Caption Button */}
+                  <button 
+                    onClick={() => {
+                      setIsEditingCaption(true);
+                      setEditCaptionText(selectedPost.caption || '');
+                    }}
+                    title="Edit Caption"
+                    className="text-white/60 hover:text-white transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+
+                  {/* Delete Post Button */}
+                  <button 
+                    onClick={() => handleDeletePost(selectedPost.id)}
+                    title="Delete Post"
+                    className="text-red-400 hover:text-red-500 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+
+                  <div className="w-[1px] h-4 bg-[#333] mx-0.5" />
+
+                  {/* Close Modal Button */}
+                  <button onClick={() => { setSelectedPost(null); setIsEditingCaption(false); }} className="text-white/40 hover:text-white transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 p-4 overflow-y-auto text-left space-y-4">
+                {isEditingCaption ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editCaptionText}
+                      onChange={(e) => setEditCaptionText(e.target.value)}
+                      placeholder="Edit caption..."
+                      rows={4}
+                      className="w-full bg-[#1b1e28] border border-[#333] rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:outline-none resize-none"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => setIsEditingCaption(false)}
+                        className="h-8 px-3 border border-white/10 hover:bg-white/5 rounded-lg text-[10px] font-semibold text-white/70 hover:text-white cursor-pointer transition-all border-none bg-transparent"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleSavePostCaption(selectedPost.id)}
+                        className="h-8 px-4 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black rounded-lg text-[10px] font-semibold transition-all cursor-pointer border-none"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedPost.caption ? (
+                  <div className="flex gap-2.5 items-start">
+                    <div className="w-6 h-6 rounded-full border border-[#333] bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-[10px] text-white shrink-0">
+                      {name ? name[0].toUpperCase() : 'C'}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <p className="text-white/90 leading-relaxed">
+                        <strong className="text-white mr-1.5">{name || 'Company'}</strong>
+                        {selectedPost.caption}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/30 italic">No caption provided.</p>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-[#333] bg-[#07090e] space-y-3 text-left">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleLikePost(selectedPost.id)}
+                    className={`transition-all hover:scale-110 cursor-pointer border-none bg-transparent ${
+                      selectedPost.likedByUser ? 'text-red-500' : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill={selectedPost.likedByUser ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <span className="text-xs text-white/50">
+                    Shared on <span className="font-mono">{new Date(selectedPost.createdAt).toLocaleDateString()}</span>
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white font-mono">
+                  {selectedPost.likes} {selectedPost.likes === 1 ? 'like' : 'likes'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Success Confirmation Overlay */}
+      {showDeleteSuccess && (
+        <DeleteSuccessOverlay onClose={() => setShowDeleteSuccess(false)} />
+      )}
     </div>
   );
 }
@@ -4827,6 +6838,7 @@ function CompanyProfileView({ userId }: { userId: string }) {
 function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: string) => void }) {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -4847,50 +6859,83 @@ function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: strin
     fetchCompanies();
   }, []);
 
+  const filteredCompanies = companies.filter(c => 
+    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.website?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="w-full flex flex-col flex-1 text-left">
-      <header className="mb-8 shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight text-white">Company Directory</h1>
-        <p className="text-sm text-white/50 mt-1 font-mono">Browse profiles and active requirements of all registered client organizations.</p>
-      </header>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            Company Directory
+            <span className="text-[10px] bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-bold px-2.5 py-0.5 rounded-full font-mono">
+              {filteredCompanies.length} Active
+            </span>
+          </h1>
+          <p className="text-xs text-white/40 mt-1 font-mono">Browse profiles and active requirements of all registered client organizations.</p>
+        </div>
+
+        {/* Premium search bar */}
+        <div className="relative w-full sm:w-80">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search organizations..."
+            className="w-full bg-[#161922]/80 border border-white/5 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff]/30 text-white rounded-xl h-10 pl-10 pr-4 text-xs focus:outline-none transition-all placeholder:text-white/20"
+          />
+          <div className="absolute left-3 top-3 text-white/30">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center p-20 w-full">
           <Loader2 className="w-8 h-8 animate-spin text-white/50" />
         </div>
-      ) : companies.length === 0 ? (
-        <div className="border border-dashed border-[#333] rounded-xl p-10 text-center text-white/40 w-full">
-          No registered companies found
+      ) : filteredCompanies.length === 0 ? (
+        <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20">
+          <svg className="w-8 h-8 mx-auto text-white/20 mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          <p className="text-sm font-semibold">No organizations found</p>
+          <p className="text-xs text-white/30 mt-1">Try widening your search terms or wait for new client signups.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full items-start justify-start">
-          {companies.map(comp => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full items-start justify-start">
+          {filteredCompanies.map(comp => (
             <div 
               key={comp.id} 
               onClick={() => onSelectCompany(comp.id)}
-              className="bg-[#111318] border border-[#333] rounded-2xl p-6 hover:border-white/20 transition-all cursor-pointer group text-left flex flex-col gap-4 h-full"
+              className="bg-[#121520]/60 border border-white/5 rounded-2xl p-5 hover:border-[#00d2ff]/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer group text-left flex flex-col gap-4 h-full relative overflow-hidden shadow-lg"
             >
+              {/* Card top gradient line */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-[#333] flex items-center justify-center text-lg font-bold text-white shrink-0 group-hover:bg-white/10 transition-colors">
+                {/* Logo circle frame */}
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center text-lg font-bold text-white shrink-0 group-hover:border-[#00d2ff]/40 transition-colors overflow-hidden">
                   {comp.logo_url ? (
-                    <img src={comp.logo_url} alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                    <img src={comp.logo_url} alt="Logo" className="w-full h-full object-cover" />
                   ) : (
                     <span>{comp.name.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
-                <div className="overflow-hidden">
-                  <h3 className="text-sm font-semibold text-white truncate group-hover:text-[#00d2ff] transition-colors">{comp.name}</h3>
+                <div className="overflow-hidden text-left flex-1">
+                  <h3 className="text-sm font-bold text-white truncate group-hover:text-[#00d2ff] transition-colors">{comp.name}</h3>
                   {comp.website && (
-                    <p className="text-[10px] text-white/40 truncate font-mono mt-0.5">{comp.website}</p>
+                    <p className="text-[10px] text-white/30 truncate font-mono mt-0.5">{comp.website}</p>
                   )}
                 </div>
               </div>
-              <p className="text-xs text-white/60 line-clamp-3 leading-relaxed flex-1">
+              <p className="text-xs text-white/50 line-clamp-3 leading-relaxed flex-1 font-medium">
                 {comp.description || 'No description provided by the organization.'}
               </p>
-              <div className="border-t border-[#333] pt-3 text-[10px] text-[#00d2ff] font-mono font-semibold flex items-center justify-between">
+              <div className="border-t border-white/5 pt-3.5 text-[10px] text-[#00d2ff] font-mono font-semibold flex items-center justify-between group-hover:text-[#00d2ff]/90 transition-colors">
                 <span>View Details</span>
-                <span>→</span>
+                <span className="transform translate-x-0 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
               </div>
             </div>
           ))}
@@ -4906,6 +6951,7 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [_myCompanyId, setMyCompanyId] = useState<string | null>(null);
   const [showSuccessTick, setShowSuccessTick] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!userId) return;
@@ -4983,51 +7029,97 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
     }
   };
 
+  const filteredProjects = projects.filter(p => 
+    p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.tags.some((t: string) => t.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
     <div className="w-full flex flex-col flex-1 text-left">
-      <header className="mb-8 shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight text-white">Partner Board</h1>
-        <p className="text-sm text-white/50 mt-1 font-mono">B2B marketplace: Browse and apply to opportunities posted by other organizations</p>
-      </header>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            Partner Board
+            <span className="text-[10px] bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-bold px-2.5 py-0.5 rounded-full font-mono">
+              {filteredProjects.length} Opportunities
+            </span>
+          </h1>
+          <p className="text-xs text-white/40 mt-1 font-mono">B2B marketplace: Browse and apply to opportunities posted by other organizations</p>
+        </div>
+
+        {/* Premium search bar */}
+        <div className="relative w-full sm:w-80">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search B2B contracts..."
+            className="w-full bg-[#161922]/80 border border-white/5 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff]/30 text-white rounded-xl h-10 pl-10 pr-4 text-xs focus:outline-none transition-all placeholder:text-white/20"
+          />
+          <div className="absolute left-3 top-3 text-white/30">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center p-20 w-full">
           <Loader2 className="w-8 h-8 animate-spin text-white/50" />
         </div>
-      ) : projects.length === 0 ? (
-        <div className="border border-[#333] rounded-2xl bg-[#111318] p-10 text-center text-white/40 font-mono text-xs">
-          No external partner projects listed at this time.
+      ) : filteredProjects.length === 0 ? (
+        <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20">
+          <svg className="w-8 h-8 mx-auto text-white/20 mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          <p className="text-sm font-semibold">No B2B contracts listed</p>
+          <p className="text-xs text-white/30 mt-1">Try widening your search terms or wait for other companies to post requirements.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          {projects.map(p => {
+          {filteredProjects.map(p => {
             const hasApplied = appliedProjectIds.has(p.id);
             return (
-              <div key={p.id} className="border border-[#333] rounded-2xl bg-[#111318] p-6 hover:border-white/20 transition-all flex flex-col justify-between">
+              <div 
+                key={p.id} 
+                className="bg-[#121520]/60 border border-white/5 rounded-2xl p-5 hover:border-[#00d2ff]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-lg group text-left"
+              >
+                {/* Card top gradient line */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-[#333] flex items-center justify-center font-bold text-sm shrink-0">
-                      {p.logoUrl ? (
-                        <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover rounded-lg" />
-                      ) : (
-                        <span>{p.companyName.charAt(0).toUpperCase()}</span>
-                      )}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      {/* Logo circle frame */}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                        {p.logoUrl ? (
+                          <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{p.companyName.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-white leading-tight">{p.companyName}</h3>
+                        <p className="text-[10px] text-white/40 font-mono mt-0.5">Shared Contract Opportunity</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-white leading-normal">{p.companyName}</h3>
-                      <p className="text-[10px] text-[#00d2ff] font-mono mt-0.5">Budget: {p.budget || 'B2B Contract'}</p>
-                    </div>
+
+                    {/* High contrast budget pill */}
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/35 px-3 py-1 rounded-full font-mono shrink-0">
+                      {p.budget || 'B2B Contract'}
+                    </span>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-semibold text-white/90">{p.title}</h4>
-                    <p className="text-xs text-white/60 mt-1.5 leading-relaxed">{p.description}</p>
+                    <h4 className="text-sm font-bold text-white/90 leading-snug group-hover:text-[#00d2ff] transition-colors">{p.title}</h4>
+                    <p className="text-xs text-white/50 mt-1.5 leading-relaxed font-medium">{p.description}</p>
                   </div>
 
                   {p.tags.length > 0 && (
-                    <div className="flex gap-1.5 flex-wrap pt-2">
+                    <div className="flex gap-1.5 flex-wrap pt-1.5">
                       {p.tags.map((t: string) => (
-                        <span key={t} className="px-1.5 py-0.5 text-[9px] font-mono bg-black border border-[#333] text-white/50 rounded-sm">{t}</span>
+                        <span key={t} className="px-2 py-0.5 text-[9px] font-bold font-mono bg-[#161922] border border-white/5 text-white/50 rounded-md">
+                          {t}
+                        </span>
                       ))}
                     </div>
                   )}
@@ -5037,16 +7129,18 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
                   {hasApplied ? (
                     <button 
                       disabled
-                      className="w-full text-xs font-semibold text-white/40 bg-white/5 border border-white/5 rounded-xl py-2.5 transition-all text-center cursor-not-allowed font-mono"
+                      className="w-full text-xs font-semibold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 rounded-xl py-2.5 transition-all text-center cursor-not-allowed font-mono flex items-center justify-center gap-1.5"
                     >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                       Proposal Sent / Partnership Requested
                     </button>
                   ) : (
                     <button 
                       onClick={() => handleApplyPartner(p.id)}
-                      className="w-full text-xs font-semibold text-black bg-white hover:bg-white/90 active:scale-[0.98] rounded-xl py-2.5 transition-all text-center cursor-pointer font-sans"
+                      className="w-full text-xs font-bold text-black bg-white hover:bg-white/95 active:scale-[0.98] rounded-xl py-2.5 transition-all text-center cursor-pointer font-sans flex items-center justify-center gap-1.5 border-none"
                     >
                       Apply as Partner
+                      <span className="transform translate-x-0 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
                     </button>
                   )}
                 </div>
@@ -5069,6 +7163,21 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const fetchDevelopers = async () => {
+    // Fetch active developer applications to dynamically route them in the pipeline
+    const { data: apps, error: appsError } = await supabase
+      .from('applications')
+      .select('status, developer_id');
+
+    const appMap: Record<string, string> = {};
+    if (apps) {
+      apps.forEach(app => {
+        let targetStatus = 'new';
+        if (app.status === 'shortlisted') targetStatus = 'screening';
+        else if (app.status === 'hired') targetStatus = 'interviewing';
+        appMap[app.developer_id] = targetStatus;
+      });
+    }
+
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -5079,7 +7188,11 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       return;
     }
     if (data) {
-      setDbCandidates(data);
+      const developersWithStatus = data.map(dev => ({
+        ...dev,
+        application_status: appMap[dev.id] || 'new'
+      }));
+      setDbCandidates(developersWithStatus);
     }
   };
 
@@ -5096,7 +7209,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       role: 'Software Engineer',
       avatar: u.profile_details?.avatar_url || '',
       skills,
-      status: 'new',
+      status: u.application_status || 'new',
       xp: Number(u.profile_details?.xp !== undefined ? u.profile_details.xp : 23094),
       match: 90,
       isDbDeveloper: true,
@@ -5107,16 +7220,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
     };
   });
 
-  const candidates = [
-    { id: 1, name: 'John Doe', role: 'Full Stack Engineer', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['FastAPI', 'React'], status: 'new', xp: 12400, match: 94 },
-    { id: 2, name: 'Alice Chen', role: 'Backend Developer', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Go', 'Kubernetes'], status: 'new', xp: 9800, match: 91 },
-    { id: 3, name: 'Marcus Johnson', role: 'Data Engineer', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Python', 'PostgreSQL'], status: 'new', xp: 15200, match: 88 },
-    { id: 4, name: 'Elena Rodriguez', role: 'Frontend Architect', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Vue', 'TypeScript'], status: 'screening', xp: 11050, match: 86 },
-    { id: 5, name: 'David Kim', role: 'DevOps Engineer', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['Docker', 'AWS'], status: 'screening', xp: 8700, match: 82 },
-    { id: 6, name: 'Sarah Miller', role: 'Machine Learning', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', skills: ['PyTorch', 'CUDA'], status: 'interviewing', xp: 18900, match: 97 },
-  ];
-
-  const allCandidates = [...mappedDbCandidates, ...candidates];
+  const allCandidates = mappedDbCandidates;
 
   const handleDeveloperUpdate = (updatedDev: any) => {
     if (updatedDev.isDbDeveloper) {
@@ -5239,10 +7343,10 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 bg-[#0e1015] flex flex-col ${
+      <main className={`flex-1 bg-[#0e1015] ${
         recruiterView === 'chat' 
           ? 'overflow-hidden h-full' 
-          : 'overflow-x-auto overflow-y-auto p-6 md:p-10 items-start justify-start w-full'
+          : 'overflow-y-auto p-6 md:p-10 w-full h-full'
       }`}>
         {recruiterView === 'pipeline' ? (
           <div className="w-full flex flex-col flex-1">

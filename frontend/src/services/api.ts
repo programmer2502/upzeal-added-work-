@@ -133,6 +133,32 @@ class ApiService {
     }
     return null;
   }
+
+  async getEvaluation(): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/evaluation/my-evaluation`, { headers });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend evaluation fetch failed:", err);
+    }
+    return null;
+  }
+
+  async triggerEvaluation(userId?: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const queryParams = userId ? `?target_user_id=${userId}` : '';
+      const res = await fetch(`${API_BASE_URL}/evaluation/evaluate${queryParams}`, {
+        method: 'POST',
+        headers
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend trigger evaluation failed:", err);
+    }
+    return null;
+  }
 }
 
 export const apiService = new ApiService();

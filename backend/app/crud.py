@@ -64,11 +64,8 @@ class ChallengeRepository:
 
         apps_map = {a.get("project_id"): a.get("status") for a in user_apps}
 
-        all_apps = await supabase_client.get("applications", {"select": "project_id"})
-        counts_map = {}
-        for a in all_apps:
-            pid = a.get("project_id")
-            counts_map[pid] = counts_map.get(pid, 0) + 1
+        counts = await supabase_client.get("project_participant_counts")
+        counts_map = {c.get("project_id"): c.get("participant_count", 0) for c in counts}
 
         res = []
         for index, p in enumerate(projects):
@@ -157,3 +154,11 @@ class CompanyRepository:
         else:
             res = await supabase_client.insert("companies", payload)
         return res[0] if res else {}
+
+
+class EvaluationRepository:
+    @staticmethod
+    async def run_evaluation(user_id: str) -> dict:
+        from app.services.evaluation_engine import EvaluationEngine
+        return await EvaluationEngine.evaluate_developer(user_id)
+

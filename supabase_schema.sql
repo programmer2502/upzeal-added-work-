@@ -171,26 +171,27 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 
 -- 1. USERS POLICIES
 -- 1. USERS POLICIES
+-- 1. USERS POLICIES
 DROP POLICY IF EXISTS "Allow public read access to users" ON public.users;
 DROP POLICY IF EXISTS "Allow users to update their own data" ON public.users;
 CREATE POLICY "Allow public read access to users" ON public.users FOR SELECT USING (true);
-CREATE POLICY "Allow users to update their own data" ON public.users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Allow users to update their own data" ON public.users FOR UPDATE USING ((select auth.uid()) = id);
 
 -- 2. COMPANIES POLICIES
 DROP POLICY IF EXISTS "Allow public read access to companies" ON public.companies;
 DROP POLICY IF EXISTS "Allow recruiters to insert companies" ON public.companies;
 DROP POLICY IF EXISTS "Allow company owner to update" ON public.companies;
 CREATE POLICY "Allow public read access to companies" ON public.companies FOR SELECT USING (true);
-CREATE POLICY "Allow recruiters to insert companies" ON public.companies FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Allow company owner to update" ON public.companies FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "Allow recruiters to insert companies" ON public.companies FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
+CREATE POLICY "Allow company owner to update" ON public.companies FOR UPDATE USING ((select auth.uid()) = created_by);
 
 -- 3. PROJECTS POLICIES
 DROP POLICY IF EXISTS "Allow public read access to projects" ON public.projects;
 DROP POLICY IF EXISTS "Allow recruiters to insert projects" ON public.projects;
 DROP POLICY IF EXISTS "Allow project creator to update" ON public.projects;
 CREATE POLICY "Allow public read access to projects" ON public.projects FOR SELECT USING (true);
-CREATE POLICY "Allow recruiters to insert projects" ON public.projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
-CREATE POLICY "Allow project creator to update" ON public.projects FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "Allow recruiters to insert projects" ON public.projects FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
+CREATE POLICY "Allow project creator to update" ON public.projects FOR UPDATE USING ((select auth.uid()) = created_by);
 
 -- 4. APPLICATIONS POLICIES
 DROP POLICY IF EXISTS "Allow applicants and project owners to read applications" ON public.applications;
@@ -199,22 +200,22 @@ DROP POLICY IF EXISTS "Allow applicant or project owner to update applications" 
 CREATE POLICY "Allow applicants and project owners to read applications" 
     ON public.applications FOR SELECT 
     USING (
-        auth.uid() = developer_id OR 
-        auth.uid() IN (SELECT created_by FROM public.projects WHERE id = project_id)
+        (select auth.uid()) = developer_id OR 
+        (select auth.uid()) IN (SELECT created_by FROM public.projects WHERE id = project_id)
     );
-CREATE POLICY "Allow developers to submit applications" ON public.applications FOR INSERT WITH CHECK (auth.uid() = developer_id);
+CREATE POLICY "Allow developers to submit applications" ON public.applications FOR INSERT WITH CHECK ((select auth.uid()) = developer_id);
 CREATE POLICY "Allow applicant or project owner to update applications" 
     ON public.applications FOR UPDATE 
     USING (
-        auth.uid() = developer_id OR 
-        auth.uid() IN (SELECT created_by FROM public.projects WHERE id = project_id)
+        (select auth.uid()) = developer_id OR 
+        (select auth.uid()) IN (SELECT created_by FROM public.projects WHERE id = project_id)
     );
 
 -- 5. SKILL SCORES POLICIES
 DROP POLICY IF EXISTS "Allow public read access to skill scores" ON public.skill_scores;
 DROP POLICY IF EXISTS "Allow developers to update own skill scores" ON public.skill_scores;
 CREATE POLICY "Allow public read access to skill scores" ON public.skill_scores FOR SELECT USING (true);
-CREATE POLICY "Allow developers to update own skill scores" ON public.skill_scores FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Allow developers to update own skill scores" ON public.skill_scores FOR ALL USING ((select auth.uid()) = user_id);
 
 -- 6. REQUIRED SKILLS POLICIES
 DROP POLICY IF EXISTS "Allow public read access to required skills" ON public.required_skills;
@@ -222,13 +223,13 @@ DROP POLICY IF EXISTS "Allow project owner to manage required skills" ON public.
 CREATE POLICY "Allow public read access to required skills" ON public.required_skills FOR SELECT USING (true);
 CREATE POLICY "Allow project owner to manage required skills" 
     ON public.required_skills FOR ALL 
-    USING (auth.uid() = (SELECT created_by FROM public.projects WHERE id = project_id));
+    USING ((select auth.uid()) = (SELECT created_by FROM public.projects WHERE id = project_id));
 
 -- 7. REVIEWS POLICIES
 DROP POLICY IF EXISTS "Allow public read access to reviews" ON public.reviews;
 DROP POLICY IF EXISTS "Allow authenticated users to write reviews" ON public.reviews;
 CREATE POLICY "Allow public read access to reviews" ON public.reviews FOR SELECT USING (true);
-CREATE POLICY "Allow authenticated users to write reviews" ON public.reviews FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated users to write reviews" ON public.reviews FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
 
 -- =========================================================================
 -- 8. PERSISTENT MESSAGES TABLE (Real-time Peer-to-Peer Chat)
@@ -251,11 +252,11 @@ DROP POLICY IF EXISTS "Allow users to insert their own messages" ON public.messa
 -- RLS Policies
 CREATE POLICY "Allow users to read their own messages" 
     ON public.messages FOR SELECT 
-    USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+    USING ((select auth.uid()) = sender_id OR (select auth.uid()) = receiver_id);
 
 CREATE POLICY "Allow users to insert their own messages" 
     ON public.messages FOR INSERT 
-    WITH CHECK (auth.uid() = sender_id);
+    WITH CHECK ((select auth.uid()) = sender_id);
 
 -- Enable Supabase Realtime for messages table
 alter publication supabase_realtime add table public.messages;
@@ -269,4 +270,21 @@ CREATE INDEX IF NOT EXISTS idx_projects_company ON public.projects (company_id, 
 CREATE INDEX IF NOT EXISTS idx_required_skills_proj ON public.required_skills (project_id);
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users (role);
 CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON public.messages (sender_id, receiver_id, created_at);
+
+-- Additional high-performance indexes based on RLS, filters, and JOIN columns
+CREATE INDEX IF NOT EXISTS idx_companies_created_by ON public.companies (created_by);
+CREATE INDEX IF NOT EXISTS idx_projects_created_by ON public.projects (created_by);
+CREATE INDEX IF NOT EXISTS idx_applications_project_id ON public.applications (project_id);
+CREATE INDEX IF NOT EXISTS idx_required_skills_skill_name ON public.required_skills (skill_name);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_id ON public.messages (receiver_id);
+
+-- =========================================================================
+-- 10. PROJECT PARTICIPANT COUNTS VIEW
+-- =========================================================================
+CREATE OR REPLACE VIEW public.project_participant_counts AS
+SELECT project_id, COUNT(*)::integer AS participant_count
+FROM public.applications
+GROUP BY project_id;
+
+GRANT SELECT ON public.project_participant_counts TO anon, authenticated, service_role;
 

@@ -12,6 +12,7 @@ services:
     environment:
       - SUPABASE_URL=https://sdgdovzmjpyycaaunagp.supabase.co
       - SUPABASE_KEY=sb_secret_lR7O85wAk-_Sx4jWg9OPaA_MYFhDTdZ
+      - OPENROUTER_API_KEY=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
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 15s

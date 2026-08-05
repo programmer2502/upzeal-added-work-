@@ -8,7 +8,7 @@ from app.schemas import UserResponseSchema, DashboardConfigUpdate, ProfileUpdate
 from app.dependencies import get_current_user
 from app.crud import UserRepository
 from app.supabase_client import supabase_client
-from app.routers import challenges, mentor, company
+from app.routers import challenges, mentor, company, evaluation
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,6 +67,7 @@ v1_router.include_router(user_router)
 v1_router.include_router(challenges.router)
 v1_router.include_router(mentor.router)
 v1_router.include_router(company.router)
+v1_router.include_router(evaluation.router)
 
 app.include_router(v1_router)
 
