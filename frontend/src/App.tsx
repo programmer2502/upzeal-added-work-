@@ -2554,12 +2554,13 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts, 
                       <span className="text-xs font-mono text-[#10b981]">↑ {changeMetric} %</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex -space-x-2">
-                        {[1,2,3].map(i => (
-                          <img key={i} src={`https://i.pravatar.cc/150?u=a${skill.skill_name}${i}`} alt="" className="w-6 h-6 rounded-full border-2 border-[#111318] object-cover" />
-                        ))}
-                        <span className="w-6 h-6 rounded-full bg-[#1a1d24] border-2 border-[#111318] flex items-center justify-center text-[8px] font-bold text-white/60">99+</span>
-                      </div>
+                      <span className={`text-[9px] font-bold font-mono px-2.5 py-1 rounded-md border ${
+                        skill.verified 
+                          ? 'text-[#10b981] bg-[#10b981]/5 border-[#10b981]/25' 
+                          : 'text-white/30 bg-white/2 border-white/5'
+                      }`}>
+                        {skill.verified ? 'VERIFIED' : 'UNVERIFIED'}
+                      </span>
                       <button className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform cursor-pointer border-none">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </button>
@@ -2867,11 +2868,9 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts, 
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="flex -space-x-1.5 items-center">
-                            <img src={`https://i.pravatar.cc/p${row.id}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                            <img src={`https://i.pravatar.cc/p${row.id}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                            <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
-                          </div>
+                          <span className="text-xs text-white/80 font-mono font-semibold">
+                            {row.participants}
+                          </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
@@ -7279,8 +7278,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       avatar: u.profile_details?.avatar_url || '',
       skills,
       status: u.application_status || 'new',
-      xp: Number(u.profile_details?.xp !== undefined ? u.profile_details.xp : 23094),
-      match: 90,
+      xp: u.xp || 0,
+      match: skills.length > 0 ? Math.min(100, Math.max(50, 60 + skills.length * 8)) : 0,
       isDbDeveloper: true,
       email: u.email,
       username: u.username,
