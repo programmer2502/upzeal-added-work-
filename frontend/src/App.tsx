@@ -4785,34 +4785,6 @@ function CompanyProfileModal({ companyId, onClose, onStartChat }: { companyId: s
             setProjects(projsWithSkills);
           }
 
-          // Fetch company posts from creator's user record
-          const defaultMockPosts = [
-            {
-              id: 'mock-1',
-              imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80',
-              caption: `Building the future of developer verification at ${comp.name || 'our organization'}! 🚀`,
-              likes: 42,
-              createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-              likedByUser: false
-            },
-            {
-              id: 'mock-2',
-              imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
-              caption: "Our main engineering team hard at work on the scaling roadmap. 🛠️",
-              likes: 88,
-              createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-              likedByUser: false
-            },
-            {
-              id: 'mock-3',
-              imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-              caption: "Hackathon week! Ideas turned into working commits. 💡💻",
-              likes: 67,
-              createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
-              likedByUser: false
-            }
-          ];
-
           if (comp.created_by) {
             const { data: userData } = await supabase
               .from('users')
@@ -4822,10 +4794,10 @@ function CompanyProfileModal({ companyId, onClose, onStartChat }: { companyId: s
             if (userData && userData.profile_details && Array.isArray(userData.profile_details.company_posts) && userData.profile_details.company_posts.length > 0) {
               setCompanyPosts(userData.profile_details.company_posts);
             } else {
-              setCompanyPosts(defaultMockPosts);
+              setCompanyPosts([]);
             }
           } else {
-            setCompanyPosts(defaultMockPosts);
+            setCompanyPosts([]);
           }
         }
       } catch (err) {
