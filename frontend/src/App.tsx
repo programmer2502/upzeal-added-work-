@@ -2804,96 +2804,98 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts, 
 
         {/* Table Container */}
         <div className="border border-[#333] rounded-2xl bg-[#111318] overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-[#333] text-[11px] text-white/40 uppercase tracking-wider font-medium bg-[#0a0a0a]/50">
-                <th className="px-5 py-3 w-12">#</th>
-                <th className="px-5 py-3">Challenge</th>
-                <th className="px-5 py-3">Company / Author</th>
-                <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Required Tech Stack</th>
-                <th className="px-5 py-3">Applicants</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center">
-                    <Loader2 className="w-5 h-5 animate-spin mx-auto text-white/40" />
-                  </td>
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[900px]">
+              <thead>
+                <tr className="border-b border-[#333] text-[11px] text-white/40 uppercase tracking-wider font-medium bg-[#0a0a0a]/50">
+                  <th className="px-5 py-3 w-12">#</th>
+                  <th className="px-5 py-3">Challenge</th>
+                  <th className="px-5 py-3">Company / Author</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3">Required Tech Stack</th>
+                  <th className="px-5 py-3">Applicants</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Action</th>
                 </tr>
-              ) : (challenges.filter(c => challengeFilter === 'all' || c.isMatched)).length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-white/40 font-mono text-xs">
-                    {challengeFilter === 'matched' ? 'No projects match your exact tech stack. Click "All Projects" to view all company postings!' : 'No open challenges posted yet.'}
-                  </td>
-                </tr>
-              ) : (
-                challenges
-                  .filter(c => challengeFilter === 'all' || c.isMatched)
-                  .map(row => (
-                    <tr key={row.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-5 py-4 font-mono font-bold text-white/40">{row.rank}</td>
-                      <td className="px-5 py-4 font-semibold text-white/90">
-                        <div className="flex items-center gap-2">
-                          <span>{row.name}</span>
-                          {row.isMatched && (
-                            <span className="text-[10px] font-bold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-2 py-0.5 rounded-full">
-                              ★ Recommended
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div 
-                          onClick={() => row.companyId && onSelectCompany && onSelectCompany(row.companyId)}
-                          className={`flex items-center gap-2 ${row.companyId ? 'cursor-pointer hover:opacity-80 transition-opacity group' : ''}`}
-                        >
-                          <img src={row.avatar} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
-                          <span className={`text-white/80 font-medium ${row.companyId ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{row.author}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {row.skills.map((skill: string) => (
-                            <span key={skill} className="px-2 py-0.5 text-[10px] font-mono font-medium bg-[#0a0a0a] border border-[#333] text-white/70 rounded">
-                              {formatSkillTitle(skill)}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex -space-x-1.5 items-center">
-                          <img src={`https://i.pravatar.cc/150?u=p${row.id}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                          <img src={`https://i.pravatar.cc/150?u=p${row.id}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
-                          <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        {row.appStatus ? (
-                          <span className="inline-block text-xs font-semibold text-white/40 bg-white/5 border border-[#333] px-3.5 py-1.5 rounded-lg select-none">
-                            {row.appStatus === 'hired' ? 'Hired' : row.appStatus === 'shortlisted' ? 'Shortlisted' : row.appStatus === 'rejected' ? 'Rejected' : 'Applied'}
-                          </span>
-                        ) : (
-                          <button 
-                            onClick={() => handleJoin(row.id)}
-                            className="text-xs font-semibold text-black bg-white px-4 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer"
+              </thead>
+              <tbody className="text-sm">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-10 text-center">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto text-white/40" />
+                    </td>
+                  </tr>
+                ) : (challenges.filter(c => challengeFilter === 'all' || c.isMatched)).length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-8 text-center text-white/40 font-mono text-xs">
+                      {challengeFilter === 'matched' ? 'No projects match your exact tech stack. Click "All Projects" to view all company postings!' : 'No open challenges posted yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  challenges
+                    .filter(c => challengeFilter === 'all' || c.isMatched)
+                    .map(row => (
+                      <tr key={row.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-white/40">{row.rank}</td>
+                        <td className="px-5 py-4 font-semibold text-white/90">
+                          <div className="flex items-center gap-2">
+                            <span>{row.name}</span>
+                            {row.isMatched && (
+                              <span className="text-[10px] font-bold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 px-2 py-0.5 rounded-full">
+                                ★ Recommended
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div 
+                            onClick={() => row.companyId && onSelectCompany && onSelectCompany(row.companyId)}
+                            className={`flex items-center gap-2 ${row.companyId ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
                           >
-                            Join
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-              )}
-            </tbody>
-          </table>
+                            <img src={row.avatar} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
+                            <span className={`text-white/80 font-medium ${row.companyId ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{row.author}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {row.skills.map((skill: string) => (
+                              <span key={skill} className="px-2 py-0.5 text-[10px] font-mono font-medium bg-[#0a0a0a] border border-[#333] text-white/70 rounded">
+                                {formatSkillTitle(skill)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex -space-x-1.5 items-center">
+                            <img src={`https://i.pravatar.cc/p${row.id}1`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                            <img src={`https://i.pravatar.cc/p${row.id}2`} alt="" className="w-5 h-5 rounded-full border border-[#111318] object-cover" />
+                            <span className="w-5 h-5 rounded-full bg-[#1a1d24] border border-[#111318] flex items-center justify-center text-[7px] font-bold text-white/50">{row.participants}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${row.statusColor}`}>{row.status}</span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          {row.appStatus ? (
+                            <span className="inline-block text-xs font-semibold text-white/40 bg-white/5 border border-[#333] px-3.5 py-1.5 rounded-lg select-none">
+                              {row.appStatus === 'hired' ? 'Hired' : row.appStatus === 'shortlisted' ? 'Shortlisted' : row.appStatus === 'rejected' ? 'Rejected' : 'Applied'}
+                            </span>
+                          ) : (
+                            <button 
+                              onClick={() => handleJoin(row.id)}
+                              className="text-xs font-semibold text-black bg-white px-4 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer border-none"
+                            >
+                              Join
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -7501,63 +7503,65 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
 
             {/* Talent Table */}
             <div className="border border-[#333] rounded-xl bg-[#111318] overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-[#333] text-[11px] uppercase tracking-wider text-white/30 font-medium">
-                    <th className="px-5 py-3">Candidate</th>
-                    <th className="px-5 py-3">Role</th>
-                    <th className="px-5 py-3">Skills</th>
-                    <th className="px-5 py-3">XP Score</th>
-                    <th className="px-5 py-3">Match</th>
-                    <th className="px-5 py-3">Stage</th>
-                    <th className="px-5 py-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {allCandidates.map(c => (
-                    <tr key={c.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-5 py-4">
-                        <div 
-                          onClick={() => setSelectedCandidate(c)}
-                          className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity group"
-                        >
-                          <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full border border-[#333] object-cover" />
-                          <div>
-                            <span className="font-semibold text-white group-hover:text-[#00d2ff] group-hover:underline">{c.name}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-white/60">{c.role}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex gap-1.5">
-                          {c.skills.map((s: any) => (
-                            <span key={s} className="px-1.5 py-0.5 text-[10px] font-mono bg-black border border-[#333] text-white/70 rounded-sm">{s}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 font-mono font-semibold text-[#00d2ff]">{c.xp?.toLocaleString()}</td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 h-1.5 bg-[#1a1d24] rounded-full overflow-hidden">
-                            <div className="h-full bg-[#10b981] rounded-full" style={{ width: `${c.match}%` }} />
-                          </div>
-                          <span className="text-xs font-mono text-white/50">{c.match}%</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
-                          c.status === 'new' ? 'text-[#00d2ff] bg-[#00d2ff]/10 border-[#00d2ff]/20'
-                          : c.status === 'screening' ? 'text-[#f59e0b] bg-[#f59e0b]/10 border-[#f59e0b]/20'
-                          : 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20'
-                        }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <button onClick={() => setSelectedCandidate(c)} className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer">View</button>
-                      </td>
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-left min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-[#333] text-[11px] uppercase tracking-wider text-white/30 font-medium">
+                      <th className="px-5 py-3">Candidate</th>
+                      <th className="px-5 py-3">Role</th>
+                      <th className="px-5 py-3">Skills</th>
+                      <th className="px-5 py-3">XP Score</th>
+                      <th className="px-5 py-3">Match</th>
+                      <th className="px-5 py-3">Stage</th>
+                      <th className="px-5 py-3">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-sm">
+                    {allCandidates.map(c => (
+                      <tr key={c.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
+                        <td className="px-5 py-4">
+                          <div 
+                            onClick={() => setSelectedCandidate(c)}
+                            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity group"
+                          >
+                            <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full border border-[#333] object-cover" />
+                            <div>
+                              <span className="font-semibold text-white group-hover:text-[#00d2ff] group-hover:underline">{c.name}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-white/60">{c.role}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex gap-1.5 flex-wrap">
+                            {c.skills.map((s: any) => (
+                              <span key={s} className="px-1.5 py-0.5 text-[10px] font-mono bg-black border border-[#333] text-white/70 rounded-sm">{s}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 font-mono font-semibold text-[#00d2ff]">{c.xp?.toLocaleString()}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-[#1a1d24] rounded-full overflow-hidden">
+                              <div className="h-full bg-[#10b981] rounded-full" style={{ width: `${c.match}%` }} />
+                            </div>
+                            <span className="text-xs font-mono text-white/50">{c.match}%</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
+                            c.status === 'new' ? 'text-[#00d2ff] bg-[#00d2ff]/10 border-[#00d2ff]/20'
+                            : c.status === 'screening' ? 'text-[#f59e0b] bg-[#f59e0b]/10 border-[#f59e0b]/20'
+                            : 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20'
+                          }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <button onClick={() => setSelectedCandidate(c)} className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer border-none">View</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
