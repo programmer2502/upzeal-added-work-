@@ -8,16 +8,10 @@ import {
   ChevronLeft,
   Search,
   Sparkles,
-  Inbox,
   Star,
   Send,
-  FileText,
   Archive,
-  Trash2,
   MoreHorizontal,
-  Reply,
-  Forward,
-  Paperclip,
   Menu,
   X,
   Check,
@@ -787,184 +781,197 @@ export default function App() {
                 </div>
                 <span className="text-xs text-white/50 select-none font-medium">Upzeal — Mission Control</span>
                 <div className="w-12" /> {/* spacer to balance traffic lights */}
-              </div>
+                         {/* Mockup Workspace Grid */}
+              <div className="flex h-[560px] text-white">
 
-              {/* Mockup Workspace Grid */}
-              <div className="grid grid-cols-12 h-[520px]">
-
-                {/* Sidebar (col-span-3) */}
-                <div className="col-span-3 border-r border-white/5 bg-black/30 p-4 flex flex-col justify-between">
-                  <div>
-                    {/* Compose button */}
-                    <button onClick={() => setView('signup')} className="w-full flex items-center justify-center gap-2 rounded-lg bg-white text-black text-xs font-semibold px-3 py-2.5 mb-6 hover:bg-neutral-100 transition-colors cursor-pointer">
-                      <Sparkles className="w-3.5 h-3.5 fill-black" />
-                      <span>Compose with Upzeal</span>
-                    </button>
-
-                    {/* Nav Items */}
+                {/* Sidebar Mockup */}
+                <div className="w-48 border-r border-white/5 bg-black/30 p-4 flex flex-col justify-between hidden md:flex select-none text-left">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 px-1 text-[#00d2ff]">
+                      <code className="text-sm font-bold">&lt;/&gt;</code>
+                      <span className="font-semibold text-xs tracking-tight text-white">Upzeal</span>
+                    </div>
                     <nav className="flex flex-col gap-1">
-                      {[
-                        { label: 'Inbox', icon: Inbox, count: 12, active: true },
-                        { label: 'Starred', icon: Star, count: 3 },
-                        { label: 'Sent', icon: Send },
-                        { label: 'Drafts', icon: FileText, count: 2 },
-                        { label: 'Archive', icon: Archive },
-                        { label: 'Trash', icon: Trash2 },
-                      ].map((folder) => {
-                        const Icon = folder.icon;
-                        return (
-                          <button
-                            key={folder.label}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors ${folder.active
-                              ? 'bg-white/10 text-white'
-                              : 'text-white/60 hover:bg-white/5 hover:text-white'
-                              }`}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Icon className="w-4 h-4" />
-                              <span>{folder.label}</span>
-                            </div>
-                            {folder.count && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${folder.active ? 'bg-white/20 text-white' : 'bg-white/5 text-white/40'
-                                }`}>
-                                {folder.count}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
+                      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/5 text-white text-xs font-semibold">
+                        <LayoutDashboard className="w-3.5 h-3.5" />
+                        <span>Dashboard</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/60 text-xs font-medium hover:bg-white/5 hover:text-white transition-all">
+                        <User className="w-3.5 h-3.5" />
+                        <span>Profile</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/60 text-xs font-medium hover:bg-white/5 hover:text-white transition-all">
+                        <Activity className="w-3.5 h-3.5" />
+                        <span>Company Feed</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-white/60 text-xs font-medium hover:bg-white/5 hover:text-white transition-all">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Chat</span>
+                      </div>
                     </nav>
                   </div>
+                  <div className="flex flex-col gap-2 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-[9px] text-white">
+                        RN
+                      </div>
+                      <div className="text-[10px] text-left leading-tight truncate">
+                        <p className="font-semibold text-white truncate">R.R.NAVEEN RAJ</p>
+                        <p className="text-white/40 truncate text-[8px]">kidsinfo.naveen@gmail.com</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setView('signup')} className="w-full text-center text-[10px] text-white/50 bg-white/5 py-1.5 rounded hover:bg-white/10 transition-colors cursor-pointer border-none mt-2 font-mono">
+                      Join Platform
+                    </button>
+                  </div>
+                </div>
 
-                  {/* Labels Section */}
-                  <div className="pt-4 border-t border-white/5">
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/40 block mb-3">Labels</span>
-                    <div className="flex flex-col gap-2.5">
+                {/* Main content dashboard area mockup */}
+                <div className="flex-1 bg-[#0c0d10] p-5 overflow-y-auto space-y-6 text-left select-none scrollbar-thin">
+                  {/* Row 1: Skill Progress + Total XP Balance + AI Evaluation */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                    
+                    {/* 1. Skill Progress Card (6 cols) */}
+                    <div className="lg:col-span-6 border border-white/5 rounded-2xl bg-[#111318] p-4 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-xs font-bold text-white">Skill Progress</h3>
+                          <span className="text-[9px] text-white/40 font-mono px-2 py-0.5 bg-white/5 border border-white/5 rounded">All Skills</span>
+                        </div>
+                        <p className="text-[10px] text-white/40 mb-4">3 mentors and @team have access.</p>
+                        
+                        {/* Overview Box */}
+                        <div className="border border-white/5 rounded-xl bg-black/20 p-3 mb-4">
+                          <div className="flex items-center justify-between text-[8px] uppercase tracking-wider text-white/30 font-mono mb-2">
+                            <span>Overview</span>
+                            <span>Growth Rate</span>
+                          </div>
+                          <div className="flex items-baseline justify-between">
+                            <div>
+                              <p className="text-[9px] font-bold text-white/50 uppercase tracking-tight">Commit Throughput</p>
+                              <p className="text-xs font-bold text-white font-mono">0 joined challenges</p>
+                            </div>
+                            <span className="text-xs font-bold text-[#10b981] font-mono">+ 24.0 %</span>
+                          </div>
+                        </div>
+
+                        {/* Chart Line preview (SVG) */}
+                        <div className="h-24 w-full relative overflow-hidden">
+                          <svg className="w-full h-full" viewBox="0 0 100 30" preserveAspectRatio="none">
+                            <defs>
+                              <linearGradient id="chartGlow" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#00d2ff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#00d2ff" stopOpacity="0" />
+                              </linearGradient>
+                            </defs>
+                            <path d="M 0 25 Q 25 22 50 18 T 100 5 L 100 30 L 0 30 Z" fill="url(#chartGlow)" />
+                            <path d="M 0 25 Q 25 22 50 18 T 100 5" fill="none" stroke="#00d2ff" strokeWidth="1.5" />
+                          </svg>
+                          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-[#1a1d24] border border-[#333] px-2 py-0.5 rounded text-[8px] font-mono leading-none">
+                            <span className="text-white/40">Aug 7:</span> <span className="font-bold text-[#00d2ff]">3800 XP</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-3 text-[9px] font-mono">
+                        <span className="text-[#10b981]">+ 24.0 %</span>
+                        <span className="text-white/30">Last updated Today, 07:23 PM</span>
+                      </div>
+                    </div>
+
+                    {/* 2. Total XP Balance Card (3 cols) */}
+                    <div className="lg:col-span-3 border border-white/5 rounded-2xl bg-[#111318] p-4 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-xs font-bold text-white mb-0.5">Total XP Balance</h3>
+                        <p className="text-[9px] text-white/40 mb-4">The sum of all points on my profile</p>
+                        
+                        <div className="flex items-baseline gap-1 mb-2">
+                          <span className="text-base font-bold text-white">★ 10,000</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] font-mono mb-4 text-[#10b981]">
+                          <span>Compared to last month</span>
+                          <span>+ 14.0 %</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between border-t border-white/5 pt-3 text-[9px] text-white/40 font-mono">
+                          <span>Yearly avg: ★ 15000</span>
+                          <span className="underline hover:text-white cursor-pointer">How it works?</span>
+                        </div>
+                      </div>
+
+                      {/* AI Mentor widget inside XP Balance */}
+                      <div className="border border-[#00d2ff]/10 rounded-xl bg-[#00d2ff]/5 p-3 mt-4 text-left">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-[#00d2ff] fill-[#00d2ff]/10" />
+                            <span className="text-[10px] font-bold text-white">AI Mentor</span>
+                          </div>
+                          <span className="text-[8px] font-bold text-[#10b981] uppercase font-mono">Ready</span>
+                        </div>
+                        <p className="text-[8px] text-white/50 mb-2 leading-tight">Hi R.R.NAVEEN. Ask me a technical question...</p>
+                        <div className="flex gap-1">
+                          <span className="px-1.5 py-0.5 text-[7px] bg-black border border-white/5 text-white/60 rounded">React hooks</span>
+                          <span className="px-1.5 py-0.5 text-[7px] bg-black border border-white/5 text-white/60 rounded">DSA prep</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. AI Evaluation Card (3 cols) */}
+                    <div className="lg:col-span-3 border border-white/5 rounded-2xl bg-[#111318] p-4 flex flex-col justify-between border-dashed border-white/20">
+                      <div>
+                        <h3 className="text-xs font-bold text-white mb-0.5">AI Evaluation</h3>
+                        <p className="text-[9px] text-white/40 mb-4">Powered by AI Engine</p>
+                        
+                        <span className="inline-block text-[8px] font-bold text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2 py-0.5 rounded-full mb-3 uppercase tracking-wider font-mono">Not Evaluated Yet</span>
+                        
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-white mb-1">
+                          <Sparkles className="w-3.5 h-3.5 text-[#fbbf24] fill-[#fbbf24]/10" />
+                          <span>Run AI Diagnostics</span>
+                        </div>
+                        <p className="text-[9px] text-white/40 leading-relaxed mb-4">
+                          Verify your skill scores, receive actionable career guidelines, and compute your ranking on Upzeal.
+                        </p>
+                      </div>
+                      
+                      <button onClick={() => setView('signup')} className="w-full py-2 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black font-semibold text-xs rounded-xl shadow-lg shadow-[#00d2ff]/10 active:scale-[0.98] transition-all cursor-pointer border-none uppercase tracking-wider font-mono">
+                        Evaluate Now
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Row 2: My Top Skills header and 4 skill cards */}
+                  <div>
+                    <h3 className="text-xs font-bold text-white mb-4 text-left uppercase tracking-wider font-mono">My Top Skills</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[
-                        { label: 'Work', color: 'bg-[#00d2ff]' },
-                        { label: 'Personal', color: 'bg-[#A4F4FD]' },
-                        { label: 'Travel', color: 'bg-[#f59e0b]' },
-                        { label: 'Finance', color: 'bg-[#10b981]' },
-                      ].map((tag) => (
-                        <div key={tag.label} className="flex items-center gap-2 text-xs text-white/70 cursor-default hover:text-white transition-colors">
-                          <span className={`w-2 h-2 rounded-full ${tag.color}`} />
-                          <span>{tag.label}</span>
+                        { name: 'React Best Practices', color: 'bg-[#00d2ff]' },
+                        { name: 'NodeJS Best Practices', color: 'bg-[#10b981]' },
+                        { name: 'AWS Cloud Architecture', color: 'bg-[#fbbf24]' },
+                        { name: 'Database Design & Postgres', color: 'bg-[#2563eb]' },
+                      ].map((skill) => (
+                        <div key={skill.name} className="border border-white/5 rounded-2xl bg-[#111318] p-3 flex flex-col justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <span className={`w-1.5 h-1.5 rounded-full ${skill.color}`} />
+                              <span className="text-[10px] font-semibold text-white/90 truncate">{skill.name}</span>
+                            </div>
+                            <span className="text-xs font-bold font-mono text-white"># 60 XP</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
+                            <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded bg-white/2 border border-white/5 text-white/30">UNVERIFIED</span>
+                            <button onClick={() => setView('signup')} className="w-5 h-5 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform cursor-pointer border-none">
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Message List (col-span-4) */}
-                <div className="col-span-4 border-r border-white/5 flex flex-col h-full bg-black/10">
-                  {/* Search bar header */}
-                  <div className="p-3 border-b border-white/5 flex items-center gap-2 text-white/40 bg-black/20">
-                    <Search className="w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Search mail"
-                      disabled
-                      className="bg-transparent border-none text-xs text-white/80 placeholder-white/30 focus:outline-none w-full cursor-default"
-                    />
-                  </div>
-
-                  {/* Message Items list */}
-                  <div className="flex-1 overflow-y-auto divide-y divide-white/[0.03]">
-                    {[
-                      { sender: 'Linear', subject: 'Weekly product digest', body: 'Your team shipped 23 issues this week...', time: '9:41 AM', unread: true, active: true },
-                      { sender: 'Sophia Chen', subject: 'Re: Q3 roadmap review', body: 'Thanks for sending the deck over. I had a few thoughts...', time: '8:12 AM', unread: true },
-                      { sender: 'Figma', subject: 'Marcus commented on your file', body: 'Love the new direction on the landing hero.', time: 'Yesterday' },
-                      { sender: 'Stripe', subject: 'Payout of $12,480.00 sent', body: 'Your payout is on its way to your bank...', time: 'Yesterday' },
-                      { sender: 'Vercel', subject: 'Deployment ready for upzeal-web', body: 'Preview is live at upzeal-web-g3f.vercel.app', time: 'Mon' },
-                      { sender: 'GitHub', subject: '[upzeal/core] PR #482 approved', body: 'david-lim approved your pull request.', time: 'Mon' },
-                    ].map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3.5 text-left cursor-default transition-colors relative ${msg.active ? 'bg-white/5' : 'hover:bg-white/[0.02]'
-                          }`}
-                      >
-                        {/* Unread indicator */}
-                        {msg.unread && (
-                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand" />
-                        )}
-                        <div className="flex items-center justify-between mb-1 pl-1">
-                          <span className={`text-xs font-semibold ${msg.unread ? 'text-white' : 'text-white/80'}`}>{msg.sender}</span>
-                          <span className="text-[10px] text-white/40">{msg.time}</span>
-                        </div>
-                        <div className="text-xs font-medium text-white/95 mb-0.5 truncate pl-1">{msg.subject}</div>
-                        <div className="text-[11px] text-white/50 line-clamp-1 pl-1">{msg.body}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Reader (col-span-5) */}
-                <div className="col-span-5 flex flex-col h-full bg-[#0d0f12]">
-                  {/* Toolbar */}
-                  <div className="h-11 px-4 border-b border-white/5 flex items-center justify-between bg-black/10">
-                    <div className="flex items-center gap-2">
-                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-white/60 hover:bg-white/5 hover:text-white transition-colors"><Reply className="w-4 h-4" /></button>
-                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-white/60 hover:bg-white/5 hover:text-white transition-colors"><Forward className="w-4 h-4" /></button>
-                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-white/60 hover:bg-white/5 hover:text-white transition-colors"><Archive className="w-4 h-4" /></button>
-                      <button className="w-7 h-7 rounded-md flex items-center justify-center text-white/60 hover:bg-white/5 hover:text-white transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                    <button className="w-7 h-7 rounded-md flex items-center justify-center text-white/60 hover:bg-white/5 hover:text-white transition-colors"><MoreHorizontal className="w-4 h-4" /></button>
-                  </div>
-
-                  {/* Reader body */}
-                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                    {/* Header */}
-                    <div>
-                      <h2 className="text-base font-semibold text-white mb-3">Weekly product digest</h2>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00d2ff] to-[#0B2551] flex items-center justify-center text-xs font-semibold text-white select-none">
-                            L
-                          </div>
-                          <div className="text-xs">
-                            <span className="font-semibold text-white">Linear</span>
-                            <span className="text-white/40 ml-1.5">to me · 9:41 AM</span>
-                          </div>
-                        </div>
-                        {/* Work tag */}
-                        <span className="px-2 py-0.5 text-[9px] font-semibold bg-[#00d2ff]/10 text-[#00d2ff] rounded border border-[#00d2ff]/20">
-                          Work
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Summary Card by Upzeal */}
-                    <div className="rounded-xl border border-[#A4F4FD]/20 bg-[#A4F4FD]/5 p-3.5 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-[#A4F4FD]/10 rounded-full blur-xl pointer-events-none" />
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-[#A4F4FD] mb-1.5">
-                        <Sparkles className="w-3.5 h-3.5 fill-[#A4F4FD]" />
-                        <span>Summary by Upzeal</span>
-                      </div>
-                      <p className="text-xs text-white/80 leading-relaxed">
-                        Your team closed 23 issues, merged 14 PRs, and shipped 2 features. Top contributor: Marcus. No action needed.
-                      </p>
-                    </div>
-
-                    {/* Email text */}
-                    <div className="text-xs text-white/80 flex flex-col gap-3 leading-relaxed">
-                      <p>Hi team,</p>
-                      <p>Here is your weekly digest of everything happening across your projects. This was a strong week with significant progress on the Q3 roadmap.</p>
-                      <p>Twenty-three issues were closed, fourteen pull requests were merged, and two customer-facing features went out. The velocity trend continues to climb.</p>
-                      <p>Let me know if you would like a deeper breakdown by project or contributor.</p>
-                      <p className="text-white/50 pt-2">— The Linear team</p>
-                    </div>
-
-                    {/* Attachment pill */}
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer select-none">
-                        <Paperclip className="w-3.5 h-3.5 text-white/40" />
-                        <span className="text-[11px] font-medium text-white/80">digest-may-6.pdf</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+              </div>          </div>
             </motion.div>
           </section>
 
