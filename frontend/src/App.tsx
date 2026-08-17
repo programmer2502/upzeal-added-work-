@@ -3083,11 +3083,11 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
     }
   };
 
-  // Profile editable states
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState('Full-stack engineer passionate about distributed systems and real-time data streaming. Building tools that empower developers to write better code faster. Currently exploring the intersection of WebSockets and geospatial mapping.');
   const [location, setLocation] = useState('San Francisco, CA');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [username, setUsername] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -3095,6 +3095,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
   const [tempBio, setTempBio] = useState(bio);
   const [tempLocation, setTempLocation] = useState(location);
   const [tempAvatarUrl, setTempAvatarUrl] = useState('');
+  const [tempUsername, setTempUsername] = useState('');
 
   // Load profile details from database
   useEffect(() => {
@@ -3103,7 +3104,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
       // 1. Fetch user registration and details
       const { data: userData } = await supabase
         .from('users')
-        .select('created_at, profile_details')
+        .select('created_at, username, profile_details')
         .eq('id', userId)
         .single();
 
@@ -3161,6 +3162,10 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
           isHighlight: false
         });
 
+        if (userData.username) {
+          setUsername(userData.username);
+          setTempUsername(userData.username);
+        }
         if (userData.profile_details) {
           const details = userData.profile_details;
           if (details.bio) {
@@ -3627,6 +3632,39 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
     setIsSaving(true);
     setEditError(null);
     try {
+      const normalizedUsername = tempUsername.trim().toLowerCase();
+      if (!normalizedUsername) {
+        setEditError("Username cannot be empty");
+        setIsSaving(false);
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
+        setEditError("Username can only contain letters, numbers, and underscores");
+        setIsSaving(false);
+        return;
+      }
+
+      if (normalizedUsername !== username) {
+        const { data: existingUser, error: checkErr } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', normalizedUsername)
+          .maybeSingle();
+
+        if (checkErr) {
+          setEditError("Error checking username availability: " + checkErr.message);
+          setIsSaving(false);
+          return;
+        }
+
+        if (existingUser) {
+          setEditError("Username is already taken by another user");
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const { data: currentData } = await supabase
         .from('users')
         .select('profile_details')
@@ -3643,6 +3681,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
       const { error } = await supabase
         .from('users')
         .update({
+          username: normalizedUsername,
           profile_details: mergedDetails
         })
         .eq('id', userId);
@@ -3653,6 +3692,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         setBio(tempBio);
         setLocation(tempLocation);
         setAvatarUrl(tempAvatarUrl);
+        setUsername(normalizedUsername);
         if (onAvatarChange) onAvatarChange(tempAvatarUrl);
         setIsEditing(false);
       }
@@ -3667,6 +3707,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
     setTempBio(bio);
     setTempLocation(location);
     setTempAvatarUrl(avatarUrl);
+    setTempUsername(username);
     setEditError(null);
     setIsEditing(false);
   };
@@ -3726,6 +3767,21 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
           </div>
           
           <div className="flex-1 flex flex-col gap-4 text-left w-full">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-white/60">Username (Chat Handle)</label>
+              <div className="relative w-full md:max-w-xs">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 font-mono text-sm">@</span>
+                <input
+                  type="text"
+                  value={tempUsername}
+                  onChange={(e) => setTempUsername(e.target.value)}
+                  placeholder="username"
+                  className="w-full bg-brand-gray border border-white/10 rounded-xl h-10 pl-8 pr-4 text-white placeholder:text-white/20 focus:ring-2 focus:ring-[#00d2ff] focus:outline-none"
+                />
+              </div>
+              <p className="text-[10px] text-white/40 mt-0.5">Other developers and recruiters can search for you in Chat using this handle.</p>
+            </div>
+
             <div className="flex flex-col gap-1">
               <label className="text-xs font-semibold text-white/60">Location</label>
               <input
@@ -3800,6 +3856,11 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
               </button>
             </div>
             <div className="flex items-center gap-3.5 mt-3 text-white/50 text-xs flex-wrap">
+              {username && (
+                <span className="font-mono flex items-center gap-1 bg-white/2 border border-white/5 rounded-md px-2 py-0.5 text-[#00d2ff]">
+                  <span className="font-bold text-[#00d2ff] opacity-60">@</span>{username}
+                </span>
+              )}
               <span className="font-mono flex items-center gap-1 bg-white/2 border border-white/5 rounded-md px-2 py-0.5"><MapPin className="w-3 h-3 text-[#00d2ff]" /> {location}</span>
               <span className="font-mono flex items-center gap-1 bg-white/2 border border-white/5 rounded-md px-2 py-0.5"><User className="w-3 h-3 text-[#00d2ff]" /> {email}</span>
             </div>
