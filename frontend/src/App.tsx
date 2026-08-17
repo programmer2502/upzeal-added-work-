@@ -1900,6 +1900,7 @@ function InputGroup({
 function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
   const [, setToasts] = useState<any[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(() => {
     return localStorage.getItem(`upzeal_user_avatar_${userId}`) || '';
@@ -2046,9 +2047,25 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
           ) : currentView === 'profile' ? (
             <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
           ) : currentView === 'feed' ? (
-            <StudentFeedView userId={userId} developerSkills={developerSkills} onSelectCompany={setSelectedCompanyId} />
+            <StudentFeedView 
+              userId={userId} 
+              developerSkills={developerSkills} 
+              onSelectCompany={setSelectedCompanyId} 
+              onStartChat={(partnerId) => {
+                setActiveChatPartnerId(partnerId);
+                setCurrentView('chat');
+              }}
+            />
           ) : (
-            <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} onSelectCompany={setSelectedCompanyId} />
+            <StudentChatView 
+              userId={userId} 
+              firstName={firstName} 
+              lastName={lastName} 
+              email={email} 
+              onSelectCompany={setSelectedCompanyId} 
+              initialPartnerId={activeChatPartnerId}
+              onClearInitialPartner={() => setActiveChatPartnerId(null)}
+            />
           )}
         </main>
       </div>
@@ -2057,6 +2074,11 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
         <CompanyProfileModal 
           companyId={selectedCompanyId} 
           onClose={() => setSelectedCompanyId(null)} 
+          onStartChat={(partnerId) => {
+            setActiveChatPartnerId(partnerId);
+            setCurrentView('chat');
+            setSelectedCompanyId(null);
+          }}
         />
       )}
     </div>
@@ -4353,7 +4375,7 @@ function DeleteSuccessOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
-function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillScores, setXp }: { userId: string; developerSkills: string[]; onSelectCompany?: (id: string) => void; setSkillScores?: (scores: any) => void; setXp?: (xp: number) => void }) {
+function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillScores, setXp, onStartChat }: { userId: string; developerSkills: string[]; onSelectCompany?: (id: string) => void; setSkillScores?: (scores: any) => void; setXp?: (xp: number) => void; onStartChat?: (partnerId: string) => void }) {
   const [dbProjects, setDbProjects] = useState<any[]>([]);
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
@@ -4660,6 +4682,10 @@ function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillSco
         <CompanyProfileModal 
           companyId={selectedCompanyId} 
           onClose={() => setSelectedCompanyId(null)} 
+          onStartChat={(partnerId) => {
+            onStartChat?.(partnerId);
+            setSelectedCompanyId(null);
+          }}
         />
       )}
       {showSuccessTick && (
@@ -4669,7 +4695,7 @@ function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillSco
   );
 }
 
-function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClose: () => void }) {
+function CompanyProfileModal({ companyId, onClose, onStartChat }: { companyId: string; onClose: () => void; onStartChat?: (partnerId: string) => void }) {
   const [company, setCompany] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4827,23 +4853,35 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
           <div className="p-10 text-center text-white/50 font-mono flex-1 flex items-center justify-center">Company details not found</div>
         ) : (
           <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-7 custom-scrollbar">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/15 flex items-center justify-center text-2xl font-bold text-white shrink-0 overflow-hidden shadow-lg group hover:border-[#00d2ff]/50 transition-colors duration-300">
-                {company.logo_url ? (
-                  <img src={company.logo_url} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
-                ) : (
-                  <span>{company.name.charAt(0).toUpperCase()}</span>
-                )}
+            <div className="flex justify-between items-center gap-4 flex-wrap sm:flex-nowrap w-full">
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/15 flex items-center justify-center text-2xl font-bold text-white shrink-0 overflow-hidden shadow-lg group hover:border-[#00d2ff]/50 transition-colors duration-300">
+                  {company.logo_url ? (
+                    <img src={company.logo_url} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
+                  ) : (
+                    <span>{company.name.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="text-left">
+                  <h2 className="text-2xl font-extrabold text-white tracking-tight">{company.name}</h2>
+                  {company.website && (
+                    <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00d2ff] hover:underline font-mono mt-1 flex items-center gap-1.5 font-semibold">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                      {company.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  )}
+                </div>
               </div>
-              <div className="text-left">
-                <h2 className="text-2xl font-extrabold text-white tracking-tight">{company.name}</h2>
-                {company.website && (
-                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00d2ff] hover:underline font-mono mt-1 flex items-center gap-1.5 font-semibold">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    {company.website.replace(/^https?:\/\//, '')}
-                  </a>
-                )}
-              </div>
+
+              {company.created_by && onStartChat && (
+                <button
+                  onClick={() => onStartChat(company.created_by)}
+                  className="text-xs font-bold px-4 py-2.5 bg-[#00d2ff] text-black hover:bg-[#00d2ff]/90 active:scale-[0.97] rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shrink-0"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Chat with Recruiter</span>
+                </button>
+              )}
             </div>
 
             <div className="border-t border-white/5 pt-5 text-left">
@@ -4990,12 +5028,14 @@ function DeveloperProfileModal({
   developer, 
   recruiterUserId, 
   onClose, 
-  onUpdateDeveloper 
+  onUpdateDeveloper,
+  onStartChat
 }: { 
   developer: any; 
   recruiterUserId?: string; 
   onClose: () => void; 
   onUpdateDeveloper?: (updatedDev: any) => void;
+  onStartChat?: (partnerId: string) => void;
 }) {
   const [recruiterProjects, setRecruiterProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -5197,25 +5237,37 @@ function DeveloperProfileModal({
         </button>
 
         <div className="space-y-6 text-left">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0 font-semibold">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xl text-white">
-                  {developer.first_name && developer.last_name 
-                    ? `${developer.first_name[0]}${developer.last_name[0]}`.toUpperCase() 
-                    : developer.email?.[0]?.toUpperCase() || 'D'}
+          <div className="flex justify-between items-center gap-4 flex-wrap sm:flex-nowrap w-full">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full border border-[#333] overflow-hidden bg-[#151820] flex items-center justify-center shrink-0 font-semibold">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-xl text-white">
+                    {developer.first_name && developer.last_name 
+                      ? `${developer.first_name[0]}${developer.last_name[0]}`.toUpperCase() 
+                      : developer.email?.[0]?.toUpperCase() || 'D'}
+                  </div>
+                )}
+              </div>
+              <div className="overflow-hidden">
+                <h2 className="text-xl font-bold text-white tracking-tight truncate">{name}</h2>
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  <span className="text-xs text-white/50 font-mono">@{username}</span>
+                  <span className="text-xs font-mono font-bold text-[#00d2ff] bg-[#00d2ff]/10 px-2 py-0.5 rounded border border-[#00d2ff]/20">★ {currentXp.toLocaleString()} XP</span>
                 </div>
-              )}
-            </div>
-            <div className="overflow-hidden">
-              <h2 className="text-xl font-bold text-white tracking-tight truncate">{name}</h2>
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                <span className="text-xs text-white/50 font-mono">@{username}</span>
-                <span className="text-xs font-mono font-bold text-[#00d2ff] bg-[#00d2ff]/10 px-2 py-0.5 rounded border border-[#00d2ff]/20">★ {currentXp.toLocaleString()} XP</span>
               </div>
             </div>
+
+            {onStartChat && (
+              <button
+                onClick={() => onStartChat(developer.id)}
+                className="text-xs font-bold px-4 py-2.5 bg-[#00d2ff] text-black hover:bg-[#00d2ff]/90 active:scale-[0.97] rounded-xl transition-all flex items-center gap-2 cursor-pointer border-none shrink-0"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Chat with Developer</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-white/10 pt-4">
@@ -5321,7 +5373,9 @@ function StudentChatView({
   lastName: _lastName, 
   email: _email,
   onSelectCompany,
-  onSelectDeveloper
+  onSelectDeveloper,
+  initialPartnerId,
+  onClearInitialPartner
 }: { 
   userId: string; 
   firstName: string; 
@@ -5329,6 +5383,8 @@ function StudentChatView({
   email: string;
   onSelectCompany?: (id: string) => void;
   onSelectDeveloper?: (dev: any) => void;
+  initialPartnerId?: string | null;
+  onClearInitialPartner?: () => void;
 }) {
   const [conversations, setConversations] = useState([
     { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 0, avatar: '⚡' }
@@ -5347,6 +5403,54 @@ function StudentChatView({
   const [searchUsername, setSearchUsername] = useState('');
   const [searchStatus, setSearchStatus] = useState<'idle' | 'searching' | 'error' | 'success'>('idle');
   const [searchMessage, setSearchMessage] = useState('');
+
+  useEffect(() => {
+    if (!initialPartnerId) return;
+
+    const initDirectChat = async () => {
+      const existing = conversations.find(c => c.id === initialPartnerId);
+      if (existing) {
+        setActiveConvId(initialPartnerId);
+        setMobileShowMessages(true);
+        onClearInitialPartner?.();
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, email, first_name, last_name, username')
+          .eq('id', initialPartnerId)
+          .maybeSingle();
+
+        if (error || !data) {
+          onClearInitialPartner?.();
+          return;
+        }
+
+        const newChan = {
+          id: data.id,
+          name: data.first_name && data.last_name ? `${data.first_name} ${data.last_name}` : data.username || data.email,
+          lastMessage: 'No messages yet',
+          unread: 0,
+          avatar: '👤'
+        };
+
+        setConversations(prev => {
+          if (prev.find(c => c.id === data.id)) return prev;
+          return [newChan, ...prev];
+        });
+        setActiveConvId(data.id);
+        setMobileShowMessages(true);
+      } catch (e) {
+        console.error("Error setting up direct chat partner:", e);
+      } finally {
+        onClearInitialPartner?.();
+      }
+    };
+
+    initDirectChat();
+  }, [initialPartnerId, conversations, onClearInitialPartner]);
 
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
   const activeMessages = messages[activeConvId] || [];
@@ -7299,6 +7403,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   const [dbCandidates, setDbCandidates] = useState<any[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
 
   const fetchDevelopers = async () => {
     try {
@@ -7517,6 +7622,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
             email={email} 
             onSelectCompany={setSelectedCompanyId}
             onSelectDeveloper={setSelectedCandidate}
+            initialPartnerId={activeChatPartnerId}
+            onClearInitialPartner={() => setActiveChatPartnerId(null)}
           />
         ) : recruiterView === 'company_profile' ? (
           <CompanyProfileView userId={userId} />
@@ -7616,12 +7723,22 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           recruiterUserId={userId}
           onClose={() => setSelectedCandidate(null)} 
           onUpdateDeveloper={handleDeveloperUpdate}
+          onStartChat={(partnerId) => {
+            setActiveChatPartnerId(partnerId);
+            setRecruiterView('chat');
+            setSelectedCandidate(null);
+          }}
         />
       )}
       {selectedCompanyId && (
         <CompanyProfileModal 
           companyId={selectedCompanyId} 
           onClose={() => setSelectedCompanyId(null)} 
+          onStartChat={(partnerId) => {
+            setActiveChatPartnerId(partnerId);
+            setRecruiterView('chat');
+            setSelectedCompanyId(null);
+          }}
         />
       )}
     </div>
