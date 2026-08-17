@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.dependencies import get_current_user, require_role
+from fastapi.security import HTTPAuthorizationCredentials
+from app.dependencies import get_current_user, require_role, security_scheme
 from app.schemas import JoinChallengeRequest
 from app.crud import ChallengeRepository
 
@@ -13,10 +14,15 @@ async def list_challenges(current_user: dict = Depends(get_current_user)):
 @router.post("/join")
 async def join_challenge(
     req: JoinChallengeRequest, 
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     current_user: dict = Depends(require_role(["developer"]))
 ):
     """Join a challenge (Developer role required). Earns +50 points per skill and profile XP."""
     try:
-        return await ChallengeRepository.join_challenge(user_id=current_user["id"], project_id=req.project_id)
+        return await ChallengeRepository.join_challenge(
+            user_id=current_user["id"], 
+            project_id=req.project_id,
+            token=credentials.credentials
+        )
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -45,31 +45,45 @@ class SupabaseClient:
     async def close(self):
         await self.client.aclose()
 
-    async def get(self, table: str, query_params: dict = None) -> list:
+    def get_headers(self, token: str = None) -> dict:
+        if token:
+            return {
+                "apikey": self.key,
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation"
+            }
+        return self.headers
+
+    async def get(self, table: str, query_params: dict = None, token: str = None) -> list:
         req_url = f"{self.url}/rest/v1/{table}"
-        response = await self.client.get(req_url, params=query_params)
+        headers = self.get_headers(token)
+        response = await self.client.get(req_url, params=query_params, headers=headers)
         response.raise_for_status()
         return response.json()
 
-    async def get_single(self, table: str, query_params: dict = None) -> dict:
-        data = await self.get(table, query_params)
+    async def get_single(self, table: str, query_params: dict = None, token: str = None) -> dict:
+        data = await self.get(table, query_params, token)
         return data[0] if data else {}
 
-    async def insert(self, table: str, data: dict) -> list:
+    async def insert(self, table: str, data: dict, token: str = None) -> list:
         req_url = f"{self.url}/rest/v1/{table}"
-        response = await self.client.post(req_url, json=data)
+        headers = self.get_headers(token)
+        response = await self.client.post(req_url, json=data, headers=headers)
         response.raise_for_status()
         return response.json()
 
-    async def update(self, table: str, data: dict, query_params: dict) -> list:
+    async def update(self, table: str, data: dict, query_params: dict, token: str = None) -> list:
         req_url = f"{self.url}/rest/v1/{table}"
-        response = await self.client.patch(req_url, json=data, params=query_params)
+        headers = self.get_headers(token)
+        response = await self.client.patch(req_url, json=data, params=query_params, headers=headers)
         response.raise_for_status()
         return response.json()
 
-    async def delete(self, table: str, query_params: dict) -> list:
+    async def delete(self, table: str, query_params: dict, token: str = None) -> list:
         req_url = f"{self.url}/rest/v1/{table}"
-        response = await self.client.delete(req_url, params=query_params)
+        headers = self.get_headers(token)
+        response = await self.client.delete(req_url, params=query_params, headers=headers)
         response.raise_for_status()
         return response.json()
 

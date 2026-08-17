@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.dependencies import get_current_user, require_role
+from fastapi.security import HTTPAuthorizationCredentials
+from app.dependencies import get_current_user, require_role, security_scheme
 from app.schemas import CompanyProfileSchema
 from app.crud import CompanyRepository
 
@@ -13,6 +14,7 @@ async def get_my_company(current_user: dict = Depends(require_role(["recruiter"]
 @router.post("/profile")
 async def save_company_profile(
     req: CompanyProfileSchema, 
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     current_user: dict = Depends(require_role(["recruiter"]))
 ):
     """Save or update company profile securely (Recruiter role required)."""
@@ -22,7 +24,8 @@ async def save_company_profile(
             name=req.name,
             logo_url=req.logo_url,
             website=req.website,
-            description=req.description
+            description=req.description,
+            token=credentials.credentials
         )
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

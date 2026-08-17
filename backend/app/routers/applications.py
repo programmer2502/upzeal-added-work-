@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.dependencies import require_role
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
+from app.dependencies import require_role, security_scheme
 from app.supabase_client import supabase_client
 from app.ws_manager import manager
 import logging
@@ -8,14 +9,18 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
 logger = logging.getLogger(__name__)
 
 @router.post("/{app_id}/accept")
-async def accept_application(app_id: str, current_user: dict = Depends(require_role(["recruiter"]))):
+async def accept_application(
+    app_id: str, 
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    current_user: dict = Depends(require_role(["recruiter"]))
+):
     """
     Accept a developer's application for a project.
     Updates the database and instantly pushes a WebSocket notification to the developer.
     """
     try:
         # 1. Update the application status to 'hired'
-        updated = await supabase_client.update("applications", {"status": "hired"}, {"id": f"eq.{app_id}"})
+        updated = await supabase_client.update("applications", {"status": "hired"}, {"id": f"eq.{app_id}"}, token=credentials.credentials)
         if not updated:
             raise HTTPException(status_code=404, detail="Application not found or update failed")
         

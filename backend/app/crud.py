@@ -134,7 +134,7 @@ class ChallengeRepository:
         return res
 
     @staticmethod
-    async def join_challenge(user_id: str, project_id: str) -> dict:
+    async def join_challenge(user_id: str, project_id: str, token: str = None) -> dict:
         # Invalidate participant counts cache since a new developer is joining
         db_cache.invalidate("all_counts")
 
@@ -143,7 +143,7 @@ class ChallengeRepository:
             "project_id": project_id,
             "developer_id": user_id,
             "status": "pending"
-        })
+        }, token=token)
         req_skills_task = supabase_client.get("required_skills", {"project_id": f"eq.{project_id}"})
         user_task = UserRepository.get_user_by_id(user_id)
         project_task = supabase_client.get_single("projects", {"id": f"eq.{project_id}"})
@@ -174,20 +174,20 @@ class ChallengeRepository:
             row = current_scores_map.get(skill)
             if row:
                 new_score = min(100, (row.get("score") or 0) + 50)
-                tasks.append(supabase_client.update("skill_scores", {"score": new_score}, {"id": f"eq.{row['id']}"}))
+                tasks.append(supabase_client.update("skill_scores", {"score": new_score}, {"id": f"eq.{row['id']}"}, token=token))
             else:
                 tasks.append(supabase_client.insert("skill_scores", {
                     "user_id": user_id,
                     "skill_name": skill,
                     "score": 50,
                     "verified": False
-                }))
+                }, token=token))
 
         # 4. Award +50 XP to user profile_details & invalidate cached evaluation report
         details = user.get("profile_details") or {}
         details["xp"] = (int(details.get("xp") or 0)) + 50
         details.pop("evaluation_report", None) # Force recalculation of report on next load
-        tasks.append(supabase_client.update("users", {"profile_details": details}, {"id": f"eq.{user_id}"}))
+        tasks.append(supabase_client.update("users", {"profile_details": details}, {"id": f"eq.{user_id}"}, token=token))
 
         # 5. Execute all skill and profile updates concurrently
         await asyncio.gather(*tasks)
@@ -227,7 +227,7 @@ class CompanyRepository:
         return companies[0] if companies else {}
 
     @staticmethod
-    async def save_company_profile(user_id: str, name: str, logo_url: str = None, website: str = None, description: str = None) -> dict:
+    async def save_company_profile(user_id: str, name: str, logo_url: str = None, website: str = None, description: str = None, token: str = None) -> dict:
         existing = await CompanyRepository.get_company_by_creator(user_id)
         payload = {
             "name": sanitize_string(name),
@@ -237,9 +237,9 @@ class CompanyRepository:
             "created_by": user_id
         }
         if existing and existing.get("id"):
-            res = await supabase_client.update("companies", payload, {"id": f"eq.{existing['id']}"})
+            res = await supabase_client.update("companies", payload, {"id": f"eq.{existing['id']}"}, token=token)
         else:
-            res = await supabase_client.insert("companies", payload)
+            res = await supabase_client.insert("companies", payload, token=token)
         return res[0] if res else {}
 
 
