@@ -1903,6 +1903,7 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
   const [avatarUrl, setAvatarUrl] = useState<string>(() => {
     return localStorage.getItem(`upzeal_user_avatar_${userId}`) || '';
   });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -1929,40 +1930,54 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#0a0a0a] text-white overflow-hidden font-sans antialiased text-left">
+    <div className="flex h-screen w-screen bg-[#0a0a0a] text-white overflow-hidden font-sans antialiased text-left relative">
+      {/* Sidebar Backdrop Overlay for Mobile */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 md:hidden" 
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[#333] bg-[#111318] flex flex-col justify-between shrink-0">
+      <aside className={`fixed md:relative top-0 bottom-0 left-0 z-50 w-64 border-r border-[#333] bg-[#111318] flex flex-col justify-between shrink-0 transition-transform duration-300 md:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
+          <div className="flex items-center justify-between mb-8">
             <span className="text-xl font-bold font-mono tracking-wider text-white flex items-center gap-1">
               <span className="text-[#00d2ff]">&lt;/&gt;</span> Upzeal
             </span>
+            <button 
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="md:hidden p-1 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer border-none"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
           <nav className="space-y-1">
             <button 
-              onClick={() => setCurrentView('dashboard')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              onClick={() => { setCurrentView('dashboard'); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'dashboard' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               <span className="font-medium text-sm">Dashboard</span>
             </button>
             <button 
-              onClick={() => setCurrentView('profile')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'profile' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              onClick={() => { setCurrentView('profile'); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'profile' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <User className="w-4 h-4" />
               <span className="font-medium text-sm">Profile</span>
             </button>
             <button 
-              onClick={() => setCurrentView('feed')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'feed' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              onClick={() => { setCurrentView('feed'); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'feed' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <Activity className="w-4 h-4" />
               <span className="font-medium text-sm">Company Feed</span>
             </button>
             <button 
-              onClick={() => setCurrentView('chat')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'chat' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+              onClick={() => { setCurrentView('chat'); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'chat' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
             >
               <MessageSquare className="w-4 h-4" />
               <span className="font-medium text-sm">Chat</span>
@@ -1994,18 +2009,49 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
          </div>
       </aside>
 
-      {/* Main Content */}
-      <main className={`flex-1 bg-[#0e1015] ${currentView === 'chat' ? 'overflow-hidden h-full' : 'overflow-y-auto h-full'}`}>
-        {currentView === 'dashboard' ? (
-          <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} onSelectCompany={setSelectedCompanyId} />
-        ) : currentView === 'profile' ? (
-          <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
-        ) : currentView === 'feed' ? (
-          <StudentFeedView userId={userId} developerSkills={developerSkills} onSelectCompany={setSelectedCompanyId} />
-        ) : (
-          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} onSelectCompany={setSelectedCompanyId} />
-        )}
-      </main>
+      {/* Main Content Area Container */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
+        {/* Mobile Header */}
+        <header className="md:hidden flex items-center justify-between px-6 py-4 bg-[#111318] border-b border-[#333] shrink-0">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-1 text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer border-none"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <span className="text-lg font-bold font-mono tracking-wider text-white flex items-center gap-1">
+              <span className="text-[#00d2ff]">&lt;/&gt;</span> Upzeal
+            </span>
+          </div>
+          <div 
+            className="w-8 h-8 rounded-full overflow-hidden border border-[#333] bg-[#151820] cursor-pointer shrink-0" 
+            onClick={() => setCurrentView('profile')}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-tr from-[#00d2ff] to-[#0B2551] flex items-center justify-center font-bold text-white text-xs">
+                {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className={`flex-1 bg-[#0e1015] ${currentView === 'chat' ? 'overflow-hidden h-full' : 'overflow-y-auto h-full'}`}>
+          {currentView === 'dashboard' ? (
+            <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} onSelectCompany={setSelectedCompanyId} />
+          ) : currentView === 'profile' ? (
+            <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
+          ) : currentView === 'feed' ? (
+            <StudentFeedView userId={userId} developerSkills={developerSkills} onSelectCompany={setSelectedCompanyId} />
+          ) : (
+            <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} onSelectCompany={setSelectedCompanyId} />
+          )}
+        </main>
+      </div>
+
       {selectedCompanyId && (
         <CompanyProfileModal 
           companyId={selectedCompanyId} 
