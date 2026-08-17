@@ -5472,7 +5472,7 @@ function StudentChatView({
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, email, first_name, last_name, username')
+          .select('id, email, first_name, last_name, role, username')
           .eq('id', initialPartnerId)
           .maybeSingle();
 
@@ -5481,9 +5481,25 @@ function StudentChatView({
           return;
         }
 
+        let displayName = data.first_name && data.last_name 
+          ? `${data.first_name} ${data.last_name}` 
+          : data.username || data.email;
+
+        if (data.role === 'recruiter') {
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('created_by', data.id)
+            .maybeSingle();
+
+          if (comp?.name) {
+            displayName = `${displayName} (${comp.name})`;
+          }
+        }
+
         const newChan = {
           id: data.id,
-          name: data.first_name && data.last_name ? `${data.first_name} ${data.last_name}` : data.username || data.email,
+          name: displayName,
           lastMessage: 'No messages yet',
           unread: 0,
           avatar: '👤'
@@ -5630,7 +5646,7 @@ function StudentChatView({
         // Fetch profiles of those other users to show their names in the sidebar
         const { data: userProfiles, error: profileErr } = await supabase
           .from('users')
-          .select('id, email, first_name, last_name, username')
+          .select('id, email, first_name, last_name, role, username')
           .in('id', Array.from(otherUserIds));
 
         if (profileErr) {
@@ -5638,27 +5654,55 @@ function StudentChatView({
           return;
         }
 
+        // Fetch company names for any recruiter in the profiles list
+        const recruiterIds = userProfiles.filter((u: any) => u.role === 'recruiter').map((u: any) => u.id);
+        const companiesMap: Record<string, string> = {};
+        if (recruiterIds.length > 0) {
+          const { data: comps } = await supabase
+            .from('companies')
+            .select('name, created_by')
+            .in('created_by', recruiterIds);
+          if (comps) {
+            comps.forEach((c: any) => {
+              if (c.created_by) {
+                companiesMap[c.created_by] = c.name;
+              }
+            });
+          }
+        }
+
         const newConversations = userProfiles.map((p: any) => {
           // Get the last message text for this user
           const chatMsgs = grouped[p.id] || [];
           const lastMsgText = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1].text : 'Start chatting';
           
+          let displayName = p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : p.username || p.email;
+          if (p.role === 'recruiter' && companiesMap[p.id]) {
+            displayName = `${displayName} (${companiesMap[p.id]})`;
+          }
+
           return {
             id: p.id,
-            name: p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : p.username || p.email,
+            name: displayName,
             lastMessage: lastMsgText,
             unread: 0,
             avatar: '👤'
           };
         });
 
-        // Merge static default ones and unique dynamically loaded channels
+        // Merge keeping dynamically active channels preserved
         setConversations(prev => {
-          const staticConvs = prev.filter(c => ['1'].includes(c.id));
-          const merged = [...staticConvs];
+          const merged = [...prev];
           newConversations.forEach(nc => {
-            if (!merged.find(mc => mc.id === nc.id)) {
+            const idx = merged.findIndex(mc => mc.id === nc.id);
+            if (idx === -1) {
               merged.push(nc);
+            } else {
+              merged[idx] = {
+                ...merged[idx],
+                name: nc.name,
+                lastMessage: nc.lastMessage
+              };
             }
           });
           return merged;
