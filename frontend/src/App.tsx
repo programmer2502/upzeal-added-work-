@@ -5,6 +5,7 @@ import { supabase } from './supabaseClient';
 import { apiService } from './services/api';
 import {
   ChevronRight,
+  ChevronLeft,
   Search,
   Sparkles,
   Inbox,
@@ -5274,6 +5275,7 @@ function StudentChatView({
   ]);
 
   const [activeConvId, setActiveConvId] = useState('1');
+  const [mobileShowMessages, setMobileShowMessages] = useState(false);
   
   const [messages, setMessages] = useState<Record<string, Array<{ id: string; sender: 'me' | 'them'; text: string; time: string }>>>({
     '1': [
@@ -5565,6 +5567,7 @@ function StudentChatView({
       const existing = conversations.find(c => c.id === data.id);
       if (existing) {
         setActiveConvId(data.id);
+        setMobileShowMessages(true);
         setSearchStatus('success');
         setSearchUsername('');
         return;
@@ -5580,6 +5583,7 @@ function StudentChatView({
 
       setConversations(prev => [newConv, ...prev]);
       setActiveConvId(data.id);
+      setMobileShowMessages(true);
       
       setMessages(prev => ({
         ...prev,
@@ -5665,9 +5669,9 @@ function StudentChatView({
   };
 
   return (
-    <div className="flex h-full bg-[#0e1015] w-full overflow-hidden">
+    <div className="flex h-full bg-[#0e1015] w-full overflow-hidden relative">
       {/* Channels List */}
-      <div className="w-80 border-r border-white/5 bg-[#0a0c10]/40 flex flex-col shrink-0">
+      <div className={`w-full md:w-80 border-r border-white/5 bg-[#0a0c10]/40 flex-col shrink-0 ${mobileShowMessages ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-6 border-b border-white/5 flex flex-col gap-4 bg-[#0a0c10]">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-extrabold tracking-tight text-white/95">Messages</h2>
@@ -5706,6 +5710,7 @@ function StudentChatView({
                 onClick={() => {
                   setActiveConvId(c.id);
                   setConversations(prev => prev.map(conv => conv.id === c.id ? { ...conv, unread: 0 } : conv));
+                  setMobileShowMessages(true);
                 }}
                 className={`w-full flex items-center gap-3.5 p-3 rounded-2xl transition-all duration-300 text-left cursor-pointer border ${
                   isActive 
@@ -5736,21 +5741,31 @@ function StudentChatView({
       </div>
 
       {/* Main Messaging pane */}
-      <div className="flex-1 flex flex-col bg-[#0e1015] justify-between relative h-full min-w-0 overflow-hidden">
+      <div className={`flex-1 flex flex-col bg-[#0e1015] justify-between relative h-full min-w-0 overflow-hidden ${mobileShowMessages ? 'flex' : 'hidden md:flex'}`}>
         {/* Chat Header */}
         <div className="h-[73px] border-b border-white/5 bg-[#0a0c10] px-6 flex items-center justify-between shrink-0">
-          <div 
-            onClick={handleHeaderClick}
-            className={`flex items-center gap-3 ${activeConv.id !== '1' ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
-          >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 flex items-center justify-center text-lg">
-              {activeConv.avatar}
-            </div>
-            <div className="text-left">
-              <p className={`text-sm font-bold text-white/95 leading-tight ${activeConv.id !== '1' ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{activeConv.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
-                <span className="text-[9px] text-emerald-400 font-bold font-mono tracking-wider uppercase">online</span>
+          <div className="flex items-center">
+            {/* Back button on mobile */}
+            <button 
+              onClick={() => setMobileShowMessages(false)}
+              className="md:hidden mr-3 p-1 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+
+            <div 
+              onClick={handleHeaderClick}
+              className={`flex items-center gap-3 ${activeConv.id !== '1' ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
+            >
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 flex items-center justify-center text-lg shrink-0">
+                {activeConv.avatar}
+              </div>
+              <div className="text-left">
+                <p className={`text-sm font-bold text-white/95 leading-tight ${activeConv.id !== '1' ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{activeConv.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
+                  <span className="text-[9px] text-emerald-400 font-bold font-mono tracking-wider uppercase">online</span>
+                </div>
               </div>
             </div>
           </div>
