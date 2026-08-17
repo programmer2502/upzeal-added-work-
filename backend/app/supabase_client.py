@@ -1,5 +1,32 @@
 import httpx
+import time
 from app.config import settings
+
+class MemoryCache:
+    def __init__(self, ttl: float = 30.0):
+        self.ttl = ttl
+        self.cache = {}
+
+    def get(self, key: str):
+        if key in self.cache:
+            val, expires_at = self.cache[key]
+            if time.time() < expires_at:
+                return val
+            else:
+                del self.cache[key]
+        return None
+
+    def set(self, key: str, val, ttl: float = None):
+        cache_ttl = ttl if ttl is not None else self.ttl
+        self.cache[key] = (val, time.time() + cache_ttl)
+
+    def invalidate(self, key: str):
+        self.cache.pop(key, None)
+
+token_cache = MemoryCache(ttl=300.0)
+user_profile_cache = MemoryCache(ttl=300.0)
+db_cache = MemoryCache(ttl=30.0)
+
 
 class SupabaseClient:
     def __init__(self):
@@ -53,11 +80,10 @@ class SupabaseClient:
             "apikey": self.key,
             "Authorization": f"Bearer {token}"
         }
-        # Simple short-lived client for token authentication checks
-        async with httpx.AsyncClient() as client:
-            response = await client.get(auth_url, headers=headers)
-            if response.status_code != 200:
-                raise Exception("Invalid authorization token")
-            return response.json()
+        # Use connection-pooled client instead of starting a new TLS session
+        response = await self.client.get(auth_url, headers=headers)
+        if response.status_code != 200:
+            raise Exception("Invalid authorization token")
+        return response.json()
 
 supabase_client = SupabaseClient()

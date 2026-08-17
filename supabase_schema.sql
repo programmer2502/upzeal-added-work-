@@ -277,6 +277,7 @@ CREATE INDEX IF NOT EXISTS idx_projects_created_by ON public.projects (created_b
 CREATE INDEX IF NOT EXISTS idx_applications_project_id ON public.applications (project_id);
 CREATE INDEX IF NOT EXISTS idx_required_skills_skill_name ON public.required_skills (skill_name);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver_id ON public.messages (receiver_id);
+CREATE INDEX IF NOT EXISTS idx_users_profile_xp ON public.users (((profile_details->>'xp')::integer)) WHERE (role = 'developer');
 
 -- =========================================================================
 -- 10. PROJECT PARTICIPANT COUNTS VIEW

@@ -13,32 +13,47 @@ SKILLS_DIR = os.path.abspath(os.path.join(
     "..", "..", "..", "SKILLS", "SKILLS"
 ))
 
+# Initialize global client for external API requests to keep connections warm
+openrouter_client = httpx.AsyncClient(timeout=15.0)
+
+_skills_folders_cache = None
+_skill_md_cache = {}
+
 def get_related_skill_md(query: str) -> str:
     """Scan SKILLS folder to find a matching skill name in user's query, then return its SKILL.md content"""
+    global _skills_folders_cache
     if not os.path.exists(SKILLS_DIR):
         return ""
         
     try:
-        entries = os.listdir(SKILLS_DIR)
-        for entry in entries:
-            full_path = os.path.join(SKILLS_DIR, entry)
-            if not os.path.isdir(full_path):
-                continue
-                
+        if _skills_folders_cache is None:
+            _skills_folders_cache = [
+                entry for entry in os.listdir(SKILLS_DIR)
+                if os.path.isdir(os.path.join(SKILLS_DIR, entry))
+            ]
+
+        for entry in _skills_folders_cache:
             normalized_entry = entry.lower().replace("-", " ")
+            is_match = False
             if normalized_entry in query or entry.lower() in query:
-                skill_md_path = os.path.join(full_path, "SKILL.md")
+                is_match = True
+            else:
+                words = [w for w in entry.lower().split("-") if len(w) > 3]
+                for w in words:
+                    if w in query:
+                        is_match = True
+                        break
+            
+            if is_match:
+                if entry in _skill_md_cache:
+                    return _skill_md_cache[entry]
+                    
+                skill_md_path = os.path.join(SKILLS_DIR, entry, "SKILL.md")
                 if os.path.exists(skill_md_path):
                     with open(skill_md_path, 'r', encoding='utf-8') as f:
-                        return f.read()
-                        
-            words = [w for w in entry.lower().split("-") if len(w) > 3]
-            for w in words:
-                if w in query:
-                    skill_md_path = os.path.join(full_path, "SKILL.md")
-                    if os.path.exists(skill_md_path):
-                        with open(skill_md_path, 'r', encoding='utf-8') as f:
-                            return f.read()
+                        content = f.read()
+                        _skill_md_cache[entry] = content
+                        return content
     except Exception:
         pass
     return ""
@@ -66,31 +81,29 @@ async def ask_ai_mentor(req: MentorQueryRequest, current_user: dict = Depends(ge
     reply = None
     if settings.OPENROUTER_API_KEY:
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                        "HTTP-Referer": "http://localhost:8000",
-                        "X-Title": "Upzeal AI Mentor",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": settings.OPENROUTER_MODEL,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": req.query.strip()}
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 1000
-                    },
-                    timeout=15.0
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    reply = data["choices"][0]["message"]["content"]
-                else:
-                    print(f"OpenRouter returned status {response.status_code}: {response.text}")
+            response = await openrouter_client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "http://localhost:8000",
+                    "X-Title": "Upzeal AI Mentor",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": settings.OPENROUTER_MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": req.query.strip()}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1000
+                }
+            )
+            if response.status_code == 200:
+                data = response.json()
+                reply = data["choices"][0]["message"]["content"]
+            else:
+                print(f"OpenRouter returned status {response.status_code}: {response.text}")
         except Exception as e:
             print(f"Error calling OpenRouter: {e}")
 

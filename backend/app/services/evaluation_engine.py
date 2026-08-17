@@ -1,6 +1,6 @@
 import os
 import re
-from app.supabase_client import supabase_client
+from app.supabase_client import supabase_client, user_profile_cache, db_cache
 
 class EvaluationEngine:
     # Resolve root skills folder relative to backend/app/services/evaluation_engine.py
@@ -9,31 +9,48 @@ class EvaluationEngine:
         "..", "..", "..", "SKILLS", "SKILLS"
     ))
 
+    _skills_folders_cache = None
+    _skills_info_cache = {}
+
     @staticmethod
     def get_matching_skill_info(skill_name: str) -> dict:
         """Scan SKILLS folder to find a folder matching the skill name, then read its SKILL.md"""
+        if skill_name in EvaluationEngine._skills_info_cache:
+            return EvaluationEngine._skills_info_cache[skill_name]
+
         if not os.path.exists(EvaluationEngine.SKILLS_DIR):
-            return {"name": skill_name, "guidelines": "Core development standards."}
+            res = {"name": skill_name, "guidelines": "Core development standards."}
+            EvaluationEngine._skills_info_cache[skill_name] = res
+            return res
             
         normalized_name = skill_name.lower().replace(" ", "-").replace(".", "")
         matched_folder = None
         
-        # Scan folders in SKILLS_DIR
+        # Scan folders in SKILLS_DIR (using cached folder list)
         try:
-            for entry in os.listdir(EvaluationEngine.SKILLS_DIR):
-                full_path = os.path.join(EvaluationEngine.SKILLS_DIR, entry)
-                if os.path.isdir(full_path) and normalized_name in entry.lower():
-                    matched_folder = entry
-                    break
+            if EvaluationEngine._skills_folders_cache is None:
+                EvaluationEngine._skills_folders_cache = [
+                    entry for entry in os.listdir(EvaluationEngine.SKILLS_DIR)
+                    if os.path.isdir(os.path.join(EvaluationEngine.SKILLS_DIR, entry))
+                ]
         except Exception:
-            pass
+            EvaluationEngine._skills_folders_cache = []
+
+        for entry in EvaluationEngine._skills_folders_cache:
+            if normalized_name in entry.lower():
+                matched_folder = entry
+                break
 
         if not matched_folder:
-            return {"name": skill_name, "guidelines": "Core development standards."}
+            res = {"name": skill_name, "guidelines": "Core development standards."}
+            EvaluationEngine._skills_info_cache[skill_name] = res
+            return res
 
         skill_md_path = os.path.join(EvaluationEngine.SKILLS_DIR, matched_folder, "SKILL.md")
         if not os.path.exists(skill_md_path):
-            return {"name": skill_name, "guidelines": "Core development standards."}
+            res = {"name": skill_name, "guidelines": "Core development standards."}
+            EvaluationEngine._skills_info_cache[skill_name] = res
+            return res
 
         # Parse SKILL.md
         try:
@@ -57,18 +74,32 @@ class EvaluationEngine:
             if len(short_guidelines) > 250:
                 short_guidelines = short_guidelines[:247] + "..."
                 
-            return {
+            res = {
                 "name": matched_folder.replace("-", " ").title(),
                 "guidelines": short_guidelines or "Follow core best practices."
             }
+            EvaluationEngine._skills_info_cache[skill_name] = res
+            return res
         except Exception:
-            return {"name": skill_name, "guidelines": "Core development standards."}
+            res = {"name": skill_name, "guidelines": "Core development standards."}
+            EvaluationEngine._skills_info_cache[skill_name] = res
+            return res
 
     @staticmethod
     async def evaluate_developer(user_id: str) -> dict:
         """Run AI Evaluation on a developer based on their skills, application history, and reviews."""
-        # 1. Fetch user profile
-        user = await supabase_client.get_single("users", {"id": f"eq.{user_id}"})
+        import asyncio
+        # 1. Fetch user profile, applications (hire status), and reviews concurrently
+        user_task = supabase_client.get_single("users", {"id": f"eq.{user_id}"})
+        apps_task = supabase_client.get("applications", {"developer_id": f"eq.{user_id}"})
+        reviews_task = supabase_client.get("reviews", {"reviewee_id": f"eq.{user_id}"})
+
+        user, apps, reviews = await asyncio.gather(
+            user_task,
+            apps_task,
+            reviews_task
+        )
+
         if not user:
             raise Exception("User profile not found")
 
@@ -76,19 +107,25 @@ class EvaluationEngine:
         if not tech_stack:
             tech_stack = ["FastAPI", "React"] # Default fallback fallback
 
-        # 2. Fetch applications (hire status)
-        apps = await supabase_client.get("applications", {"developer_id": f"eq.{user_id}"})
         hired_count = sum(1 for a in apps if a.get("status") == "hired")
 
-        # 3. Fetch reviews from public.reviews
-        reviews = await supabase_client.get("reviews", {"reviewee_id": f"eq.{user_id}"})
         avg_rating = 0.0
         if reviews:
             avg_rating = sum(float(r.get("rating") or 0) for r in reviews) / len(reviews)
 
-        # 4. Calculate skill scores (0-100) dynamically
+        # 2. Batch fetch existing skill scores for this user to avoid multiple SELECT queries in a loop
+        existing_skills = []
+        if tech_stack:
+            skills_filter = ",".join(f'"{s}"' if ' ' in s else s for s in tech_stack)
+            existing_skills = await supabase_client.get("skill_scores", {
+                "user_id": f"eq.{user_id}",
+                "skill_name": f"in.({skills_filter})"
+            })
+        existing_skills_map = {s.get("skill_name"): s for s in existing_skills}
+
         evaluated_skills = []
         overall_skills_points = 0
+        db_tasks = []
         
         for skill in tech_stack:
             skill_info = EvaluationEngine.get_matching_skill_info(skill)
@@ -113,24 +150,20 @@ class EvaluationEngine:
             final_score = min(100, max(10, base_score + proj_bonus + review_bonus))
             overall_skills_points += final_score
 
-            # Save to public.skill_scores
-            # Check if record exists
-            existing = await supabase_client.get("skill_scores", {
-                "user_id": f"eq.{user_id}",
-                "skill_name": f"eq.{skill}"
-            })
+            # Check if record exists in existing map
+            existing = existing_skills_map.get(skill)
             if existing:
-                await supabase_client.update("skill_scores", {
+                db_tasks.append(supabase_client.update("skill_scores", {
                     "score": final_score,
                     "verified": True if hired_count > 0 else False
-                }, {"id": f"eq.{existing[0]['id']}"})
+                }, {"id": f"eq.{existing['id']}"}))
             else:
-                await supabase_client.insert("skill_scores", {
+                db_tasks.append(supabase_client.insert("skill_scores", {
                     "user_id": user_id,
                     "skill_name": skill,
                     "score": final_score,
                     "verified": True if hired_count > 0 else False
-                })
+                }))
 
             evaluated_skills.append({
                 "name": skill,
@@ -138,20 +171,32 @@ class EvaluationEngine:
                 "guidelines": skill_info["guidelines"]
             })
 
-        # 5. Compute new overall profile XP
+        # 3. Compute new overall profile XP
         # Formula: overall skills average * 150 + hired projects * 500 + baseline 1000
         avg_skill_score = overall_skills_points / len(tech_stack) if tech_stack else 60.0
         new_xp = int((avg_skill_score * 150) + (hired_count * 500) + 1000)
 
-        # Update profile details
+        # Update local profile details XP
         profile_details = user.get("profile_details") or {}
         profile_details["xp"] = new_xp
-        await supabase_client.update("users", {"profile_details": profile_details}, {"id": f"eq.{user_id}"})
 
-        # 6. Calculate global rank
-        all_devs = await supabase_client.get("users", {"role": "eq.developer"})
-        # Sort by XP
+        # 4. Fetch all developers concurrently with skill updates to compute global ranking
+        all_devs = db_cache.get("all_developers_for_ranking")
+        if all_devs:
+            if db_tasks:
+                await asyncio.gather(*db_tasks)
+        else:
+            all_devs_task = supabase_client.get("users", {"role": "eq.developer"})
+            _, all_devs = await asyncio.gather(
+                asyncio.gather(*db_tasks) if db_tasks else asyncio.sleep(0),
+                all_devs_task
+            )
+            db_cache.set("all_developers_for_ranking", all_devs)
+        
+        # Sort by XP (using new_xp locally for current user to avoid race conditions)
         def get_xp_val(d):
+            if d.get("id") == user_id:
+                return new_xp
             details = d.get("profile_details") or {}
             return int(details.get("xp") or 0)
             
@@ -166,7 +211,7 @@ class EvaluationEngine:
         ranking_str = f"Rank #{rank_idx} of {len(sorted_devs)} developers"
         percentile = round(((len(sorted_devs) - rank_idx) / len(sorted_devs)) * 100) if sorted_devs else 100
 
-        # 7. Generate Feedback Report (Markdown format)
+        # 5. Generate Feedback Report (Markdown format)
         strengths = []
         improvements = []
         for s in evaluated_skills:
@@ -203,7 +248,7 @@ class EvaluationEngine:
             report_md += "- Address recruiter comments by optimizing code structures and documenting endpoints.\n"
         report_md += "- Review the instructions in the corresponding `SKILL.md` folders to improve verification metrics.\n"
 
-        return {
+        report = {
             "user_id": user_id,
             "xp": new_xp,
             "ranking": ranking_str,
@@ -211,3 +256,11 @@ class EvaluationEngine:
             "skills": evaluated_skills,
             "feedback_report": report_md
         }
+
+        # Cache the complete evaluation report in profile_details.evaluation_report
+        profile_details["evaluation_report"] = report
+        await supabase_client.update("users", {"profile_details": profile_details}, {"id": f"eq.{user_id}"})
+
+        db_cache.invalidate("recruiter_developers_list")
+
+        return report

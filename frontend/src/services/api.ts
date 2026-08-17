@@ -2,6 +2,31 @@ import { supabase } from '../supabaseClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
+class ClientCache {
+  private cache: Record<string, { val: any; expiresAt: number }> = {};
+  
+  get(key: string): any {
+    const item = this.cache[key];
+    if (item) {
+      if (Date.now() < item.expiresAt) {
+        return item.val;
+      }
+      delete this.cache[key];
+    }
+    return null;
+  }
+
+  set(key: string, val: any, ttlMs: number = 15000): void {
+    this.cache[key] = { val, expiresAt: Date.now() + ttlMs };
+  }
+
+  invalidate(key: string): void {
+    delete this.cache[key];
+  }
+}
+
+const clientCache = new ClientCache();
+
 class ApiService {
   private async getAuthHeader(): Promise<Record<string, string>> {
     const { data } = await supabase.auth.getSession();
@@ -44,10 +69,18 @@ class ApiService {
   }
 
   async getChallenges(): Promise<any[]> {
+    const cacheKey = 'challenges_list';
+    const cached = clientCache.get(cacheKey);
+    if (cached) return cached;
+
     try {
       const headers = await this.getAuthHeader();
       const res = await fetch(`${API_BASE_URL}/challenges/`, { headers });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        clientCache.set(cacheKey, data, 15000); // Cache for 15 seconds
+        return data;
+      }
     } catch (err) {
       console.warn("Backend API unavailable, falling back to client fetch:", err);
     }
@@ -55,6 +88,7 @@ class ApiService {
   }
 
   async joinChallenge(projectId: string): Promise<any> {
+    clientCache.invalidate('challenges_list');
     try {
       const headers = await this.getAuthHeader();
       const res = await fetch(`${API_BASE_URL}/challenges/join`, {
@@ -70,6 +104,7 @@ class ApiService {
   }
 
   async acceptApplication(appId: string): Promise<any> {
+    clientCache.invalidate('challenges_list');
     try {
       const headers = await this.getAuthHeader();
       const res = await fetch(`${API_BASE_URL}/applications/${appId}/accept`, {
@@ -158,6 +193,17 @@ class ApiService {
       console.warn("Backend trigger evaluation failed:", err);
     }
     return null;
+  }
+
+  async getDevelopers(): Promise<any[]> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/skills/developers`, { headers });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend developers list fetch failed:", err);
+    }
+    return [];
   }
 }
 

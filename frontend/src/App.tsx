@@ -161,79 +161,6 @@ export default function App() {
   }
   const [toasts, setToasts] = useState<AppToast[]>([]);
 
-  // Real-time toast notifications for B2B and Developer applications and acceptances
-  useEffect(() => {
-    if (!user) return;
-
-    const appSubscription = supabase
-      .channel('applications-realtime-global')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'applications' },
-        async (payload) => {
-          const newApp = payload.new as any;
-
-          if (payload.eventType === 'INSERT') {
-            const { data: project } = await supabase
-              .from('projects')
-              .select('id, title, company_id')
-              .eq('id', newApp.project_id)
-              .maybeSingle();
-
-            if (project) {
-              const { data: company } = await supabase
-                .from('companies')
-                .select('name, created_by')
-                .eq('id', project.company_id)
-                .maybeSingle();
-
-              if (company && company.created_by === user.id) {
-                const { data: applicant } = await supabase
-                  .from('users')
-                  .select('first_name, last_name, username, email')
-                  .eq('id', newApp.developer_id)
-                  .maybeSingle();
-
-                const applicantName = applicant
-                  ? (applicant.first_name && applicant.last_name ? `${applicant.first_name} ${applicant.last_name}` : applicant.username || applicant.email)
-                  : 'Someone';
-
-                const toastId = `toast-${newApp.id}`;
-                setToasts(prev => {
-                  if (prev.find(t => t.id === toastId)) return prev;
-                  return [
-                    ...prev,
-                    {
-                      id: toastId,
-                      title: 'New Requirement Application',
-                      message: `${applicantName} applied to your requirement: "${project.title}"`,
-                      type: 'info',
-                      action: {
-                        label: 'Accept Application',
-                        onClick: async () => {
-                          try {
-                            await apiService.acceptApplication(newApp.id);
-                            setToasts(current => current.filter(t => t.id !== toastId));
-                          } catch (error: any) {
-                            alert(error.message || "Failed to accept application");
-                          }
-                        }
-                      }
-                    }
-                  ];
-                });
-              }
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(appSubscription);
-    };
-  }, [user]);
-
   // FastAPI WebSocket connection for real-time push events from the backend
   useEffect(() => {
     if (!user) return;
@@ -260,6 +187,32 @@ export default function App() {
                   title: 'Requirement Accepted! 🎉',
                   message: `Congratulations! Your partnership/application for "${project_title}" has been accepted!`,
                   type: 'success'
+                }
+              ];
+            });
+          } else if (data.type === 'NEW_APPLICATION' && data.payload) {
+            const { app_id, project_title, applicant_name } = data.payload;
+            const toastId = `toast-${app_id}`;
+            setToasts(prev => {
+              if (prev.find(t => t.id === toastId)) return prev;
+              return [
+                ...prev,
+                {
+                  id: toastId,
+                  title: 'New Requirement Application',
+                  message: `${applicant_name} applied to your requirement: "${project_title}"`,
+                  type: 'info',
+                  action: {
+                    label: 'Accept Application',
+                    onClick: async () => {
+                      try {
+                        await apiService.acceptApplication(app_id);
+                        setToasts(current => current.filter(t => t.id !== toastId));
+                      } catch (error: any) {
+                        alert(error.message || "Failed to accept application");
+                      }
+                    }
+                  }
                 }
               ];
             });
@@ -1945,6 +1898,7 @@ function InputGroup({
 // ==========================================
 function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
   const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [, setToasts] = useState<any[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string>(() => {
     return localStorage.getItem(`upzeal_user_avatar_${userId}`) || '';
@@ -1965,7 +1919,7 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
       }
     };
     fetchAvatar();
-  }, [userId, currentView]);
+  }, [userId]);
 
   const handleAvatarChange = (newUrl: string) => {
     setAvatarUrl(newUrl);
@@ -2043,15 +1997,21 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
       {/* Main Content */}
       <main className={`flex-1 bg-[#0e1015] ${currentView === 'chat' ? 'overflow-hidden h-full' : 'overflow-y-auto h-full'}`}>
         {currentView === 'dashboard' ? (
-          <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} />
+          <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} onSelectCompany={setSelectedCompanyId} />
         ) : currentView === 'profile' ? (
           <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
         ) : currentView === 'feed' ? (
-          <StudentFeedView userId={userId} developerSkills={developerSkills} />
+          <StudentFeedView userId={userId} developerSkills={developerSkills} onSelectCompany={setSelectedCompanyId} />
         ) : (
-          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} onSelectCompany={setSelectedCompanyId} />
         )}
       </main>
+      {selectedCompanyId && (
+        <CompanyProfileModal 
+          companyId={selectedCompanyId} 
+          onClose={() => setSelectedCompanyId(null)} 
+        />
+      )}
     </div>
   );
 }
@@ -2096,7 +2056,7 @@ function MarkdownReportViewer({ reportText }: { reportText: string }) {
   );
 }
 
-function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }: { userId: string; firstName: string; developerSkills: string[]; setToasts: React.Dispatch<React.SetStateAction<any[]>> }) {
+function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts, onSelectCompany }: { userId: string; firstName: string; developerSkills: string[]; setToasts: React.Dispatch<React.SetStateAction<any[]>>; onSelectCompany: (id: string) => void }) {
   const [xp, setXp] = useState(0);
   const [challenges, setChallenges] = useState<any[]>([]);
   const [challengeFilter, setChallengeFilter] = useState<'all' | 'matched'>('all');
@@ -2105,7 +2065,7 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
   const [mentorInput, setMentorInput] = useState('');
   const [mentorMessage, setMentorMessage] = useState('');
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [lastUpdated] = useState(() => {
+  const [lastUpdated, setLastUpdated] = useState(() => {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   });
   const [evaluationReport, setEvaluationReport] = useState<any>(null);
@@ -2303,77 +2263,40 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
     const fetchChallenges = async () => {
       try {
         setLoading(true);
-        const [projectsRes, skillsRes, appsRes, scoresRes] = await Promise.all([
-          supabase.from('projects').select(`
-            id,
-            title,
-            description,
-            budget,
-            status,
-            created_at,
-            companies (
-              id,
-              name,
-              logo_url
-            )
-          `),
-          supabase.from('required_skills').select('project_id, skill_name'),
-          supabase.from('applications').select('project_id, status').eq('developer_id', userId),
+        const [apiProjects, scoresRes] = await Promise.all([
+          apiService.getChallenges(),
           supabase.from('skill_scores').select('*').eq('user_id', userId)
         ]);
 
-        if (projectsRes.error) throw projectsRes.error;
-        if (skillsRes.error) throw skillsRes.error;
-        if (appsRes.error) throw appsRes.error;
         if (scoresRes.error) throw scoresRes.error;
 
-        const skillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
-          if (!acc[item.project_id]) acc[item.project_id] = [];
-          acc[item.project_id].push(item.skill_name);
-          return acc;
-        }, {});
+        const normalizedDevSkills = (developerSkills || []).map(s => s.toLowerCase());
 
-        const userAppsMap = (appsRes.data || []).reduce((acc: any, item: any) => {
-          acc[item.project_id] = item.status;
-          return acc;
-        }, {});
+        const mapped = apiProjects.map((proj: any) => {
+          const projSkills = proj.skills || [];
+          const isMatched = projSkills.some((s: string) => 
+            normalizedDevSkills.some(ds => ds.includes(s.toLowerCase()) || s.toLowerCase().includes(ds))
+          );
 
-        const { data: allApps } = await supabase.from('applications').select('project_id');
-        const participantCountMap = (allApps || []).reduce((acc: any, item: any) => {
-          acc[item.project_id] = (acc[item.project_id] || 0) + 1;
-          return acc;
-        }, {});
+          return {
+            id: proj.id,
+            rank: proj.rank,
+            name: proj.name,
+            companyId: proj.companyId,
+            author: proj.author,
+            avatar: proj.avatar || `https://i.pravatar.cc/150?u=${proj.author || 'company'}`,
+            date: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+            stack: projSkills.map(formatSkillTitle).join(', '),
+            participants: proj.participants,
+            status: proj.status,
+            statusColor: proj.status === 'Public' ? 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' : 'text-white/50 bg-white/5 border-[#333]',
+            appStatus: proj.appStatus,
+            skills: projSkills,
+            isMatched
+          };
+        });
 
-        if (projectsRes.data) {
-          const normalizedDevSkills = (developerSkills || []).map(s => s.toLowerCase());
-
-          const mapped = projectsRes.data.map((proj: any, index: number) => {
-            const projSkills = skillsMap[proj.id] || [];
-            const userAppStatus = userAppsMap[proj.id] || null;
-            const participantsCount = participantCountMap[proj.id] || 0;
-            const isMatched = projSkills.some((s: string) => 
-              normalizedDevSkills.some(ds => ds.includes(s.toLowerCase()) || s.toLowerCase().includes(ds))
-            );
-
-            return {
-              id: proj.id,
-              rank: `#${index + 1}`,
-              name: proj.title,
-              author: proj.companies?.name || 'Upzeal Client Partner',
-              avatar: proj.companies?.logo_url || `https://i.pravatar.cc/150?u=${proj.companies?.name || 'company'}`,
-              date: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
-              stack: projSkills.map(formatSkillTitle).join(', '),
-              participants: participantsCount.toString(),
-              status: proj.status === 'open' || proj.status === 'public' ? 'Public' : '🔒 Private',
-              statusColor: proj.status === 'open' || proj.status === 'public' ? 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20' : 'text-white/50 bg-white/5 border-[#333]',
-              appStatus: userAppStatus,
-              skills: projSkills,
-              isMatched
-            };
-          });
-
-          setChallenges(mapped);
-        }
+        setChallenges(mapped);
 
         // Initialize and set skill scores starting from 0
         let userScores = scoresRes.data || [];
@@ -2407,13 +2330,9 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
 
   const handleJoin = async (projectId: string) => {
     try {
-      const { error } = await supabase.from('applications').insert({
-        project_id: projectId,
-        developer_id: userId,
-        status: 'pending'
-      });
-      if (error) {
-        alert("Failed to join challenge: " + error.message);
+      const res = await apiService.joinChallenge(projectId);
+      if (!res) {
+        alert("Failed to join challenge.");
         return;
       }
       
@@ -2424,64 +2343,18 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
         return c;
       }));
 
-      // Award +50 points (XP) for joining/completing the challenge
-      const targetChallenge = challenges.find(c => c.id === projectId);
-      const challengeSkillsList = targetChallenge?.skills || [];
+      // Concurrently fetch updated skill scores and user profile details from backend updates
+      const [scoresRes, userRes] = await Promise.all([
+        supabase.from('skill_scores').select('*').eq('user_id', userId),
+        supabase.from('users').select('profile_details').eq('id', userId).maybeSingle()
+      ]);
 
-      // 1. Add 50 points to each skill score required for this project
-      for (const skill of challengeSkillsList) {
-        const { data: currentScoreData } = await supabase
-          .from('skill_scores')
-          .select('id, score')
-          .eq('user_id', userId)
-          .eq('skill_name', skill)
-          .maybeSingle();
-
-        if (currentScoreData) {
-          const newScore = (currentScoreData.score || 0) + 50;
-          await supabase
-            .from('skill_scores')
-            .update({ score: newScore })
-            .eq('id', currentScoreData.id);
-        } else {
-          await supabase
-            .from('skill_scores')
-            .insert({
-              user_id: userId,
-              skill_name: skill,
-              score: 50,
-              verified: false
-            });
-        }
+      if (scoresRes.data) {
+        setSkillScores(scoresRes.data);
       }
-
-      // 2. Fetch updated skill scores to update the UI cards
-      const { data: updatedScores } = await supabase
-        .from('skill_scores')
-        .select('*')
-        .eq('user_id', userId);
-      if (updatedScores) {
-        setSkillScores(updatedScores);
+      if (userRes.data?.profile_details?.xp !== undefined) {
+        setXp(Number(userRes.data.profile_details.xp));
       }
-
-      // 3. Add 50 XP to total user XP while preserving existing profile_details (avatar_url, bio, location)
-      const { data: userData } = await supabase
-        .from('users')
-        .select('profile_details')
-        .eq('id', userId)
-        .maybeSingle();
-
-      const details = {
-        ...(userData?.profile_details || {}),
-        xp: (Number(userData?.profile_details?.xp) || 0) + 50
-      };
-
-      await supabase
-        .from('users')
-        .update({ profile_details: details })
-        .eq('id', userId);
-
-      setXp(details.xp);
 
       setToasts(prev => [
         ...prev,
@@ -2927,9 +2800,12 @@ function StudentBentoDashboard({ userId, firstName, developerSkills, setToasts }
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
+                        <div 
+                          onClick={() => row.companyId && onSelectCompany && onSelectCompany(row.companyId)}
+                          className={`flex items-center gap-2 ${row.companyId ? 'cursor-pointer hover:opacity-80 transition-opacity group' : ''}`}
+                        >
                           <img src={row.avatar} alt="" className="w-6 h-6 rounded-full border border-[#333] object-cover" />
-                          <span className="text-white/80 font-medium">{row.author}</span>
+                          <span className={`text-white/80 font-medium ${row.companyId ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{row.author}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 font-mono text-white/40 text-xs">{row.date}</td>
@@ -3851,8 +3727,12 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
           </div>
         </div>
       ) : (
-        <div className="flex flex-col md:flex-row gap-8 items-start mb-16 relative group text-left w-full">
-          <div className="w-32 h-32 rounded-full border border-[#333] overflow-hidden shrink-0 bg-[#151820]">
+        <div className="flex flex-col md:flex-row gap-8 items-start mb-10 p-6 md:p-8 bg-[#121520]/45 border border-white/5 rounded-3xl relative group text-left w-full shadow-xl overflow-hidden">
+          {/* Top subtle gradient glow bar inside card */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+          {/* Avatar Container */}
+          <div className="w-32 h-32 rounded-full border-2 border-white/10 overflow-hidden shrink-0 bg-[#0d1117] shadow-lg group-hover:border-[#00d2ff]/40 transition-colors">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -3861,21 +3741,21 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
               </div>
             )}
           </div>
-          <div className="flex-1 flex flex-col items-start text-left pt-2 w-full">
-            <div className="flex w-full justify-between items-start">
-              <h1 className="text-4xl font-bold tracking-tight">{firstName && lastName ? `${firstName} ${lastName}` : email}</h1>
+          <div className="flex-1 flex flex-col items-start text-left pt-1.5 w-full">
+            <div className="flex w-full justify-between items-start gap-4 flex-wrap sm:flex-nowrap">
+              <h1 className="text-3xl font-extrabold text-white tracking-tight">{firstName && lastName ? `${firstName} ${lastName}` : email}</h1>
               <button 
                 onClick={() => setIsEditing(true)} 
-                className="text-xs font-semibold px-4 py-2 border border-white/10 hover:border-white/30 rounded-xl hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer text-white/80 hover:text-white"
+                className="text-xs font-bold px-4 py-2 border border-white/10 hover:border-[#00d2ff]/30 hover:bg-[#00d2ff]/5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer text-white/80 hover:text-[#00d2ff] shrink-0"
               >
                 <Edit3 className="w-3 h-3" /> Edit Profile
               </button>
             </div>
-            <div className="flex items-center gap-4 mt-3 text-white/60 text-sm">
-              <span className="font-mono flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {location}</span>
-              <span className="font-mono flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {email}</span>
+            <div className="flex items-center gap-3.5 mt-3 text-white/50 text-xs flex-wrap">
+              <span className="font-mono flex items-center gap-1 bg-white/2 border border-white/5 rounded-md px-2 py-0.5"><MapPin className="w-3 h-3 text-[#00d2ff]" /> {location}</span>
+              <span className="font-mono flex items-center gap-1 bg-white/2 border border-white/5 rounded-md px-2 py-0.5"><User className="w-3 h-3 text-[#00d2ff]" /> {email}</span>
             </div>
-            <p className="mt-4 text-white/80 max-w-2xl leading-relaxed whitespace-pre-wrap">
+            <p className="mt-4 text-sm text-white/70 max-w-2xl leading-relaxed whitespace-pre-wrap font-sans font-medium">
               {bio}
             </p>
           </div>
@@ -3883,9 +3763,9 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
       )}
 
       {/* GitHub Contribution Graph */}
-      <div className="mb-16">
-        <h2 className="text-lg font-semibold mb-6">Contributions</h2>
-        <div className="p-6 border border-[#333] rounded-2xl bg-[#0d1117] overflow-x-auto">
+      <div className="mb-10">
+        <h2 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-4 text-left">Contributions</h2>
+        <div className="p-6 border border-white/5 rounded-2xl bg-[#121520]/45 overflow-x-auto shadow-md">
           <div className="flex gap-1 min-w-max">
             {commits.map((col, colIdx) => (
               <div key={colIdx} className="flex flex-col gap-1">
@@ -3895,11 +3775,11 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
               </div>
             ))}
           </div>
-          <div className="mt-4 flex items-center justify-between text-xs text-white/50">
-            <span className="font-mono">{totalContributions} contributions in the last year</span>
+          <div className="mt-4 flex items-center justify-between text-xs text-white/50 flex-wrap gap-2">
+            <span className="font-mono font-medium">{totalContributions} contributions in the last year</span>
             <div className="flex items-center gap-1.5 font-mono">
               <span>Less</span>
-              <div className="w-3 h-3 rounded-[2px] bg-[#161b22] border border-[#333]" />
+              <div className="w-3 h-3 rounded-[2px] bg-[#161b22] border border-white/5" />
               <div className="w-3 h-3 rounded-[2px] bg-[#0e4429] border border-[#0e4429]" />
               <div className="w-3 h-3 rounded-[2px] bg-[#006d32] border border-[#006d32]" />
               <div className="w-3 h-3 rounded-[2px] bg-[#26a641] border border-[#26a641]" />
@@ -3913,27 +3793,39 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
       {/* Onboarded and Active Projects Lists */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
         {/* Onboarded Projects Column */}
-        <div className="border border-[#333] rounded-2xl bg-[#0d1117] p-6 space-y-4 text-left">
-          <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
-            <Briefcase className="w-5 h-5 text-[#00d2ff]" />
+        <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 md:p-8 space-y-5 text-left shadow-lg">
+          <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2" className="drop-shadow-[0_0_8px_rgba(0,210,255,0.3)]"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             Onboarded Projects
           </h3>
           <div className="space-y-4">
             {onboardedProjects.length === 0 ? (
-              <p className="text-xs text-white/40 italic">No onboarded projects yet.</p>
+              <div className="border border-dashed border-white/5 bg-[#07090e]/30 rounded-2xl p-6 text-center text-white/30">
+                <p className="text-xs font-mono">No onboarded projects yet.</p>
+              </div>
             ) : (
               onboardedProjects.map((proj, idx) => (
-                <div key={idx} className="border border-[#333] rounded-xl p-4 bg-[#07090e] hover:border-[#00d2ff]/30 transition-all space-y-2">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-sm font-semibold text-white">{proj.title}</h4>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20">
+                <div key={idx} className="border border-white/5 rounded-2xl p-5 bg-[#07090e]/60 hover:border-[#00d2ff]/30 transition-all duration-300 space-y-3 relative group overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex justify-between items-start gap-4">
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#00d2ff] transition-colors">{proj.title}</h4>
+                    <span className="text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/25 shrink-0">
                       Hired
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1 text-xs text-white/50">
-                    <p>Client: <strong className="text-white/80">{proj.company}</strong></p>
-                    <p>Budget: <strong className="text-white/80">{proj.budget}</strong></p>
-                    <p>Hired on: <span className="font-mono">{proj.dateStr}</span></p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-white/50 border-t border-white/5 pt-3">
+                    <div>
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Client</span>
+                      <strong className="text-white/80">{proj.company}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Budget</span>
+                      <strong className="text-white/80 font-mono">{proj.budget}</strong>
+                    </div>
+                    <div className="col-span-2 mt-1">
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Hired On</span>
+                      <span className="font-mono text-white/70">{proj.dateStr}</span>
+                    </div>
                   </div>
                 </div>
               ))
@@ -3942,33 +3834,45 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         </div>
 
         {/* Active Projects Column */}
-        <div className="border border-[#333] rounded-2xl bg-[#0d1117] p-6 space-y-4 text-left">
-          <h3 className="text-lg font-semibold flex items-center gap-2 text-white">
-            <Code2 className="w-5 h-5 text-[#10b981]" />
+        <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 md:p-8 space-y-5 text-left shadow-lg">
+          <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" className="drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             Active Projects
           </h3>
           <div className="space-y-4">
             {activeProjects.length === 0 ? (
-              <p className="text-xs text-white/40 italic">No active projects yet.</p>
+              <div className="border border-dashed border-white/5 bg-[#07090e]/30 rounded-2xl p-6 text-center text-white/30">
+                <p className="text-xs font-mono">No active projects yet.</p>
+              </div>
             ) : (
               activeProjects.map((proj, idx) => (
-                <div key={idx} className="border border-[#333] rounded-xl p-4 bg-[#07090e] hover:border-[#10b981]/30 transition-all space-y-2">
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-sm font-semibold text-white">{proj.title}</h4>
-                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full border ${
+                <div key={idx} className="border border-white/5 rounded-2xl p-5 bg-[#07090e]/60 hover:border-[#10b981]/30 transition-all duration-300 space-y-3 relative group overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-[#10b981]/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex justify-between items-start gap-4">
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#10b981] transition-colors">{proj.title}</h4>
+                    <span className={`text-[9px] font-bold uppercase font-mono px-2 py-0.5 rounded border shrink-0 ${
                       proj.status === 'hired'
-                        ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/20'
+                        ? 'bg-[#10b981]/10 text-[#10b981] border-[#10b981]/25'
                         : proj.status === 'shortlisted'
-                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                        ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/25'
                         : 'bg-white/5 text-white/60 border-white/10'
                     }`}>
                       {proj.status}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1 text-xs text-white/50">
-                    <p>Client: <strong className="text-white/80">{proj.company}</strong></p>
-                    <p>Budget: <strong className="text-white/80">{proj.budget}</strong></p>
-                    <p>Applied: <span className="font-mono">{proj.dateStr}</span></p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-white/50 border-t border-white/5 pt-3">
+                    <div>
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Client</span>
+                      <strong className="text-white/80">{proj.company}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Budget</span>
+                      <strong className="text-white/80 font-mono">{proj.budget}</strong>
+                    </div>
+                    <div className="col-span-2 mt-1">
+                      <span className="text-[10px] text-white/30 uppercase block font-semibold">Applied On</span>
+                      <span className="font-mono text-white/70">{proj.dateStr}</span>
+                    </div>
                   </div>
                 </div>
               ))
@@ -3979,14 +3883,14 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
 
       {/* Posts Section */}
       <div className="mt-16 space-y-6">
-        <div className="flex justify-between items-center border-b border-[#333] pb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2 text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <div className="flex justify-between items-center border-b border-white/5 pb-4.5">
+          <h2 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d2ff" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             Posts
           </h2>
           <button
             onClick={() => setShowCreatePostModal(true)}
-            className="text-xs font-semibold px-4 py-2 bg-[#00d2ff] hover:bg-[#00d2ff]/90 text-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border-none"
+            className="text-xs font-bold px-4 py-2 bg-[#00d2ff] hover:bg-[#00d2ff]/90 hover:shadow-[0_0_15px_rgba(0,210,255,0.3)] text-black rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border-none"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Create Post
@@ -3994,12 +3898,17 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         </div>
 
         {posts.length === 0 ? (
-          <div className="border border-dashed border-[#333] rounded-2xl p-12 text-center text-white/40 space-y-2 bg-[#0d1117]/30">
-            <p className="text-sm">No posts yet.</p>
-            <p className="text-xs text-white/30">Share screenshots of your workstation, project architectures, or certificates!</p>
+          <div className="border border-dashed border-white/5 rounded-2xl p-12 text-center text-white/40 space-y-3.5 bg-[#121520]/25">
+            <div className="w-12 h-12 rounded-full bg-white/2 border border-white/5 flex items-center justify-center mx-auto text-white/30">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-white/70">No posts yet</p>
+              <p className="text-xs text-white/30 max-w-sm mx-auto">Share screenshots of your workstation, development highlights, or certifications with partner recruiters!</p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
             <AnimatePresence mode="popLayout">
               {posts.map((post) => (
                 <motion.div
@@ -4010,18 +3919,18 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
                   exit={{ opacity: 0, scale: 0.8, y: 15 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
                   onClick={() => setSelectedPost(post)}
-                  className="relative group aspect-square rounded-xl overflow-hidden border border-[#333] cursor-pointer bg-[#0d1117]"
+                  className="relative group aspect-square rounded-2xl overflow-hidden border border-white/5 hover:border-[#00d2ff]/30 cursor-pointer bg-[#0d1117] shadow-lg transition-all duration-300"
                 >
                   <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   
-                  {/* Instagram Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center select-none animate-fade-in">
-                    <div className="flex items-center gap-1.5 text-white font-mono text-sm mb-2">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  {/* Premium Instagram Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-4 text-center select-none">
+                    <div className="flex items-center gap-1.5 text-white font-mono text-xs font-bold mb-2">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                       {post.likes}
                     </div>
                     {post.caption && (
-                      <p className="text-white/80 text-[11px] leading-snug line-clamp-3 max-w-full font-medium">
+                      <p className="text-white/80 text-[10px] leading-snug line-clamp-3 max-w-full font-medium font-sans">
                         {post.caption}
                       </p>
                     )}
@@ -4335,65 +4244,43 @@ function DeleteSuccessOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
-function StudentFeedView({ userId, developerSkills }: { userId: string; developerSkills: string[] }) {
+function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillScores, setXp }: { userId: string; developerSkills: string[]; onSelectCompany?: (id: string) => void; setSkillScores?: (scores: any) => void; setXp?: (xp: number) => void }) {
   const [dbProjects, setDbProjects] = useState<any[]>([]);
   const [showAllOpportunities, setShowAllOpportunities] = useState(false);
   const [appliedProjectIds, setAppliedProjectIds] = useState<string[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [showSuccessTick, setShowSuccessTick] = useState(false);
 
+  const handleSelectCompany = (id: string) => {
+    if (onSelectCompany) {
+      onSelectCompany(id);
+    } else {
+      setSelectedCompanyId(id);
+    }
+  };
+
   useEffect(() => {
     const loadFeedData = async () => {
       try {
-        const [projectsRes, skillsRes, appsRes] = await Promise.all([
-          supabase.from('projects').select(`
-            id,
-            title,
-            description,
-            budget,
-            created_at,
-            companies (
-              id,
-              name,
-              logo_url
-            )
-          `),
-          supabase.from('required_skills').select('project_id, skill_name'),
-          userId 
-            ? supabase.from('applications').select('project_id').eq('developer_id', userId) 
-            : Promise.resolve({ data: null, error: null })
-        ]);
+        const apiProjects = await apiService.getChallenges();
 
-        if (projectsRes.error) throw projectsRes.error;
-        if (skillsRes.error) throw skillsRes.error;
-        if (appsRes.error) throw appsRes.error;
+        const projectsWithSkills = apiProjects.map((proj: any) => ({
+          id: proj.id,
+          companyId: proj.companyId,
+          company: proj.author,
+          logoUrl: proj.avatar,
+          time: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+          title: proj.name,
+          description: proj.description,
+          content: `${proj.name} - ${proj.description}`,
+          budget: proj.budget || '',
+          tags: proj.skills || [],
+          highlight: true,
+          isDbProject: true
+        }));
 
-        if (projectsRes.data) {
-          const matchedSkillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
-            if (!acc[item.project_id]) acc[item.project_id] = [];
-            acc[item.project_id].push(item.skill_name);
-            return acc;
-          }, {});
-
-          const projectsWithSkills = projectsRes.data.map((proj: any) => ({
-            id: proj.id,
-            companyId: proj.companies?.id || null,
-            company: proj.companies?.name || 'Upzeal Client Partner',
-            logoUrl: proj.companies?.logo_url || '',
-            time: new Date(proj.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' }),
-            content: `${proj.title} - ${proj.description}`,
-            budget: proj.budget || '',
-            tags: matchedSkillsMap[proj.id] || [],
-            highlight: true,
-            isDbProject: true
-          }));
-
-          setDbProjects(projectsWithSkills);
-        }
-
-        if (appsRes.data) {
-          setAppliedProjectIds(appsRes.data.map((a: any) => a.project_id));
-        }
+        setDbProjects(projectsWithSkills);
+        setAppliedProjectIds(apiProjects.filter((p: any) => p.appStatus).map((p: any) => p.id));
       } catch (err: any) {
         console.error("Error loading feed data:", err.message || err);
       }
@@ -4409,23 +4296,26 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
     }
 
     try {
-      const { error } = await supabase
-        .from('applications')
-        .insert({
-          project_id: projectId,
-          developer_id: userId,
-          status: 'pending'
-        });
+      const res = await apiService.joinChallenge(projectId);
+      if (!res) {
+        alert("Failed to apply to project.");
+        return;
+      }
+      
+      setShowSuccessTick(true);
+      setAppliedProjectIds(prev => [...prev, projectId]);
+      
+      // Concurrently fetch updated skill scores and user profile details from backend updates
+      const [scoresRes, userRes] = await Promise.all([
+        supabase.from('skill_scores').select('*').eq('user_id', userId),
+        supabase.from('users').select('profile_details').eq('id', userId).maybeSingle()
+      ]);
 
-      if (error) {
-        if (error.code === '23505') {
-          alert(`You have already applied to this requirement!`);
-        } else {
-          alert(`Failed to apply: ${error.message}`);
-        }
-      } else {
-        setShowSuccessTick(true);
-        setAppliedProjectIds(prev => [...prev, projectId]);
+      if (scoresRes.data && setSkillScores) {
+        setSkillScores(scoresRes.data);
+      }
+      if (userRes.data?.profile_details?.xp !== undefined && setXp) {
+        setXp(Number(userRes.data.profile_details.xp));
       }
     } catch (err: any) {
       alert(`An error occurred: ${err.message}`);
@@ -4484,26 +4374,26 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
       />
 
       {/* Main Feed (60%) */}
-      <div className="w-full lg:w-[60%] border-r border-[#333] p-6 md:p-10 relative z-10 overflow-y-auto">
+      <div className="w-full lg:w-[60%] border-r border-white/5 p-6 md:p-10 relative z-10 overflow-y-auto">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <h1 className="text-2xl font-bold tracking-tight text-white">Company Feed</h1>
-          <div className="flex gap-2">
+          <div className="flex bg-[#111318] border border-white/5 p-1 rounded-xl relative">
             <button
               onClick={() => setShowAllOpportunities(false)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+              className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all duration-300 cursor-pointer border-none ${
                 !showAllOpportunities
-                  ? 'bg-white text-black border-white'
-                  : 'border-[#333] text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] text-white shadow-md'
+                  : 'text-white/40 hover:text-white/80 bg-transparent'
               }`}
             >
               Recommended
             </button>
             <button
               onClick={() => setShowAllOpportunities(true)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+              className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition-all duration-300 cursor-pointer border-none ${
                 showAllOpportunities
-                  ? 'bg-white text-black border-white'
-                  : 'border-[#333] text-white/60 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] text-white shadow-md'
+                  : 'text-white/40 hover:text-white/80 bg-transparent'
               }`}
             >
               All Opportunities
@@ -4512,74 +4402,93 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
         </div>
         
         {matchedPosts.length === 0 ? (
-          <div className="border border-dashed border-[#333] rounded-xl p-10 text-center text-white/40">
+          <div className="border border-dashed border-white/5 rounded-2xl p-10 text-center text-white/40 bg-[#121520]/25">
             <p className="text-sm font-mono mb-2">No matching opportunities found</p>
             <p className="text-xs">Adjust your skills list or switch to "All Opportunities" to browse all requirements.</p>
           </div>
         ) : (
           matchedPosts.map((post, idx) => {
             const hasApplied = post.id && appliedProjectIds.includes(post.id);
+            const title = post.title || (post.content && post.content.split(' - ')[0]) || '';
+            const description = post.description || (post.content && post.content.split(' - ').slice(1).join(' - ')) || post.content || '';
+            
             return (
-              <div key={idx} className="bg-[#151820] border border-[#333] rounded-xl p-5 mb-5 text-left">
-                <div 
-                  onClick={() => post.isDbProject && post.companyId && setSelectedCompanyId(post.companyId)}
-                  className={`flex items-center gap-3 mb-4 ${post.isDbProject && post.companyId ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                >
-                  <div className="w-10 h-10 rounded bg-white/5 flex items-center justify-center shrink-0 border border-[#333] text-white/60 font-bold overflow-hidden">
-                    {post.isDbProject && post.logoUrl ? (
-                      <img src={post.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{post.company.charAt(0)}</span>
-                    )}
+              <div key={idx} className="bg-[#121520]/60 border border-white/5 hover:border-[#00d2ff]/30 rounded-2xl p-6 mb-6 text-left transition-all duration-300 shadow-xl relative overflow-hidden group">
+                {/* Accent glow top line on card hover */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                <div className="flex items-center justify-between gap-4 mb-5">
+                  <div 
+                    onClick={() => post.companyId && handleSelectCompany(post.companyId)}
+                    className={`flex items-center gap-3.5 ${post.companyId ? 'cursor-pointer hover:opacity-85 transition-opacity group/author' : ''}`}
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center text-sm font-bold text-white shrink-0 overflow-hidden shadow group-hover/author:border-[#00d2ff]/40 transition-colors">
+                      {post.logoUrl ? (
+                        <img src={post.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{post.company.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className={`text-sm font-bold text-white leading-tight ${post.companyId ? 'group-hover/author:text-[#00d2ff] group-hover/author:underline' : ''}`}>{post.company}</h3>
+                      <p className="text-[10px] text-white/40 font-mono mt-0.5">{post.time}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`text-sm font-semibold text-white ${post.isDbProject && post.companyId ? 'hover:text-[#00d2ff] hover:underline' : ''}`}>{post.company}</h3>
-                    <p className="text-xs text-white/50 font-mono">{post.time}</p>
-                  </div>
+                  
+                  {post.budget && (
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded font-mono shrink-0">
+                      {post.budget}
+                    </span>
+                  )}
                 </div>
-                <p className="text-sm text-white/80 leading-relaxed mb-4">{post.content}</p>
-                {post.budget && (
-                  <p className="text-xs text-[#00d2ff] font-mono mb-4">Budget: {post.budget}</p>
+
+                <div className="space-y-1.5 mb-4">
+                  <h4 className="text-base font-bold text-white leading-snug tracking-tight font-sans">{title}</h4>
+                  <p className="text-xs text-white/50 leading-relaxed font-sans font-medium">{description}</p>
+                </div>
+
+                {post.tags && post.tags.length > 0 && (
+                  <div className="flex items-center gap-1.5 mb-5 flex-wrap">
+                    {post.tags.map((tag: any) => {
+                      const isDeveloperSkill = developerSkills.map(s => s.toLowerCase()).includes(tag.toLowerCase());
+                      return (
+                        <span 
+                          key={tag} 
+                          className={`px-2 py-0.5 text-[9px] font-bold font-mono border rounded ${
+                            isDeveloperSkill 
+                              ? 'text-[#00d2ff] bg-[#00d2ff]/5 border-[#00d2ff]/20' 
+                              : 'text-white/40 bg-white/2 border-white/5'
+                          }`}
+                        >
+                          {tag}
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
-                <div className="flex items-center gap-2 mb-5 flex-wrap">
-                  {post.tags.map((tag: any) => {
-                    const isDeveloperSkill = developerSkills.map(s => s.toLowerCase()).includes(tag.toLowerCase());
-                    return (
-                      <span 
-                        key={tag} 
-                        className={`px-1.5 py-0.5 text-[10px] font-mono bg-black border rounded-sm ${
-                          isDeveloperSkill 
-                            ? 'text-[#00d2ff] border-[#00d2ff]/30' 
-                            : 'text-white/60 border-[#333]'
-                        }`}
-                      >
-                        {tag}
-                      </span>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-3 border-t border-[#333] pt-4">
-                  <button className="flex items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded transition-none active:scale-95 cursor-pointer">
-                    <Star className="w-3.5 h-3.5" /><span>Like</span>
+
+                <div className="flex items-center gap-3 border-t border-white/5 pt-4.5">
+                  <button className="flex items-center gap-1.5 text-[11px] font-bold text-white/40 hover:text-yellow-400 hover:bg-yellow-500/5 border border-transparent hover:border-yellow-500/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer active:scale-95 bg-transparent">
+                    <Star className="w-3.5 h-3.5 text-white/40 hover:text-yellow-400 transition-colors" /><span>Like</span>
                   </button>
-                  <button className="flex items-center gap-1.5 text-xs font-semibold text-white/60 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded transition-none active:scale-95 cursor-pointer">
-                    <Archive className="w-3.5 h-3.5" /><span>Save</span>
+                  <button className="flex items-center gap-1.5 text-[11px] font-bold text-white/40 hover:text-[#00d2ff] hover:bg-[#00d2ff]/5 border border-transparent hover:border-[#00d2ff]/20 px-3 py-1.5 rounded-lg transition-all cursor-pointer active:scale-95 bg-transparent">
+                    <Archive className="w-3.5 h-3.5 text-white/40 hover:text-[#00d2ff] transition-colors" /><span>Save</span>
                   </button>
                   <div className="flex-1" />
                   {post.isDbProject ? (
                     <button 
                       onClick={() => handleApply(post.id, post.company)}
                       disabled={hasApplied}
-                      className={`flex items-center gap-1.5 text-xs font-semibold px-4 py-1.5 rounded transition-none active:scale-95 cursor-pointer border-none ${
+                      className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 cursor-pointer border-none ${
                         hasApplied 
-                          ? 'bg-[#222] text-white/30 cursor-not-allowed' 
-                          : 'bg-white text-black hover:bg-white/80'
+                          ? 'bg-[#1b1e28] text-white/20 border border-white/5 cursor-not-allowed' 
+                          : 'bg-white hover:bg-white/90 text-black shadow-md'
                       }`}
                     >
                       <span>{hasApplied ? 'Applied' : 'Apply Now'}</span>
                     </button>
                   ) : (
-                    <button className="flex items-center gap-1.5 text-xs font-semibold text-black bg-white hover:bg-white/80 px-4 py-1.5 rounded transition-none active:scale-95 cursor-pointer border-none">
+                    <button className="flex items-center gap-1.5 text-xs font-bold text-black bg-white hover:bg-white/90 px-4 py-2 rounded-xl transition-all active:scale-95 cursor-pointer border-none shadow-md">
                       <span>Apply Now</span>
                     </button>
                   )}
@@ -4591,42 +4500,52 @@ function StudentFeedView({ userId, developerSkills }: { userId: string; develope
       </div>
 
       {/* Trending Tags Sidebar (40%) */}
-      <div className="w-full lg:w-[40%] p-6 md:p-10 relative z-10 bg-[#0a0a0a] text-left">
-        <h2 className="text-sm font-semibold mb-6 text-white/80 uppercase tracking-widest">Trending Tags</h2>
-        <div className="flex flex-wrap gap-2">
-          {trendingTags.map(tag => (
-            <button key={tag} className="px-2.5 py-1 text-xs font-mono border border-[#333] bg-[#151820] text-white/70 hover:text-white hover:border-white/40 hover:bg-white/5 transition-none cursor-pointer">
-              #{tag}
-            </button>
-          ))}
+      <div className="w-full lg:w-[40%] p-6 md:p-10 relative z-10 bg-[#07090e]/95 border-l border-white/5 text-left flex flex-col gap-8">
+        
+        {/* Trending Tags Card */}
+        <div className="bg-[#121520]/45 border border-white/5 rounded-2xl p-6 shadow-md">
+          <h2 className="text-[10px] font-bold mb-5 text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Trending Tags
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {trendingTags.map(tag => (
+              <button key={tag} className="px-2.5 py-1 text-xs font-mono border border-white/5 bg-[#07090e]/60 text-white/50 hover:text-[#00d2ff] hover:border-[#00d2ff]/30 hover:bg-[#00d2ff]/5 rounded transition-all cursor-pointer">
+                #{tag}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Top Companies */}
-        <h2 className="text-sm font-semibold mt-10 mb-5 text-white/80 uppercase tracking-widest">Registered Organizations</h2>
-        <div className="space-y-3">
-          {dbProjects.filter((p, i, self) => p.companyId && self.findIndex(t => t.companyId === p.companyId) === i).map(p => (
-            <div 
-              key={p.companyId} 
-              onClick={() => setSelectedCompanyId(p.companyId)}
-              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-            >
-              <div className="w-8 h-8 rounded bg-white/5 border border-[#333] flex items-center justify-center text-xs font-bold text-white/60 shrink-0 overflow-hidden">
-                {p.logoUrl ? (
-                  <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span>{p.company.charAt(0)}</span>
-                )}
+        {/* Top Companies Card */}
+        <div className="bg-[#121520]/45 border border-white/5 rounded-2xl p-6 shadow-md">
+          <h2 className="text-[10px] font-bold mb-4 text-white/40 uppercase tracking-widest flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            Registered Organizations
+          </h2>
+          <div className="space-y-2">
+            {dbProjects.filter((p, i, self) => p.companyId && self.findIndex(t => t.companyId === p.companyId) === i).map(p => (
+              <div 
+                key={p.companyId} 
+                onClick={() => handleSelectCompany(p.companyId)}
+                className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-white/5 transition-all cursor-pointer group text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden shadow group-hover:border-[#00d2ff]/30 transition-colors">
+                  {p.logoUrl ? (
+                    <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{p.company.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <span className="text-sm font-semibold text-white/70 group-hover:text-[#00d2ff] group-hover:underline transition-colors">{p.company}</span>
               </div>
-              <span className="text-sm text-white/70 font-medium hover:text-[#00d2ff]">{p.company}</span>
-            </div>
-          ))}
-          {dbProjects.filter(p => p.companyId).length === 0 && ['DataStream Inc.', 'NeuralForge AI', 'CloudVault', 'Lattice Security', 'SyncStack'].map(name => (
-            <div key={name} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
-              <div className="w-8 h-8 rounded bg-white/5 border border-[#333] flex items-center justify-center text-xs font-bold text-white/60 shrink-0">{name.charAt(0)}</div>
-              <span className="text-sm text-white/70 font-medium">{name}</span>
-            </div>
-          ))}
+            ))}
+            {dbProjects.filter(p => p.companyId).length === 0 && (
+              <div className="text-xs text-white/40 italic p-2">No registered organizations</div>
+            )}
+          </div>
         </div>
+
       </div>
       {selectedCompanyId && (
         <CompanyProfileModal 
@@ -4679,18 +4598,46 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
           }
 
           // Fetch company posts from creator's user record
+          const defaultMockPosts = [
+            {
+              id: 'mock-1',
+              imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80',
+              caption: `Building the future of developer verification at ${comp.name || 'our organization'}! 🚀`,
+              likes: 42,
+              createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+              likedByUser: false
+            },
+            {
+              id: 'mock-2',
+              imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=600&q=80',
+              caption: "Our main engineering team hard at work on the scaling roadmap. 🛠️",
+              likes: 88,
+              createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+              likedByUser: false
+            },
+            {
+              id: 'mock-3',
+              imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
+              caption: "Hackathon week! Ideas turned into working commits. 💡💻",
+              likes: 67,
+              createdAt: new Date(Date.now() - 86400000 * 8).toISOString(),
+              likedByUser: false
+            }
+          ];
+
           if (comp.created_by) {
             const { data: userData } = await supabase
               .from('users')
               .select('profile_details')
               .eq('id', comp.created_by)
               .maybeSingle();
-            if (userData && userData.profile_details) {
-              const posts = Array.isArray(userData.profile_details.company_posts)
-                ? userData.profile_details.company_posts
-                : [];
-              setCompanyPosts(posts);
+            if (userData && userData.profile_details && Array.isArray(userData.profile_details.company_posts) && userData.profile_details.company_posts.length > 0) {
+              setCompanyPosts(userData.profile_details.company_posts);
+            } else {
+              setCompanyPosts(defaultMockPosts);
             }
+          } else {
+            setCompanyPosts(defaultMockPosts);
           }
         }
       } catch (err) {
@@ -4751,65 +4698,78 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl border border-white/10 rounded-2xl bg-[#0c0c0c]/95 p-6 md:p-8 text-left relative flex flex-col max-h-[85vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
+      <div className="w-full max-w-2xl border border-white/10 rounded-3xl bg-[#07090e]/95 text-left relative flex flex-col max-h-[85vh] overflow-hidden shadow-[0_0_50px_rgba(0,210,255,0.08)]">
+        {/* Top gradient accent line */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#00b5ec] via-[#0B2551] to-[#00d2ff] shrink-0" />
+
         <button 
           onClick={onClose}
-          className="absolute right-6 top-6 text-white/40 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+          className="absolute right-6 top-6 text-white/40 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-300 cursor-pointer bg-transparent border-none flex items-center justify-center z-20"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {loading ? (
-          <div className="flex items-center justify-center p-20">
-            <Loader2 className="w-8 h-8 animate-spin text-white/50" />
+          <div className="flex items-center justify-center p-20 flex-1">
+            <Loader2 className="w-8 h-8 animate-spin text-[#00d2ff]" />
           </div>
         ) : !company ? (
-          <div className="p-10 text-center text-white/50 font-mono">Company details not found</div>
+          <div className="p-10 text-center text-white/50 font-mono flex-1 flex items-center justify-center">Company details not found</div>
         ) : (
-          <div className="space-y-6 text-left">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-white/5 border border-[#333] flex items-center justify-center text-2xl font-bold text-white shrink-0">
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-7 custom-scrollbar">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/15 flex items-center justify-center text-2xl font-bold text-white shrink-0 overflow-hidden shadow-lg group hover:border-[#00d2ff]/50 transition-colors duration-300">
                 {company.logo_url ? (
-                  <img src={company.logo_url} alt="Logo" className="w-full h-full object-cover rounded-xl" />
+                  <img src={company.logo_url} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
                 ) : (
                   <span>{company.name.charAt(0).toUpperCase()}</span>
                 )}
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">{company.name}</h2>
+              <div className="text-left">
+                <h2 className="text-2xl font-extrabold text-white tracking-tight">{company.name}</h2>
                 {company.website && (
-                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00d2ff] hover:underline font-mono mt-1 block">
-                    {company.website}
+                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-xs text-[#00d2ff] hover:underline font-mono mt-1 flex items-center gap-1.5 font-semibold">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    {company.website.replace(/^https?:\/\//, '')}
                   </a>
                 )}
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-2">About Organization</h3>
-              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line">
+            <div className="border-t border-white/5 pt-5 text-left">
+              <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2.5">About Organization</h3>
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-line font-medium font-sans">
                 {company.description || 'No description provided by the organization.'}
               </p>
             </div>
 
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-4">Active Opportunities</h3>
+            <div className="border-t border-white/5 pt-5 text-left">
+              <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-4">Active Opportunities</h3>
               {projects.length === 0 ? (
-                <p className="text-xs text-white/40 font-mono">No active requirements posted at this time.</p>
+                <div className="border border-dashed border-white/5 bg-[#121520]/25 rounded-2xl p-6 text-center text-white/30">
+                  <p className="text-xs font-mono">No active requirements posted at this time.</p>
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {projects.map(p => (
-                    <div key={p.id} className="bg-[#151820] border border-[#333] rounded-xl p-4 text-left">
-                      <h4 className="text-sm font-semibold text-white">{p.title}</h4>
-                      <p className="text-xs text-white/60 mt-1 leading-relaxed">{p.description}</p>
-                      {p.budget && (
-                        <p className="text-[10px] text-[#00d2ff] font-mono mt-2">Budget: {p.budget}</p>
-                      )}
+                    <div key={p.id} className="bg-[#121520]/60 border border-white/5 hover:border-[#00d2ff]/30 rounded-2xl p-5 text-left transition-all duration-300 shadow-md relative overflow-hidden group">
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-start justify-between gap-4">
+                        <h4 className="text-sm font-bold text-white group-hover:text-[#00d2ff] transition-colors">{p.title}</h4>
+                        {p.budget && (
+                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded font-mono shrink-0">
+                            {p.budget}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-white/50 mt-2 leading-relaxed font-medium font-sans">{p.description}</p>
                       {p.tags?.length > 0 && (
-                        <div className="flex gap-1.5 mt-3 flex-wrap">
+                        <div className="flex gap-1.5 mt-3.5 flex-wrap">
                           {p.tags.map((t: string) => (
-                            <span key={t} className="px-1.5 py-0.5 text-[9px] font-mono bg-black border border-[#333] text-white/60 rounded-sm">{t}</span>
+                            <span key={t} className="px-2 py-0.5 text-[9px] font-bold font-mono bg-[#07090e] border border-white/5 text-white/50 rounded">
+                              {t}
+                            </span>
                           ))}
                         </div>
                       )}
@@ -4819,27 +4779,28 @@ function CompanyProfileModal({ companyId, onClose }: { companyId: string; onClos
               )}
             </div>
 
-            {/* Public Company Posts Section */}
-            <div className="border-t border-white/10 pt-4">
-              <h3 className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-4">Company Posts</h3>
+            <div className="border-t border-white/5 pt-5 text-left">
+              <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-4">Company Posts</h3>
               {companyPosts.length === 0 ? (
-                <p className="text-xs text-white/40 font-mono">No posts published by this organization yet.</p>
+                <div className="border border-dashed border-white/5 bg-[#121520]/25 rounded-2xl p-6 text-center text-white/30">
+                  <p className="text-xs font-mono">No posts published by this organization yet.</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-3">
                   {companyPosts.map((post) => (
                     <div
                       key={post.id}
                       onClick={() => setSelectedPost(post)}
-                      className="relative group aspect-square rounded-xl overflow-hidden border border-[#333] cursor-pointer bg-[#0d1117]"
+                      className="relative group aspect-square rounded-2xl overflow-hidden border border-white/5 hover:border-[#00d2ff]/30 cursor-pointer bg-[#0d1117] shadow-lg transition-all duration-300"
                     >
                       <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center select-none animate-fade-in">
-                        <div className="flex items-center gap-1.5 text-white font-mono text-[10px] mb-1">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-3 text-center select-none">
+                        <div className="flex items-center gap-1.5 text-white font-mono text-[11px] font-bold mb-1.5">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                           {post.likes}
                         </div>
                         {post.caption && (
-                          <p className="text-white/80 text-[9px] line-clamp-2 max-w-full truncate">{post.caption}</p>
+                          <p className="text-white/80 text-[9px] line-clamp-3 leading-snug px-1 font-medium font-sans">{post.caption}</p>
                         )}
                       </div>
                     </div>
@@ -5245,7 +5206,21 @@ function DeveloperProfileModal({
   );
 }
 
-function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, email: _email }: { userId: string; firstName: string; lastName: string; email: string }) {
+function StudentChatView({ 
+  userId, 
+  firstName: _firstName, 
+  lastName: _lastName, 
+  email: _email,
+  onSelectCompany,
+  onSelectDeveloper
+}: { 
+  userId: string; 
+  firstName: string; 
+  lastName: string; 
+  email: string;
+  onSelectCompany?: (id: string) => void;
+  onSelectDeveloper?: (dev: any) => void;
+}) {
   const [conversations, setConversations] = useState([
     { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 1, avatar: '⚡' },
     { id: '2', name: 'HR - Microsoft', lastMessage: 'We reviewed your React assessment. Let\'s schedule a call.', unread: 0, avatar: '💼' },
@@ -5279,6 +5254,65 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
 
   const activeConv = conversations.find(c => c.id === activeConvId) || conversations[0];
   const activeMessages = messages[activeConvId] || [];
+
+  const handleHeaderClick = async () => {
+    if (activeConvId === '1') return;
+
+    if (activeConvId === '2') {
+      try {
+        const { data: comp } = await supabase.from('companies').select('id').ilike('name', '%Microsoft%').maybeSingle();
+        if (comp) {
+          onSelectCompany?.(comp.id);
+        } else {
+          const { data: allComps } = await supabase.from('companies').select('id').limit(1);
+          if (allComps && allComps.length > 0) {
+            onSelectCompany?.(allComps[0].id);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+
+    if (activeConvId === '3') {
+      try {
+        const { data: dev } = await supabase.from('users').select('*').eq('role', 'developer').limit(1).maybeSingle();
+        if (dev) {
+          onSelectDeveloper?.(dev);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+
+    try {
+      const { data: peerUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', activeConvId)
+        .maybeSingle();
+
+      if (peerUser) {
+        if (peerUser.role === 'developer') {
+          onSelectDeveloper?.(peerUser);
+        } else if (peerUser.role === 'recruiter') {
+          const { data: comp } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('created_by', peerUser.id)
+            .maybeSingle();
+
+          if (comp) {
+            onSelectCompany?.(comp.id);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch peer profile:", err);
+    }
+  };
 
   const messageEndRef = useRef<HTMLDivElement>(null);
 
@@ -5659,12 +5693,15 @@ function StudentChatView({ userId, firstName: _firstName, lastName: _lastName, e
       <div className="flex-1 flex flex-col bg-[#0e1015] justify-between relative h-full min-w-0 overflow-hidden">
         {/* Chat Header */}
         <div className="h-[73px] border-b border-white/5 bg-[#0a0c10] px-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+          <div 
+            onClick={handleHeaderClick}
+            className={`flex items-center gap-3 ${activeConv.id !== '1' ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
+          >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500/20 to-cyan-500/5 border border-cyan-500/30 flex items-center justify-center text-lg">
               {activeConv.avatar}
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-white/95 leading-tight">{activeConv.name}</p>
+              <p className={`text-sm font-bold text-white/95 leading-tight ${activeConv.id !== '1' ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{activeConv.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
                 <span className="text-[9px] text-emerald-400 font-bold font-mono tracking-wider uppercase">online</span>
@@ -6945,7 +6982,7 @@ function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: strin
   );
 }
 
-function B2BPartnerProjectsView({ userId }: { userId: string }) {
+function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; onSelectCompany?: (id: string) => void }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -6959,14 +6996,10 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
     const loadB2BData = async () => {
       setLoading(true);
       try {
-        const [myCompRes, allProjsRes, myAppsRes, skillsRes] = await Promise.all([
+        const [myCompRes, apiProjects] = await Promise.all([
           supabase.from('companies').select('id').eq('created_by', userId).maybeSingle(),
-          supabase.from('projects').select('*, companies(name, logo_url)').order('created_at', { ascending: false }),
-          supabase.from('applications').select('project_id').eq('developer_id', userId),
-          supabase.from('required_skills').select('project_id, skill_name')
+          apiService.getChallenges()
         ]);
-
-        if (allProjsRes.error) throw allProjsRes.error;
 
         let ownCompId = '';
         if (myCompRes.data) {
@@ -6974,28 +7007,30 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
           ownCompId = myCompRes.data.id;
         }
 
-        if (myAppsRes.data) {
-          setAppliedProjectIds(new Set(myAppsRes.data.map(a => a.project_id)));
-        }
+        const appliedIds = new Set<string>();
+        const filtered: any[] = [];
 
-        if (allProjsRes.data) {
-          const filtered = allProjsRes.data.filter(p => p.company_id !== ownCompId);
+        apiProjects.forEach((proj: any) => {
+          if (proj.appStatus) {
+            appliedIds.add(proj.id);
+          }
+          if (proj.companyId !== ownCompId) {
+            filtered.push({
+              id: proj.id,
+              company_id: proj.companyId,
+              title: proj.name,
+              description: proj.description,
+              budget: proj.budget || '',
+              created_at: proj.created_at,
+              companyName: proj.author || 'Partner Organization',
+              logoUrl: proj.avatar || '',
+              tags: proj.skills || []
+            });
+          }
+        });
 
-          const matchedSkillsMap = (skillsRes.data || []).reduce((acc: any, item: any) => {
-            if (!acc[item.project_id]) acc[item.project_id] = [];
-            acc[item.project_id].push(item.skill_name);
-            return acc;
-          }, {});
-
-          const projsWithSkills = filtered.map(p => ({
-            ...p,
-            tags: matchedSkillsMap[p.id] || [],
-            companyName: p.companies?.name || 'Partner Organization',
-            logoUrl: p.companies?.logo_url || ''
-          }));
-
-          setProjects(projsWithSkills);
-        }
+        setAppliedProjectIds(appliedIds);
+        setProjects(filtered);
       } catch (err) {
         console.error("Failed to load B2B marketplace projects:", err);
       } finally {
@@ -7008,15 +7043,8 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
 
   const handleApplyPartner = async (projectId: string) => {
     try {
-      const { error } = await supabase
-        .from('applications')
-        .insert({
-          project_id: projectId,
-          developer_id: userId,
-          status: 'pending'
-        });
-
-      if (error) throw error;
+      const res = await apiService.joinChallenge(projectId);
+      if (!res) throw new Error("Failed to join challenge");
 
       setShowSuccessTick(true);
       setAppliedProjectIds(prev => {
@@ -7088,9 +7116,12 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                    <div 
+                      onClick={() => p.company_id && onSelectCompany && onSelectCompany(p.company_id)}
+                      className={`flex items-center gap-3 ${p.company_id && onSelectCompany ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
+                    >
                       {/* Logo circle frame */}
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden group-hover:border-[#00d2ff]/40 transition-colors">
                         {p.logoUrl ? (
                           <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
                         ) : (
@@ -7098,7 +7129,7 @@ function B2BPartnerProjectsView({ userId }: { userId: string }) {
                         )}
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-white leading-tight">{p.companyName}</h3>
+                        <h3 className={`text-sm font-bold text-white leading-tight ${p.company_id && onSelectCompany ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{p.companyName}</h3>
                         <p className="text-[10px] text-white/40 font-mono mt-0.5">Shared Contract Opportunity</p>
                       </div>
                     </div>
@@ -7163,36 +7194,11 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const fetchDevelopers = async () => {
-    // Fetch active developer applications to dynamically route them in the pipeline
-    const { data: apps, error: appsError } = await supabase
-      .from('applications')
-      .select('status, developer_id');
-
-    const appMap: Record<string, string> = {};
-    if (apps) {
-      apps.forEach(app => {
-        let targetStatus = 'new';
-        if (app.status === 'shortlisted') targetStatus = 'screening';
-        else if (app.status === 'hired') targetStatus = 'interviewing';
-        appMap[app.developer_id] = targetStatus;
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('role', 'developer');
-
-    if (error) {
-      console.error("Error loading developers:", error.message);
-      return;
-    }
-    if (data) {
-      const developersWithStatus = data.map(dev => ({
-        ...dev,
-        application_status: appMap[dev.id] || 'new'
-      }));
-      setDbCandidates(developersWithStatus);
+    try {
+      const devs = await apiService.getDevelopers();
+      setDbCandidates(devs);
+    } catch (err: any) {
+      console.error("Error loading developers:", err.message);
     }
   };
 
@@ -7397,13 +7403,20 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
         ) : recruiterView === 'post_job' ? (
           <PostJobView userId={userId} />
         ) : recruiterView === 'chat' ? (
-          <StudentChatView userId={userId} firstName={firstName} lastName={lastName} email={email} />
+          <StudentChatView 
+            userId={userId} 
+            firstName={firstName} 
+            lastName={lastName} 
+            email={email} 
+            onSelectCompany={setSelectedCompanyId}
+            onSelectDeveloper={setSelectedCandidate}
+          />
         ) : recruiterView === 'company_profile' ? (
           <CompanyProfileView userId={userId} />
         ) : recruiterView === 'companies_directory' ? (
           <CompanyDirectoryView onSelectCompany={(id) => setSelectedCompanyId(id)} />
         ) : recruiterView === ('partner_projects' as any) ? (
-          <B2BPartnerProjectsView userId={userId} />
+          <B2BPartnerProjectsView userId={userId} onSelectCompany={setSelectedCompanyId} />
         ) : (
           /* ── Talent Pool View ── */
           <div className="w-full flex flex-col flex-1 text-left">
@@ -7443,10 +7456,13 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                   {allCandidates.map(c => (
                     <tr key={c.id} className="border-b border-[#333] last:border-b-0 hover:bg-white/[0.02] transition-colors">
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
+                        <div 
+                          onClick={() => setSelectedCandidate(c)}
+                          className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity group"
+                        >
                           <img src={c.avatar} alt={c.name} className="w-9 h-9 rounded-full border border-[#333] object-cover" />
                           <div>
-                            <span className="font-semibold text-white">{c.name}</span>
+                            <span className="font-semibold text-white group-hover:text-[#00d2ff] group-hover:underline">{c.name}</span>
                           </div>
                         </div>
                       </td>

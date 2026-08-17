@@ -37,6 +37,13 @@ async def evaluate_developer(
 async def get_my_evaluation(current_user: dict = Depends(require_role(["developer"]))):
     """Fetch the current logged-in developer's latest evaluation report."""
     try:
+        # Check if we already have a cached evaluation report in profile_details
+        profile_details = current_user.get("profile_details") or {}
+        cached_report = profile_details.get("evaluation_report")
+        if cached_report:
+            return cached_report
+
+        # Otherwise, run it once, which will save it to profile_details
         return await EvaluationRepository.run_evaluation(current_user["id"])
     except Exception as e:
         raise HTTPException(
