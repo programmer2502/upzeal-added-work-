@@ -781,7 +781,9 @@ export default function App() {
                 </div>
                 <span className="text-xs text-white/50 select-none font-medium">Upzeal — Mission Control</span>
                 <div className="w-12" /> {/* spacer to balance traffic lights */}
-                         {/* Mockup Workspace Grid */}
+              </div>
+
+              {/* Mockup Workspace Grid */}
               <div className="flex h-[560px] text-white">
 
                 {/* Sidebar Mockup */}
@@ -971,7 +973,7 @@ export default function App() {
                   </div>
                 </div>
 
-              </div>          </div>
+              </div>
             </motion.div>
           </section>
 
