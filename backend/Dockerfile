@@ -27,7 +27,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy backend app files
 COPY app /app/app
-COPY main.py /app/main.py 2>/dev/null || true
+
 
 EXPOSE 8000
 
