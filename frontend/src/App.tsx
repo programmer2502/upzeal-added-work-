@@ -256,18 +256,20 @@ export default function App() {
       
       const { data, error: _error } = await supabase
         .from('users')
-        .select('first_name, last_name, role, onboarding_phase, dashboard_config')
+        .select('first_name, last_name, role, username, onboarding_phase, dashboard_config')
         .eq('id', userIdVal)
         .single();
         
       let finalFirstName = '';
       let finalLastName = '';
       let finalRole = '';
+      let finalUsername = '';
       
       if (data) {
         finalFirstName = data.first_name || '';
         finalLastName = data.last_name || '';
         finalRole = data.role || '';
+        finalUsername = data.username || '';
         setFirstName(finalFirstName);
         setLastName(finalLastName);
         setAccountType(data.role as any);
@@ -276,7 +278,59 @@ export default function App() {
         }
       }
 
-      // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize from auth metadata
+      // Automatically generate a username if one does not exist
+      if (!finalUsername) {
+        const emailLocalPart = session.user.email ? session.user.email.split('@')[0] : '';
+        const fullNameCombined = (session.user.user_metadata?.full_name || session.user.user_metadata?.name || '').replace(/\s+/g, '_').toLowerCase();
+        
+        let candidateUsername = (
+          session.user.user_metadata?.user_name ||
+          session.user.user_metadata?.username ||
+          session.user.user_metadata?.preferred_username ||
+          emailLocalPart ||
+          fullNameCombined ||
+          `user_${userIdVal.substring(0, 5)}`
+        ).trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+        if (!candidateUsername) {
+          candidateUsername = `user_${userIdVal.substring(0, 5)}`;
+        }
+
+        let uniqueUsername = candidateUsername;
+        let isTaken = true;
+        let attempt = 0;
+        
+        while (isTaken && attempt < 10) {
+          const suffix = attempt === 0 ? '' : `_${Math.floor(100 + Math.random() * 900)}`;
+          const testUsername = `${uniqueUsername}${suffix}`.substring(0, 30);
+          
+          const { data: duplicate } = await supabase
+            .from('users')
+            .select('id')
+            .eq('username', testUsername)
+            .maybeSingle();
+            
+          if (!duplicate) {
+            uniqueUsername = testUsername;
+            isTaken = false;
+          } else {
+            attempt++;
+          }
+        }
+        
+        if (isTaken) {
+          uniqueUsername = `${candidateUsername}_${userIdVal.substring(0, 5)}`.substring(0, 30);
+        }
+
+        await supabase
+          .from('users')
+          .update({ username: uniqueUsername })
+          .eq('id', userIdVal);
+          
+        finalUsername = uniqueUsername;
+      }
+
+      // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize name and role
       if (session.user.user_metadata && (!finalFirstName || !finalRole)) {
         const storedRole = localStorage.getItem('oauth_intended_role') || 'developer';
         localStorage.removeItem('oauth_intended_role');
@@ -286,7 +340,6 @@ export default function App() {
         const fName = finalFirstName || parts[0] || '';
         const lName = finalLastName || parts.slice(1).join(' ') || '';
         const roleVal = finalRole || storedRole;
-        const oUsername = session.user.user_metadata.user_name || session.user.user_metadata.username || session.user.user_metadata.preferred_username || '';
 
         await supabase
           .from('users')
@@ -294,7 +347,7 @@ export default function App() {
             first_name: fName,
             last_name: lName,
             role: roleVal,
-            username: oUsername || `user_${userIdVal.substring(0, 5)}`
+            username: finalUsername
           })
           .eq('id', userIdVal);
           
