@@ -5270,9 +5270,7 @@ function StudentChatView({
   onSelectDeveloper?: (dev: any) => void;
 }) {
   const [conversations, setConversations] = useState([
-    { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 1, avatar: '⚡' },
-    { id: '2', name: 'HR - Microsoft', lastMessage: 'We reviewed your React assessment. Let\'s schedule a call.', unread: 0, avatar: '💼' },
-    { id: '3', name: 'Mentor - Sarah Jenkins', lastMessage: 'Make sure to submit the Git repository URL.', unread: 0, avatar: '👩‍🏫' },
+    { id: '1', name: 'Upzeal AI Assistant', lastMessage: 'Ask me anything about your projects!', unread: 0, avatar: '⚡' }
   ]);
 
   const [activeConvId, setActiveConvId] = useState('1');
@@ -5280,19 +5278,7 @@ function StudentChatView({
   
   const [messages, setMessages] = useState<Record<string, Array<{ id: string; sender: 'me' | 'them'; text: string; time: string }>>>({
     '1': [
-      { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' },
-      { id: '1-2', sender: 'me', text: 'Hey, I want to review my FastAPI integration for the main dashboard.', time: '10:05 AM' },
-      { id: '1-3', sender: 'them', text: 'FastAPI connects seamlessly using standard HTTP handlers or WebSockets. Your public schemas are fully synced in Supabase. What would you like to build next?', time: '10:06 AM' }
-    ],
-    '2': [
-      { id: '2-1', sender: 'them', text: 'Hello Hruda! We saw your profile on the Upzeal developer platform. Your skill score in React is impressive.', time: 'Yesterday' },
-      { id: '2-2', sender: 'me', text: 'Thank you! I\'ve spent a lot of time working with Next.js and Tailwind lately.', time: 'Yesterday' },
-      { id: '2-3', sender: 'them', text: 'Excellent. We reviewed your React assessment. Let\'s schedule a call for this Friday.', time: '1:14 PM' }
-    ],
-    '3': [
-      { id: '3-1', sender: 'them', text: 'Hi team, welcome to the weekly sprint checkup. Please submit your updates here.', time: '2 days ago' },
-      { id: '3-2', sender: 'me', text: 'I completed the onboarding flow database integrations.', time: '2 days ago' },
-      { id: '3-3', sender: 'them', text: 'Make sure to submit the Git repository URL.', time: 'Yesterday' }
+      { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' }
     ]
   });
 
@@ -5393,9 +5379,7 @@ function StudentChatView({
       // Group messages by conversation ID
       const grouped: Record<string, Array<{ id: string; sender: 'me' | 'them'; text: string; time: string }>> = {
         '1': [
-          { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' },
-          { id: '1-2', sender: 'me', text: 'Hey, I want to review my FastAPI integration for the main dashboard.', time: '10:05 AM' },
-          { id: '1-3', sender: 'them', text: 'FastAPI connects seamlessly using standard HTTP handlers or WebSockets. Your public schemas are fully synced in Supabase. What would you like to build next?', time: '10:06 AM' }
+          { id: '1-1', sender: 'them', text: 'Hi! I am your Upzeal AI workspace assistant. I can help you guide your project learning, review stack structures, or outline skills to score!', time: '10:02 AM' }
         ]
       };
 
@@ -5452,7 +5436,7 @@ function StudentChatView({
 
         // Merge static default ones and unique dynamically loaded channels
         setConversations(prev => {
-          const staticConvs = prev.filter(c => ['1', '2', '3'].includes(c.id));
+          const staticConvs = prev.filter(c => ['1'].includes(c.id));
           const merged = [...staticConvs];
           newConversations.forEach(nc => {
             if (!merged.find(mc => mc.id === nc.id)) {
