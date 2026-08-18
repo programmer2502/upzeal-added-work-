@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
-from app.dependencies import get_current_user, require_role
+from fastapi.security import HTTPAuthorizationCredentials
+from app.dependencies import get_current_user, require_role, security_scheme
 from app.crud import SkillRepository
 from app.supabase_client import supabase_client
 
@@ -13,7 +14,10 @@ async def get_my_skills(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/developers")
-async def list_developers(current_user: dict = Depends(require_role(["recruiter"]))):
+async def list_developers(
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    current_user: dict = Depends(require_role(["recruiter"]))
+):
     """Fetch developer profiles with their skill scores (Recruiter only).
     Returns real candidate data instead of hardcoded dummy profiles.
     """
@@ -34,10 +38,34 @@ async def list_developers(current_user: dict = Depends(require_role(["recruiter"
         "select": "user_id, skill_name, score, verified"
     })
 
-    # Fetch all applications to map developer application statuses
-    apps = await supabase_client.get("applications", {
-        "select": "status, developer_id"
-    })
+    # Fetch company created by this recruiter to query their projects
+    companies = await supabase_client.get("companies", {"created_by": f"eq.{current_user['id']}"}, token=credentials.credentials)
+    company_ids = [c["id"] for c in companies] if companies else []
+
+    # Fetch projects created by recruiter or matching their company
+    project_ids = []
+    if company_ids:
+        project_filter = f"company_id.in.({','.join(company_ids)})"
+        projects = await supabase_client.get("projects", {
+            "select": "id",
+            "or": f"(created_by.eq.{current_user['id']},{project_filter})"
+        }, token=credentials.credentials)
+        project_ids = [p["id"] for p in projects]
+    else:
+        projects = await supabase_client.get("projects", {
+            "select": "id",
+            "created_by": f"eq.{current_user['id']}"
+        }, token=credentials.credentials)
+        project_ids = [p["id"] for p in projects]
+
+    # Fetch applications specific to this recruiter's projects
+    apps = []
+    if project_ids:
+        proj_filter = ",".join(project_ids)
+        apps = await supabase_client.get("applications", {
+            "project_id": f"in.({proj_filter})",
+            "select": "status, developer_id"
+        }, token=credentials.credentials)
 
     # Build a lookup: user_id -> list of skills
     scores_map: dict[str, list] = {}
@@ -63,6 +91,8 @@ async def list_developers(current_user: dict = Depends(require_role(["recruiter"
                 target_status = 'interviewing'
             app_map[dev_id] = target_status
 
+
+
     result = []
     for dev in developers:
         uid = dev.get("id")
@@ -84,7 +114,7 @@ async def list_developers(current_user: dict = Depends(require_role(["recruiter"
             "bio": profile.get("bio", ""),
             "xp": int(profile.get("xp", 0)),
             "skills": skills,
-            "application_status": app_map.get(uid, 'new')
+            "application_status": app_map.get(uid)  # null if they did not apply to this recruiter's postings
         })
 
     # Sort by total XP descending

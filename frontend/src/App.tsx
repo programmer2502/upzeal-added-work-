@@ -35,9 +35,55 @@ import {
   MapPin,
   Users,
   Edit3,
-  MessageSquare,
-  ThumbsDown
+  MessageSquare
 } from 'lucide-react';
+
+const formatBudget = (budgetStr: string | null | undefined): string => {
+  if (!budgetStr) return 'N/A';
+  
+  if (budgetStr.includes('₹') || budgetStr.toUpperCase().includes('INR') || budgetStr.toLowerCase().includes('rupee')) {
+    return budgetStr;
+  }
+
+  const hasDollar = budgetStr.includes('$') || budgetStr.toUpperCase().includes('USD');
+
+  if (hasDollar) {
+    const cleanStr = budgetStr.replace(/,/g, '');
+    const dollarMatch = cleanStr.match(/\$?(\d+(?:\.\d+)?)\s*(k|m|million)?\s*(?:usd)?/i);
+    
+    if (dollarMatch) {
+      let val = parseFloat(dollarMatch[1]);
+      const multiplier = dollarMatch[2] ? dollarMatch[2].toLowerCase() : '';
+      
+      if (multiplier === 'k') val *= 1000;
+      else if (multiplier === 'm' || multiplier === 'million') val *= 1000000;
+      
+      const inrVal = Math.round(val * 83);
+      if (inrVal >= 100000) {
+        return `₹${(inrVal / 100000).toFixed(1)}L`;
+      } else {
+        return `₹${inrVal.toLocaleString('en-IN')}`;
+      }
+    }
+  }
+
+  const num = parseFloat(budgetStr.replace(/[^\d.]/g, ''));
+  if (!isNaN(num) && /^\d+(\.\d+)?$/.test(budgetStr.trim())) {
+    if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(1)}L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  }
+
+  let formatted = budgetStr;
+  if (formatted.includes('$')) {
+    formatted = formatted.replace(/\$/g, '₹');
+  }
+  if (formatted.toUpperCase().includes('USD')) {
+    formatted = formatted.replace(/USD/ig, 'INR');
+  }
+  return formatted;
+};
 
 // ==========================================
 // LOCAL SVG DEFINITIONS FOR MISSING BRAND ICONS
@@ -1951,7 +1997,7 @@ function InputGroup({
 }
 // ==========================================
 function StudentDashboard({ userId, firstName, lastName, email, developerSkills, onLogout }: { userId: string; firstName: string; lastName: string; email: string; developerSkills: string[]; onLogout: () => void }) {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'profile' | 'feed' | 'chat' | 'ongoing_projects'>('dashboard');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
   const [, setToasts] = useState<any[]>([]);
@@ -2037,6 +2083,13 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
               <MessageSquare className="w-4 h-4" />
               <span className="font-medium text-sm">Chat</span>
             </button>
+             <button 
+              onClick={() => { setCurrentView('ongoing_projects'); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${currentView === 'ongoing_projects' ? 'bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-semibold' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'}`}
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              <span className="font-medium text-sm">Ongoing Projects</span>
+            </button>
           </nav>
         </div>
         <div className="p-6 border-t border-[#333] flex flex-col gap-4">
@@ -2099,6 +2152,8 @@ function StudentDashboard({ userId, firstName, lastName, email, developerSkills,
             <StudentBentoDashboard userId={userId} firstName={firstName} developerSkills={developerSkills} setToasts={setToasts} onSelectCompany={setSelectedCompanyId} />
           ) : currentView === 'profile' ? (
             <StudentProfileView userId={userId} firstName={firstName} lastName={lastName} email={email} onAvatarChange={handleAvatarChange} />
+          ) : currentView === 'ongoing_projects' ? (
+            <DeveloperOngoingProjectsView userId={userId} />
           ) : currentView === 'feed' ? (
             <StudentFeedView 
               userId={userId} 
@@ -3053,14 +3108,7 @@ interface UserProject {
   dateStr: string;
 }
 
-interface TimelineEvent {
-  id: string;
-  dateStr: string;
-  timestamp: number;
-  title: string;
-  description: string;
-  isHighlight: boolean;
-}
+
 
 interface PostItem {
   id: string;
@@ -3072,11 +3120,9 @@ interface PostItem {
 }
 
 function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange }: { userId: string; firstName: string; lastName: string; email: string; onAvatarChange?: (url: string) => void }) {
-  const [xp, setXp] = useState(0);
   const [contributionsMap, setContributionsMap] = useState<Record<string, number>>({});
   const [onboardedProjects, setOnboardedProjects] = useState<UserProject[]>([]);
   const [activeProjects, setActiveProjects] = useState<UserProject[]>([]);
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
 
   // Instagram Gallery states
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -3221,21 +3267,11 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         return `${months[d.getMonth()]} ${d.getFullYear()}`;
       };
 
-      const eventsList: TimelineEvent[] = [];
       const onboarded: UserProject[] = [];
       const active: UserProject[] = [];
 
       if (userData) {
         addDate(userData.created_at);
-        
-        eventsList.push({
-          id: 'signup',
-          dateStr: formatMonthYear(userData.created_at),
-          timestamp: new Date(userData.created_at).getTime(),
-          title: 'Joined the Upzeal Platform',
-          description: 'Started tracking Git history, building developer profile, and accessing AI mentor sessions.',
-          isHighlight: false
-        });
 
         if (userData.username) {
           setUsername(userData.username);
@@ -3256,9 +3292,6 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
             setTempAvatarUrl(details.avatar_url);
             if (onAvatarChange) onAvatarChange(details.avatar_url);
           }
-          if (details.xp) {
-            setXp(Number(details.xp) || 0);
-          }
           if (details.posts) {
             setPosts(Array.isArray(details.posts) ? details.posts : []);
           }
@@ -3267,7 +3300,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
 
       if (appsData) {
         const apps = appsData as any[];
-        apps.forEach((app, index) => {
+        apps.forEach((app) => {
           addDate(app.created_at);
           
           const proj = app.project;
@@ -3295,29 +3328,6 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
           if (!isCompleted && (app.status === 'pending' || app.status === 'shortlisted' || app.status === 'hired')) {
             active.push(mappedProj);
           }
-
-          if (isHired && isCompleted) {
-            eventsList.push({
-              id: `finished-${app.created_at}-${index}`,
-              dateStr: formatMonthYear(app.created_at),
-              timestamp: new Date(app.created_at).getTime() + 10,
-              title: `Finished Project: ${proj.title}`,
-              description: `Successfully completed code asset delivery and final review requirements for ${companyName}.`,
-              isHighlight: true
-            });
-          } else {
-            const titlePrefix = isHired ? 'Onboarded to Project' : 'Applied to Project';
-            const statusDesc = isHired ? 'Hired and actively working on the challenge.' : 'Application submitted and pending recruiter review.';
-            
-            eventsList.push({
-              id: `onboarded-${app.created_at}-${index}`,
-              dateStr: formatMonthYear(app.created_at),
-              timestamp: new Date(app.created_at).getTime(),
-              title: `${titlePrefix}: ${proj.title}`,
-              description: `Partnered with ${companyName} for technical challenges. Current Status: ${statusDesc}`,
-              isHighlight: isHired
-            });
-          }
         });
       }
 
@@ -3325,15 +3335,9 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
         reviewsData.forEach(rev => addDate(rev.created_at));
       }
 
-      eventsList.sort((a, b) => b.timestamp - a.timestamp);
-      if (eventsList.length > 0) {
-        eventsList[0].isHighlight = true;
-      }
-
       setContributionsMap(map);
       setOnboardedProjects(onboarded);
       setActiveProjects(active);
-      setTimelineEvents(eventsList);
     };
     loadProfile();
   }, [userId]);
@@ -4004,7 +4008,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
                     </div>
                     <div>
                       <span className="text-[10px] text-white/30 uppercase block font-semibold">Budget</span>
-                      <strong className="text-white/80 font-mono">{proj.budget}</strong>
+                      <strong className="text-white/80 font-mono">{formatBudget(proj.budget)}</strong>
                     </div>
                     <div className="col-span-2 mt-1">
                       <span className="text-[10px] text-white/30 uppercase block font-semibold">Hired On</span>
@@ -4051,7 +4055,7 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
                     </div>
                     <div>
                       <span className="text-[10px] text-white/30 uppercase block font-semibold">Budget</span>
-                      <strong className="text-white/80 font-mono">{proj.budget}</strong>
+                      <strong className="text-white/80 font-mono">{formatBudget(proj.budget)}</strong>
                     </div>
                     <div className="col-span-2 mt-1">
                       <span className="text-[10px] text-white/30 uppercase block font-semibold">Applied On</span>
@@ -4390,7 +4394,15 @@ function StudentProfileView({ userId, firstName, lastName, email, onAvatarChange
   );
 }
 
-function SuccessTickOverlay({ onClose }: { onClose: () => void }) {
+function SuccessTickOverlay({ 
+  onClose, 
+  title = "Application Submitted", 
+  message = "Successfully sent to partner organization" 
+}: { 
+  onClose: () => void; 
+  title?: string; 
+  message?: string; 
+}) {
   useEffect(() => {
     const timer = setTimeout(onClose, 1500);
     return () => clearTimeout(timer);
@@ -4402,8 +4414,8 @@ function SuccessTickOverlay({ onClose }: { onClose: () => void }) {
         <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4">
           <Check className="w-12 h-12 stroke-[3]" />
         </div>
-        <h3 className="text-lg font-bold text-white tracking-tight">Application Submitted</h3>
-        <p className="text-xs text-white/50 mt-1 font-mono">Successfully sent to partner organization</p>
+        <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
+        <p className="text-xs text-white/50 mt-1 font-mono">{message}</p>
       </div>
     </div>
   );
@@ -4621,7 +4633,7 @@ function StudentFeedView({ userId, developerSkills, onSelectCompany, setSkillSco
                   
                   {post.budget && (
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded font-mono shrink-0">
-                      {post.budget}
+                      {formatBudget(post.budget)}
                     </span>
                   )}
                 </div>
@@ -4931,7 +4943,7 @@ function CompanyProfileModal({ companyId, onClose, onStartChat }: { companyId: s
                         <h4 className="text-sm font-bold text-white group-hover:text-[#00d2ff] transition-colors">{p.title}</h4>
                         {p.budget && (
                           <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded font-mono shrink-0">
-                            {p.budget}
+                            {formatBudget(p.budget)}
                           </span>
                         )}
                       </div>
@@ -5066,6 +5078,8 @@ function DeveloperProfileModal({
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [xpActionMessage, setXpActionMessage] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [showSuccessTick, setShowSuccessTick] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   const [currentXp, setCurrentXp] = useState<number>(Number(developer.profile_details?.xp !== undefined ? developer.profile_details.xp : (developer.xp || 23094)));
 
   useEffect(() => {
@@ -5102,23 +5116,68 @@ function DeveloperProfileModal({
     setXpActionMessage('');
   }, [developer.id, developer.profile_details?.xp, developer.xp]);
 
-  const commits = (() => {
+  const [contributionsMap, setContributionsMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!developer.id) return;
+    const loadContributions = async () => {
+      try {
+        const [appsRes, reviewsRes] = await Promise.all([
+          supabase.from('applications').select('created_at').eq('developer_id', developer.id),
+          supabase.from('reviews').select('created_at').eq('reviewee_id', developer.id)
+        ]);
+
+        const map: Record<string, number> = {};
+        const addDate = (dateStr: string | null) => {
+          if (!dateStr) return;
+          const dateKey = dateStr.slice(0, 10); // YYYY-MM-DD
+          map[dateKey] = (map[dateKey] || 0) + 1;
+        };
+
+        if (appsRes.data) {
+          appsRes.data.forEach(app => addDate(app.created_at));
+        }
+        if (reviewsRes.data) {
+          reviewsRes.data.forEach(rev => addDate(rev.created_at));
+        }
+        setContributionsMap(map);
+      } catch (err) {
+        console.error("Error loading developer contributions:", err);
+      }
+    };
+    loadContributions();
+  }, [developer.id]);
+
+  const commits = React.useMemo(() => {
     const grid = [];
+    const today = new Date();
+
     for (let col = 0; col < 26; col++) {
       const column = [];
       for (let row = 0; row < 7; row++) {
-        const val = Math.random();
+        const diffDays = 181 - (col * 7 + row);
+        const cellDate = new Date(today);
+        cellDate.setDate(today.getDate() - diffDays);
+
+        const year = cellDate.getFullYear();
+        const month = String(cellDate.getMonth() + 1).padStart(2, '0');
+        const day = String(cellDate.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+
+        const count = contributionsMap[dateKey] || 0;
+
         let intensity = 0;
-        if (val > 0.9) intensity = 4;
-        else if (val > 0.7) intensity = 3;
-        else if (val > 0.5) intensity = 2;
-        else if (val > 0.3) intensity = 1;
+        if (count >= 4) intensity = 4;
+        else if (count === 3) intensity = 3;
+        else if (count === 2) intensity = 2;
+        else if (count === 1) intensity = 1;
+
         column.push(intensity);
       }
       grid.push(column);
     }
     return grid;
-  })();
+  }, [contributionsMap]);
 
   const getColor = (intensity: number) => {
     switch(intensity) {
@@ -5134,37 +5193,26 @@ function DeveloperProfileModal({
     setActionLoading(true);
     setXpActionMessage('');
     try {
-      const nextXp = currentXp + 100;
-      setCurrentXp(nextXp);
-
       if (developer.isDbDeveloper) {
-        const { data: userData } = await supabase
+        // 1. Onboard to project by calling backend API to bypass RLS policies
+        if (selectedProjectId) {
+          await apiService.onboardDeveloper(developer.id, selectedProjectId);
+        }
+
+        // 2. Trigger AI evaluation engine to verify skills and award points/XP
+        await apiService.triggerEvaluation(developer.id);
+
+        // 3. Fetch updated profile details containing recalculated XP and verified status
+        const { data: userData, error: fetchErr } = await supabase
           .from('users')
           .select('profile_details')
           .eq('id', developer.id)
           .single();
+        if (fetchErr) throw fetchErr;
 
-        const updatedDetails = {
-          ...(userData?.profile_details || {}),
-          xp: nextXp
-        };
-
-        const { error: userUpdateErr } = await supabase
-          .from('users')
-          .update({ profile_details: updatedDetails })
-          .eq('id', developer.id);
-
-        if (userUpdateErr) throw userUpdateErr;
-
-        if (selectedProjectId) {
-          await supabase
-            .from('applications')
-            .upsert({
-              project_id: selectedProjectId,
-              developer_id: developer.id,
-              status: 'hired'
-            }, { onConflict: 'project_id,developer_id' });
-        }
+        const updatedDetails = userData?.profile_details || {};
+        const nextXp = Number(updatedDetails.xp || currentXp + 100);
+        setCurrentXp(nextXp);
 
         if (onUpdateDeveloper) {
           onUpdateDeveloper({
@@ -5172,69 +5220,25 @@ function DeveloperProfileModal({
             profile_details: updatedDetails
           });
         }
+
+        setXpActionMessage(`Successfully onboarded candidate! Evaluation complete. (New Balance: ★${nextXp.toLocaleString()})`);
       } else {
+        const nextXp = currentXp + 100;
+        setCurrentXp(nextXp);
         if (onUpdateDeveloper) {
           onUpdateDeveloper({
             ...developer,
             xp: nextXp
           });
         }
+        setXpActionMessage(`Successfully selected candidate! Added 100 XP (New Balance: ★${nextXp.toLocaleString()})`);
       }
 
-      setXpActionMessage(`Successfully selected candidate! Added 100 XP (New Balance: ★${nextXp.toLocaleString()})`);
+      // Trigger selection success overlay animation
+      setShowSuccessTick(true);
     } catch (err: any) {
       console.error(err);
       setXpActionMessage(`Failed to select: ${err.message}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDeductXp = async () => {
-    setActionLoading(true);
-    setXpActionMessage('');
-    try {
-      const nextXp = Math.max(0, currentXp - 5);
-      setCurrentXp(nextXp);
-
-      if (developer.isDbDeveloper) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('profile_details')
-          .eq('id', developer.id)
-          .single();
-
-        const updatedDetails = {
-          ...(userData?.profile_details || {}),
-          xp: nextXp
-        };
-
-        const { error: userUpdateErr } = await supabase
-          .from('users')
-          .update({ profile_details: updatedDetails })
-          .eq('id', developer.id);
-
-        if (userUpdateErr) throw userUpdateErr;
-
-        if (onUpdateDeveloper) {
-          onUpdateDeveloper({
-            ...developer,
-            profile_details: updatedDetails
-          });
-        }
-      } else {
-        if (onUpdateDeveloper) {
-          onUpdateDeveloper({
-            ...developer,
-            xp: nextXp
-          });
-        }
-      }
-
-      setXpActionMessage(`Deducted 5 XP. Current Balance: ★${nextXp.toLocaleString()}`);
-    } catch (err: any) {
-      console.error(err);
-      setXpActionMessage(`Failed to deduct: ${err.message}`);
     } finally {
       setActionLoading(false);
     }
@@ -5385,9 +5389,76 @@ function DeveloperProfileModal({
               <div className="w-[8px] h-[8px] rounded bg-[#39d353] border border-[#39d353]" />
               <span>More</span>
             </div>
+
+            {/* Posts Section */}
+            <div className="border-t border-white/10 pt-4">
+              <span className="text-[10px] uppercase tracking-wider text-white/40 font-semibold block mb-3 text-left">Posts</span>
+              {!developer.profile_details?.posts || developer.profile_details.posts.length === 0 ? (
+                <p className="text-xs text-white/30 font-mono italic text-left">No workstation highlights or posts shared yet.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2.5">
+                  {developer.profile_details.posts.map((post: any) => (
+                    <div 
+                      key={post.id}
+                      onClick={() => setSelectedPost(post)}
+                      className="relative group aspect-square rounded-xl overflow-hidden border border-white/5 hover:border-[#00d2ff]/30 cursor-pointer bg-[#0d1117] transition-all duration-300"
+                    >
+                      <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center p-2 text-center select-none">
+                        <div className="flex items-center gap-1 text-white font-mono text-[10px] font-bold mb-1">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          {post.likes}
+                        </div>
+                        <p className="text-white text-[9px] font-sans font-medium line-clamp-2 px-1 leading-snug">{post.caption}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       </div>
+      {showSuccessTick && (
+        <SuccessTickOverlay 
+          onClose={() => {
+            setShowSuccessTick(false);
+            onClose();
+          }} 
+          title="Candidate Onboarded" 
+          message="Successfully onboarded & evaluated (+100 XP)" 
+        />
+      )}
+
+      {/* Post Detail Modal */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="relative bg-[#0d1117] border border-white/10 rounded-3xl max-w-sm w-full overflow-hidden shadow-2xl">
+            <button 
+              onClick={() => setSelectedPost(null)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 border border-white/10 flex items-center justify-center text-white cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="aspect-square w-full">
+              <img src={selectedPost.imageUrl} alt={selectedPost.caption} className="w-full h-full object-cover" />
+            </div>
+            <div className="p-5 space-y-3 text-left">
+              <p className="text-xs text-white/90 leading-relaxed font-sans">{selectedPost.caption}</p>
+              <div className="flex justify-between items-center border-t border-white/5 pt-3">
+                <div className="flex items-center gap-1.5 text-white font-mono text-[10px] font-bold">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  {selectedPost.likes} {selectedPost.likes === 1 ? 'like' : 'likes'}
+                </div>
+                <span className="text-[9px] text-white/40 font-mono">
+                  Shared on {new Date(selectedPost.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -6038,6 +6109,579 @@ function StudentChatView({
   );
 }
 
+// ==========================================
+// ONGOING PROJECTS VIEWS
+// ==========================================
+
+function RecruiterOngoingProjectsView({ userId }: { userId: string }) {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [activeLevelTab, setActiveLevelTab] = useState<'L1' | 'L2' | 'L3'>('L1');
+
+  const loadProjects = async () => {
+    setLoading(true);
+    const data = await apiService.getOngoingProjects();
+    setProjects(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadProjects();
+  }, [userId]);
+
+  const handleSelectProject = async (proj: any) => {
+    setSelectedProject(proj);
+    setSelectedSubmission(null);
+    setFeedbackText('');
+    const subs = await apiService.getProjectSubmissions(proj.id);
+    setSubmissions(subs);
+  };
+
+  const handleSendFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubmission || !feedbackText.trim()) return;
+    setFeedbackLoading(true);
+    try {
+      const updated = await apiService.submitSubmissionFeedback(selectedSubmission.id, feedbackText.trim());
+      setSubmissions(prev => prev.map(s => s.id === selectedSubmission.id ? { ...s, feedback: updated.feedback } : s));
+      setSelectedSubmission((prev: any) => prev ? { ...prev, feedback: updated.feedback } : null);
+      setFeedbackText('');
+    } catch (err: any) {
+      alert("Failed to submit feedback: " + err.message);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00d2ff]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full text-left space-y-6">
+      {!selectedProject ? (
+        <>
+          <header className="mb-8">
+            <h1 className="text-2xl font-bold tracking-tight text-white">Ongoing Projects</h1>
+            <p className="text-sm text-white/50 mt-1 font-mono">Manage active requirements, team file submissions and advisory</p>
+          </header>
+
+          {projects.length === 0 ? (
+            <div className="border border-dashed border-white/10 bg-[#121520]/25 rounded-2xl p-12 text-center text-white/40">
+              <LayoutDashboard className="w-12 h-12 text-white/20 mx-auto mb-3" />
+              <p className="text-sm font-semibold">No ongoing projects found</p>
+              <p className="text-xs text-white/30 max-w-sm mx-auto mt-1">Hired candidate requirements will automatically appear here as ongoing projects.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map(p => (
+                <div key={p.id} className="bg-[#121520]/65 border border-white/5 hover:border-[#00d2ff]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between shadow-lg relative group overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="text-base font-bold text-white group-hover:text-[#00d2ff] transition-colors">{p.title}</h3>
+                      <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/50 line-clamp-3 leading-relaxed font-sans font-medium">{p.description}</p>
+                    
+                    <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Started On:</span>
+                        <span className="font-mono text-white/80">{new Date(p.started_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Budget:</span>
+                        <span className="font-mono text-emerald-400 font-bold">{formatBudget(p.budget)}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <span className="text-[10px] text-white/35 font-bold uppercase tracking-wider block mb-2">Onboarded Developers</span>
+                      {p.onboarded_members.length === 0 ? (
+                        <p className="text-[11px] text-white/30 italic">No developer assigned.</p>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {p.onboarded_members.map((m: any) => (
+                            <div key={m.id} className="flex items-center gap-1.5 bg-black border border-white/5 px-2 py-1 rounded-lg">
+                              <div className="w-4 h-4 rounded-full overflow-hidden bg-white/5 shrink-0">
+                                {m.avatar ? <img src={m.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#00d2ff] flex items-center justify-center text-[8px] font-bold text-black">{m.name[0]}</div>}
+                              </div>
+                              <span className="text-[10px] text-white/70 truncate max-w-[100px]">{m.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleSelectProject(p)}
+                    className="w-full mt-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[#00d2ff]/10 hover:border-[#00d2ff]/20 text-white font-semibold text-xs transition-all duration-300 cursor-pointer block text-center"
+                  >
+                    Manage Deliverables & Submissions
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setSelectedProject(null)}
+            className="flex items-center gap-2 text-xs font-semibold text-white/60 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back to Ongoing Projects
+          </button>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <div className="lg:col-span-5 space-y-6">
+              <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-white">{selectedProject.title}</h2>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                </div>
+                <p className="text-xs text-white/60 leading-relaxed">{selectedProject.description}</p>
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/5 text-xs">
+                  <div>
+                    <span className="text-[10px] text-white/30 block">Started On</span>
+                    <strong className="text-white/80 font-mono">{new Date(selectedProject.started_at).toLocaleDateString()}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-white/30 block">Project Budget</span>
+                    <strong className="text-emerald-400 font-mono font-bold">{formatBudget(selectedProject.budget)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h3 className="text-sm font-bold text-white">Project Deliverable Levels</h3>
+                  <span className="text-[10px] font-mono text-[#00d2ff]">L1 to L3 Stages</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['L1', 'L2', 'L3'] as const).map(lvl => (
+                    <button
+                      key={lvl}
+                      onClick={() => { setActiveLevelTab(lvl); setSelectedSubmission(null); }}
+                      className={`py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        activeLevelTab === lvl 
+                          ? 'bg-[#00d2ff]/10 border-[#00d2ff]/30 text-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.08)]' 
+                          : 'bg-black/25 border-white/5 text-white/50 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {lvl} Stage
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="pt-2">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block mb-3 text-left">Submissions for {activeLevelTab}</span>
+                  {submissions.filter(s => s.level === activeLevelTab).length === 0 ? (
+                    <div className="border border-dashed border-white/5 rounded-2xl p-6 text-center text-white/30 text-xs font-mono">
+                      No deliverables submitted for {activeLevelTab} stage yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {submissions.filter(s => s.level === activeLevelTab).map(s => (
+                        <div 
+                          key={s.id}
+                          onClick={() => { setSelectedSubmission(s); setFeedbackText(''); }}
+                          className={`p-4 rounded-2xl border text-left cursor-pointer transition-all duration-200 ${
+                            selectedSubmission?.id === s.id 
+                              ? 'bg-white/5 border-[#00d2ff]/40 text-white' 
+                              : 'bg-black/20 border-white/5 text-white/70 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-xs font-bold truncate">{s.file_name}</span>
+                            <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded font-mono ${
+                              s.feedback ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
+                              {s.feedback ? 'Reviewed' : 'Pending Advice'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-white/40 mt-1">By: {s.developer_name}</p>
+                          <span className="text-[9px] text-white/30 font-mono mt-2 block">{new Date(s.updated_at).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-6">
+              {!selectedSubmission ? (
+                <div className="border border-dashed border-white/5 rounded-3xl bg-[#121520]/25 p-12 text-center text-white/35 flex flex-col items-center justify-center min-h-[400px]">
+                  <Terminal className="w-12 h-12 text-white/10 mb-3" />
+                  <p className="text-sm font-semibold">Select a Submission</p>
+                  <p className="text-xs text-white/30 max-w-sm mt-1">Select a code submission from the left panel to review files and write recommendations.</p>
+                </div>
+              ) : (
+                <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-6 text-left">
+                  <div className="flex justify-between items-start gap-4 border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white font-mono">{selectedSubmission.file_name}</h3>
+                      <p className="text-[11px] text-white/40 mt-0.5">Submitted by {selectedSubmission.developer_name} for {selectedSubmission.level} Stage</p>
+                    </div>
+                    <span className="text-[9px] text-white/40 font-mono shrink-0">{new Date(selectedSubmission.updated_at).toLocaleString()}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block mb-2">Code Deliverable</span>
+                    <div className="bg-black/60 border border-white/5 rounded-2xl p-4 overflow-auto max-h-[300px] font-mono text-[11px] leading-relaxed text-emerald-400/90 scrollbar-thin">
+                      <pre className="whitespace-pre">{selectedSubmission.file_content}</pre>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-white/5 pt-4 space-y-4">
+                    <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block">Company Advisory & Suggestions</span>
+                    
+                    {selectedSubmission.feedback ? (
+                      <div className="bg-[#00d2ff]/5 border border-[#00d2ff]/15 rounded-2xl p-4 text-xs leading-relaxed space-y-2">
+                        <div className="flex items-center gap-1.5 text-[#00d2ff] font-bold">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Recruiter Advisory Response</span>
+                        </div>
+                        <p className="text-white/80">{selectedSubmission.feedback}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-white/30 italic">No advice or feedback suggestions submitted yet for this deliverable.</p>
+                    )}
+
+                    <form onSubmit={handleSendFeedback} className="space-y-3 pt-2">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[10px] uppercase font-bold text-white/45 tracking-wider">Provide Suggestions / Feedback</label>
+                        <textarea
+                          required
+                          rows={4}
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          placeholder="Provide guidance, suggestions, or advice on this code implementation..."
+                          className="w-full bg-black/30 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all resize-none leading-relaxed"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={feedbackLoading || !feedbackText.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] text-black hover:shadow-[0_0_12px_rgba(0,210,255,0.25)] font-bold text-xs transition-all cursor-pointer disabled:opacity-50 border-none ml-auto block"
+                      >
+                        {feedbackLoading ? 'Submitting Advice...' : 'Send Advisory & Suggestions'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeveloperOngoingProjectsView({ userId }: { userId: string }) {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [activeLevelTab, setActiveLevelTab] = useState<'L1' | 'L2' | 'L3'>('L1');
+  const [fileName, setFileName] = useState('');
+  const [fileContent, setFileContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitLoading, setSubmitLoading] = useState(false);
+
+  const loadProjects = async () => {
+    setLoading(true);
+    const data = await apiService.getOngoingProjects();
+    setProjects(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const handleSelectProject = async (proj: any) => {
+    setSelectedProject(proj);
+    setFileName('');
+    setFileContent('');
+    const subs = await apiService.getProjectSubmissions(proj.id);
+    setSubmissions(subs);
+    
+    const existing = subs.find(s => s.level === activeLevelTab && s.developer_id === userId);
+    if (existing) {
+      setFileName(existing.file_name);
+      setFileContent(existing.file_content);
+    }
+  };
+
+  const handleLevelChange = (level: 'L1' | 'L2' | 'L3') => {
+    setActiveLevelTab(level);
+    setFileName('');
+    setFileContent('');
+    
+    const existing = submissions.find(s => s.level === level && s.developer_id === userId);
+    if (existing) {
+      setFileName(existing.file_name);
+      setFileContent(existing.file_content);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedProject) {
+      const existing = submissions.find(s => s.level === activeLevelTab && s.developer_id === userId);
+      if (existing) {
+        setFileName(existing.file_name);
+        setFileContent(existing.file_content);
+      } else {
+        setFileName('');
+        setFileContent('');
+      }
+    }
+  }, [activeLevelTab, submissions]);
+
+  const handleSubmitFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject || !fileName.trim() || !fileContent.trim()) return;
+    setSubmitLoading(true);
+    try {
+      const sub = await apiService.submitProjectFile(selectedProject.id, activeLevelTab, fileName.trim(), fileContent.trim());
+      setSubmissions(prev => {
+        const filtered = prev.filter(s => !(s.level === activeLevelTab && s.developer_id === userId));
+        return [...filtered, sub];
+      });
+      alert(`Deliverable submitted successfully for ${activeLevelTab} Stage!`);
+    } catch (err: any) {
+      alert("Failed to submit deliverable: " + err.message);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00d2ff]" />
+      </div>
+    );
+  }
+
+  const activeSubmission = selectedProject 
+    ? submissions.find(s => s.level === activeLevelTab && s.developer_id === userId)
+    : null;
+
+  return (
+    <div className="w-full text-left space-y-6 max-w-[1400px] mx-auto p-6 md:p-8 lg:p-10">
+      {!selectedProject ? (
+        <>
+          <header className="mb-8">
+            <h1 className="text-2xl font-bold tracking-tight text-white">Ongoing Projects</h1>
+            <p className="text-sm text-white/50 mt-1 font-mono">View your joined active contract projects, submit deliverables and read company advisory</p>
+          </header>
+
+          {projects.length === 0 ? (
+            <div className="border border-dashed border-white/10 bg-[#121520]/25 rounded-2xl p-12 text-center text-white/40">
+              <Briefcase className="w-12 h-12 text-white/20 mx-auto mb-3" />
+              <p className="text-sm font-semibold">No active ongoing projects</p>
+              <p className="text-xs text-white/30 max-w-sm mx-auto mt-1">Once a recruiter onboards you for a requirement, it will show up here as an ongoing project.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map(p => (
+                <div key={p.id} className="bg-[#121520]/65 border border-white/5 hover:border-[#00d2ff]/30 rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between shadow-lg relative group overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className="text-base font-bold text-white group-hover:text-[#00d2ff] transition-colors">{p.title}</h3>
+                      <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                        Ongoing
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/50 line-clamp-3 leading-relaxed font-sans font-medium">{p.description}</p>
+                    
+                    <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Assigned On:</span>
+                        <span className="font-mono text-white/80">{new Date(p.started_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-white/40">Compensation:</span>
+                        <span className="font-mono text-emerald-400 font-bold">{formatBudget(p.budget)}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <span className="text-[10px] text-white/35 font-bold uppercase tracking-wider block mb-2">Team Teammates</span>
+                      {p.onboarded_members.length <= 1 ? (
+                        <p className="text-[11px] text-white/30 italic">No teammates assigned (Solo Project).</p>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {p.onboarded_members.map((m: any) => (
+                            <div key={m.id} className="flex items-center gap-1.5 bg-black border border-white/5 px-2 py-1 rounded-lg">
+                              <div className="w-4 h-4 rounded-full overflow-hidden bg-white/5 shrink-0">
+                                {m.avatar ? <img src={m.avatar} alt="Avatar" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-[#00d2ff] flex items-center justify-center text-[8px] font-bold text-black">{m.name[0]}</div>}
+                              </div>
+                              <span className="text-[10px] text-white/70 truncate max-w-[100px]">{m.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleSelectProject(p)}
+                    className="w-full mt-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-[#00d2ff]/10 hover:border-[#00d2ff]/20 text-white font-semibold text-xs transition-all duration-300 cursor-pointer block text-center"
+                  >
+                    Open Workspace & Submit Files
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="space-y-6">
+          <button 
+            onClick={() => setSelectedProject(null)}
+            className="flex items-center gap-2 text-xs font-semibold text-white/60 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back to Ongoing Projects
+          </button>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <div className="lg:col-span-5 space-y-6">
+              <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-white">{selectedProject.title}</h2>
+                  <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ongoing</span>
+                </div>
+                <p className="text-xs text-white/60 leading-relaxed">{selectedProject.description}</p>
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/5 text-xs">
+                  <div>
+                    <span className="text-[10px] text-white/30 block">Assigned On</span>
+                    <strong className="text-white/80 font-mono">{new Date(selectedProject.started_at).toLocaleDateString()}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-white/30 block">Compensation</span>
+                    <strong className="text-emerald-400 font-mono font-bold">{formatBudget(selectedProject.budget)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h3 className="text-sm font-bold text-white">Project Deliverable Levels</h3>
+                  <span className="text-[10px] font-mono text-[#00d2ff]">Stages L1 - L3</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['L1', 'L2', 'L3'] as const).map(lvl => (
+                    <button
+                      key={lvl}
+                      onClick={() => handleLevelChange(lvl)}
+                      className={`py-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        activeLevelTab === lvl 
+                          ? 'bg-[#00d2ff]/10 border-[#00d2ff]/30 text-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.08)]' 
+                          : 'bg-black/25 border-white/5 text-white/50 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {lvl} Stage
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-2 text-xs leading-relaxed text-white/50 font-mono space-y-1 bg-black/20 p-3 rounded-xl border border-white/5">
+                  {activeLevelTab === 'L1' && <p>💡 **L1 Deliverable**: Initial repository setup, workspace directory layout, or mockup file deliverables.</p>}
+                  {activeLevelTab === 'L2' && <p>💡 **L2 Deliverable**: Core codebase structures, functional service routes, or algorithmic scripts.</p>}
+                  {activeLevelTab === 'L3' && <p>💡 **L3 Deliverable**: Production-ready code, container configuration files (Dockerfile/Nginx), or test scripts.</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-6">
+              <div className="border border-white/5 rounded-3xl bg-[#121520]/45 p-6 space-y-6 text-left">
+                <div className="border-b border-white/5 pb-4">
+                  <h3 className="text-sm font-bold text-white">Submit Workspace File for {activeLevelTab}</h3>
+                  <p className="text-[11px] text-white/40 mt-0.5">Submit code files or architecture plans directly to company advisors</p>
+                </div>
+
+                <form onSubmit={handleSubmitFile} className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-white/60 tracking-wider uppercase">File Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={fileName}
+                      onChange={(e) => setFileName(e.target.value)}
+                      placeholder="e.g. index.js, Dockerfile, setup.py"
+                      className="w-full bg-[#12151f] border border-white/10 rounded-xl h-11 px-4 text-white text-xs placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300 font-mono"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Code / File Content</label>
+                    <textarea
+                      required
+                      rows={10}
+                      value={fileContent}
+                      onChange={(e) => setFileContent(e.target.value)}
+                      placeholder="Paste your source code or text file deliverables here..."
+                      className="w-full bg-[#12151f] border border-white/10 rounded-xl p-4 text-white text-xs placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300 resize-none leading-relaxed font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitLoading || !fileName.trim() || !fileContent.trim()}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] text-black hover:shadow-[0_0_12px_rgba(0,210,255,0.25)] font-bold text-xs transition-all cursor-pointer disabled:opacity-50 border-none ml-auto block"
+                  >
+                    {submitLoading ? 'Uploading File...' : activeSubmission ? `Update ${activeLevelTab} File` : `Submit ${activeLevelTab} File`}
+                  </button>
+                </form>
+
+                {activeSubmission && (
+                  <div className="border-t border-white/5 pt-5 space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block">Company Suggestions & Advice</span>
+                    {activeSubmission.feedback ? (
+                      <div className="bg-[#00d2ff]/5 border border-[#00d2ff]/15 rounded-2xl p-4 text-xs leading-relaxed space-y-2">
+                        <div className="flex items-center gap-1.5 text-[#00d2ff] font-bold">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Advisory Feedback Received</span>
+                        </div>
+                        <p className="text-white/80">{activeSubmission.feedback}</p>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-white/2 border border-white/5 rounded-2xl text-xs text-white/30 italic">
+                        Your file has been submitted. Awaiting company advice or review...
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PostJobView({ userId }: { userId: string }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -6210,7 +6854,7 @@ function PostJobView({ userId }: { userId: string }) {
               type="text"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
-              placeholder="e.g. $120k - $140k"
+              placeholder="e.g. ₹5L - ₹8L or ₹6,00,000"
               className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
             />
           </div>
@@ -7416,7 +8060,7 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
 
                     {/* High contrast budget pill */}
                     <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/35 px-3 py-1 rounded-full font-mono shrink-0">
-                      {p.budget || 'B2B Contract'}
+                      {p.budget ? formatBudget(p.budget) : 'B2B Contract'}
                     </span>
                   </div>
 
@@ -7468,7 +8112,7 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
 }
 
 function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
-  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory'>('pipeline');
+  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory' | 'ongoing_projects'>('pipeline');
   const [dbCandidates, setDbCandidates] = useState<any[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -7496,7 +8140,7 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       role: 'Software Engineer',
       avatar: u.profile_details?.avatar_url || '',
       skills,
-      status: u.application_status || 'new',
+      status: u.application_status,
       xp: u.xp || 0,
       match: skills.length > 0 ? Math.min(100, Math.max(50, 60 + skills.length * 8)) : 0,
       isDbDeveloper: true,
@@ -7564,6 +8208,15 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
               <span className="font-medium text-sm hidden md:block text-left">Post Requirement</span>
+            </button>
+            <button
+              onClick={() => setRecruiterView('ongoing_projects')}
+              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'ongoing_projects' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              <span className="font-medium text-sm hidden md:block text-left">Ongoing Projects</span>
             </button>
             <button
               onClick={() => setRecruiterView('chat')}
@@ -7681,6 +8334,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
               })}
             </div>
           </div>
+        ) : recruiterView === 'ongoing_projects' ? (
+          <RecruiterOngoingProjectsView userId={userId} />
         ) : recruiterView === 'post_job' ? (
           <PostJobView userId={userId} />
         ) : recruiterView === 'chat' ? (
@@ -7768,11 +8423,17 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
                           </div>
                         </td>
                         <td className="px-5 py-4">
-                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
-                            c.status === 'new' ? 'text-[#00d2ff] bg-[#00d2ff]/10 border-[#00d2ff]/20'
-                            : c.status === 'screening' ? 'text-[#f59e0b] bg-[#f59e0b]/10 border-[#f59e0b]/20'
-                            : 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20'
-                          }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
+                          {c.status ? (
+                            <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${
+                              c.status === 'new' ? 'text-[#00d2ff] bg-[#00d2ff]/10 border-[#00d2ff]/20'
+                              : c.status === 'screening' ? 'text-[#f59e0b] bg-[#f59e0b]/10 border-[#f59e0b]/20'
+                              : 'text-[#10b981] bg-[#10b981]/10 border-[#10b981]/20'
+                            }`}>{c.status === 'new' ? 'New' : c.status === 'screening' ? 'Screening' : 'Interview'}</span>
+                          ) : (
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded border text-white/30 bg-white/5 border-white/10">
+                              Not Applied
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-4">
                           <button onClick={() => setSelectedCandidate(c)} className="text-xs font-semibold text-black bg-white px-3.5 py-1.5 rounded-lg hover:bg-white/90 active:scale-[0.97] transition-all cursor-pointer border-none">View</button>

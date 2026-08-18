@@ -205,6 +205,91 @@ class ApiService {
     }
     return [];
   }
+  async onboardDeveloper(developerId: string, projectId: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/applications/onboard`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ developer_id: developerId, project_id: projectId })
+      });
+      if (res.ok) return await res.json();
+      else {
+        const errText = await res.text();
+        let errMsg = "Failed to onboard candidate";
+        try {
+          const errData = JSON.parse(errText);
+          errMsg = errData.detail || errMsg;
+        } catch {
+          errMsg = errText || errMsg;
+        }
+        throw new Error(errMsg);
+      }
+    } catch (err: any) {
+      console.warn("Backend onboard developer failed:", err);
+      throw err;
+    }
+  }
+
+  async getOngoingProjects(): Promise<any[]> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/ongoing-projects/list`, { headers });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend get ongoing projects failed:", err);
+    }
+    return [];
+  }
+
+  async getProjectSubmissions(projectId: string): Promise<any[]> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/ongoing-projects/${projectId}/submissions`, { headers });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn("Backend get project submissions failed:", err);
+    }
+    return [];
+  }
+
+  async submitProjectFile(projectId: string, level: string, fileName: string, fileContent: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/ongoing-projects/${projectId}/submit`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ level, file_name: fileName, file_content: fileContent })
+      });
+      if (res.ok) return await res.json();
+      else {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+    } catch (err: any) {
+      console.warn("Backend submit project file failed:", err);
+      throw err;
+    }
+  }
+
+  async submitSubmissionFeedback(submissionId: string, feedback: string): Promise<any> {
+    try {
+      const headers = await this.getAuthHeader();
+      const res = await fetch(`${API_BASE_URL}/ongoing-projects/submissions/${submissionId}/feedback`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ feedback })
+      });
+      if (res.ok) return await res.json();
+      else {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+    } catch (err: any) {
+      console.warn("Backend submit feedback failed:", err);
+      throw err;
+    }
+  }
 }
 
 export const apiService = new ApiService();

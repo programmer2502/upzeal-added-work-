@@ -203,7 +203,10 @@ CREATE POLICY "Allow applicants and project owners to read applications"
         (select auth.uid()) = developer_id OR 
         (select auth.uid()) IN (SELECT created_by FROM public.projects WHERE id = project_id)
     );
-CREATE POLICY "Allow developers to submit applications" ON public.applications FOR INSERT WITH CHECK ((select auth.uid()) = developer_id);
+CREATE POLICY "Allow developers to submit applications" ON public.applications FOR INSERT WITH CHECK (
+    (select auth.uid()) = developer_id OR
+    (select auth.uid()) IN (SELECT created_by FROM public.projects WHERE id = project_id)
+);
 CREATE POLICY "Allow applicant or project owner to update applications" 
     ON public.applications FOR UPDATE 
     USING (
