@@ -129,7 +129,6 @@ const BackgroundVideo = React.memo(({ isFixed = false }: { isFixed?: boolean }) 
 export default function App() {
   const [view, setView] = useState<'landing' | 'signup' | 'dashboard'>('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [yearly, setYearly] = useState(false);
 
   // Sign up form states
   const [showPassword, setShowPassword] = useState(false);
@@ -675,7 +674,7 @@ export default function App() {
 
               {/* Desktop Nav Items */}
               <div className="hidden md:flex gap-8">
-                {['Solutions', 'Pricing', 'Blog', 'Documentation', 'Careers'].map((item, idx) => (
+                {['Solutions', 'Blog', 'Documentation', 'Careers'].map((item, idx) => (
                   <motion.a
                     key={item}
                     initial={{ opacity: 0, y: -5 }}
@@ -719,7 +718,7 @@ export default function App() {
                   className="md:hidden border-b border-white/10 bg-[#0c0c0c]/95 backdrop-blur-lg overflow-hidden"
                 >
                   <div className="px-6 py-6 flex flex-col gap-4">
-                    {['Solutions', 'Pricing', 'Blog', 'Documentation', 'Careers'].map((item) => (
+                    {['Solutions', 'Blog', 'Documentation', 'Careers'].map((item) => (
                       <a
                         key={item}
                         href={`#${item.toLowerCase()}`}
@@ -1055,7 +1054,7 @@ export default function App() {
 
                 {/* Category Chips */}
                 <div className="mt-8 flex flex-wrap gap-2">
-                  {["Auto-categorize", "Snooze for later", "Silent newsletters", "One-tap unsubscribe"].map((chip) => (
+                  {["Code Quality", "Git Insights", "Security Audits", "Internship Matching"].map((chip) => (
                     <span
                       key={chip}
                       className="text-xs text-white/70 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.03] transition-colors hover:bg-white/5"
@@ -1075,7 +1074,7 @@ export default function App() {
                 className="liquid-glass rounded-2xl p-5 w-full flex flex-col gap-4 text-left"
               >
                 <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <span className="text-sm font-semibold text-white/95">Today · 42 messages triaged</span>
+                  <span className="text-sm font-semibold text-white/95">Today · 42 commits analyzed</span>
                   <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
                 </div>
 
@@ -1083,28 +1082,28 @@ export default function App() {
                 <div className="flex flex-col gap-2.5">
                   {[
                     {
-                      title: 'Priority (4)',
+                      title: 'Critical Alerts (4)',
                       color: 'text-white',
-                      dot: 'bg-white',
-                      items: 'Sophia Chen — Q3 review, David Lim — contract signoff'
+                      dot: 'bg-red-500',
+                      items: 'Infinite auth loop, SQL injection risk in query router'
                     },
                     {
-                      title: 'Follow-up (7)',
+                      title: 'Code Quality Warnings (7)',
                       color: 'text-[#e5e5e5]',
-                      dot: 'bg-neutral-300',
-                      items: 'Marcus — design review, Figma — comment thread'
+                      dot: 'bg-yellow-500',
+                      items: 'High cognitive complexity in auth controller, missing error boundaries'
                     },
                     {
-                      title: 'Updates (18)',
+                      title: 'Evaluated & Merged (18)',
                       color: 'text-[#a3a3a3]',
-                      dot: 'bg-neutral-400',
-                      items: 'Vercel — deploy ready, GitHub — PR #482 merged'
+                      dot: 'bg-[#10b981]',
+                      items: 'Database caching layers implemented, added Playwright E2E tests'
                     },
                     {
-                      title: 'Archived (13)',
+                      title: 'Static Analysis Scanned (13)',
                       color: 'text-[#525252]',
                       dot: 'bg-neutral-600',
-                      items: 'Stripe payout · Newsletter · Receipts'
+                      items: 'Dependency audit completed, formatting standard updates'
                     },
                   ].map((tier, idx) => (
                     <div key={idx} className="liquid-glass rounded-lg p-3 flex flex-col gap-1 transition-all hover:bg-white/[0.02]">
@@ -1161,13 +1160,13 @@ export default function App() {
                   company: "MERCURY"
                 },
                 {
-                  quote: "The command palette alone has changed how I process messages. I can't imagine going back to a traditional client.",
+                  quote: "The Git-based assessment was so seamless. It proved my technical capability directly from actual commits, without stressful coding interviews.",
                   name: "Andrew von Rosenbach",
-                  role: "Senior Engineering Program Manager",
+                  role: "Senior Software Engineer",
                   company: "COHERE"
                 },
                 {
-                  quote: "Triage that actually understands context. Our team stopped dreading Monday morning inboxes.",
+                  quote: "Assessment rubrics that actually understand engineering context. Our team found two amazing developers in days instead of months.",
                   name: "Mathies Christensen",
                   role: "Engineering Manager",
                   company: "LUNAR"
@@ -1196,121 +1195,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* ==========================================
-              SECTION 8 — PRICING
-              ========================================== */}
-          <section className="c3-pricing-section border-t border-white/10" id="pricing">
-            {/* Pricing Specific Noise Filter */}
-            <svg className="hidden">
-              <defs>
-                <filter id="c3-noise-pricing">
-                  <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" stitchTiles="stitch" />
-                  <feComponentTransfer><feFuncA type="linear" slope="0.075" /></feComponentTransfer>
-                  <feComposite in2="SourceGraphic" operator="in" result="noise" />
-                  <feBlend in="SourceGraphic" in2="noise" mode="overlay" />
-                </filter>
-              </defs>
-            </svg>
-
-            {/* Backdrop watermark text */}
-            <div className="c3-watermark-container select-none pointer-events-none">
-              <div className="c3-watermark-main" style={{ filter: 'url(#c3-noise-pricing)' }}>
-                <span className="c3-watermark-line-1">Prove your skills.</span>
-                <span className="c3-watermark-line-2">Get hired</span>
-              </div>
-            </div>
-
-            {/* Pricing Toggle row */}
-            <div className="c3-toggle-wrap">
-              <span className="text-xs uppercase tracking-widest text-white/50 font-bold select-none">Yearly</span>
-              <button
-                onClick={() => setYearly(!yearly)}
-                className={`c3-toggle ${yearly ? 'active' : ''}`}
-                aria-label="Toggle billing duration"
-              >
-                <div className="c3-toggle-knob" />
-              </button>
-            </div>
-
-            {/* Pricing Grid */}
-            <div className="c3-grid">
-              {/* Card 1: Student */}
-              <div className="c3-card">
-                <span className="c3-tier-small">Free</span>
-                <span className="c3-tier-large">Student</span>
-                <p className="c3-desc">Showcase your academic work, prove your skills, and launch your career.</p>
-                <ul className="c3-list">
-                  {[
-                    "Verify up to 5 GitHub projects",
-                    "Public developer portfolio page",
-                    "Access to core skill challenges",
-                    "Basic recruiter visibility",
-                    "Standard support & community access"
-                  ].map((item, idx) => (
-                    <li key={idx}>
-                      <span className="c3-check">
-                        <Check className="w-3.5 h-3.5 text-white" />
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => setView('signup')} className="c3-btn">Join</button>
-              </div>
-
-              {/* Card 2: Developer */}
-              <div className="c3-card">
-                <span className="c3-tier-small">
-                  {yearly ? '$99,99/y' : '$9,99/m'}
-                </span>
-                <span className="c3-tier-large">Developer</span>
-                <p className="c3-desc">For professional developers looking to accelerate their career and get noticed.</p>
-                <ul className="c3-list">
-                  {[
-                    "Verify unlimited projects",
-                    "Advanced portfolio themes & domains",
-                    "Detailed skill analytics & profile views",
-                    "Priority visibility in recruiter searches",
-                    "Priority email & chat support"
-                  ].map((item, idx) => (
-                    <li key={idx}>
-                      <span className="c3-check">
-                        <Check className="w-3.5 h-3.5 text-white" />
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => setView('signup')} className="c3-btn">Join</button>
-              </div>
-
-              {/* Card 3: Company */}
-              <div className="c3-card c3-card-pro">
-                <span className="c3-tier-small text-brand">
-                  {yearly ? '$199,99/y' : '$19,99/m'}
-                </span>
-                <span className="c3-tier-large">Company</span>
-                <p className="c3-desc">For teams and organizations seeking verified top-tier tech talent.</p>
-                <ul className="c3-list">
-                  {[
-                    "Direct verified talent sourcing pipeline",
-                    "Unlimited active job postings",
-                    "Detailed skill assessment report replays",
-                    "ATS integrations & team collaboration",
-                    "Dedicated account manager & 24/7 support"
-                  ].map((item, idx) => (
-                    <li key={idx}>
-                      <span className="c3-check">
-                        <Check className="w-3.5 h-3.5 text-white" />
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button onClick={() => setView('signup')} className="c3-btn">Join</button>
-              </div>
-            </div>
-          </section>
 
           {/* ==========================================
               SECTION 9 — FINAL CTA
@@ -1333,11 +1217,11 @@ export default function App() {
               />
 
               <h2 className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.02] text-white">
-                Close the tabs.<br />Open your day.
+                Build your vector.<br />Claim your future.
               </h2>
 
               <p className="mt-6 text-white/60 max-w-md mx-auto text-sm leading-[1.6]">
-                Join thousands of builders, founders, and operators who treat email like a tool — not an obligation.
+                Join thousands of developer students proving their engineering vector with verified Git histories and getting hired by top-tier tech companies.
               </p>
 
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
