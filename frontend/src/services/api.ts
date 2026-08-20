@@ -97,10 +97,12 @@ class ApiService {
         body: JSON.stringify({ project_id: projectId })
       });
       if (res.ok) return await res.json();
-    } catch (err) {
-      console.warn("Backend API unavailable, executing join client side:", err);
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Server error (Status ${res.status})`);
+    } catch (err: any) {
+      console.warn("Backend API issue:", err);
+      throw err;
     }
-    return null;
   }
 
   async acceptApplication(appId: string): Promise<any> {

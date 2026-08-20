@@ -35,7 +35,8 @@ import {
   MapPin,
   Users,
   Edit3,
-  MessageSquare
+  MessageSquare,
+  Mail
 } from 'lucide-react';
 
 const formatBudget = (budgetStr: string | null | undefined): string => {
@@ -6764,6 +6765,83 @@ function PostJobView({ userId }: { userId: string }) {
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error' | 'success'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Listing and Edit states
+  const [myProjects, setMyProjects] = useState<any[]>([]);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  const fetchMyProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*, required_skills(*)')
+        .eq('created_by', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error fetching projects:", error.message);
+      } else {
+        setMyProjects(data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      fetchMyProjects();
+    }
+  }, [userId]);
+
+  const handleCancelEdit = () => {
+    setEditingProjectId(null);
+    setTitle('');
+    setDescription('');
+    setBudget('');
+    setSkills('');
+    setStatus('idle');
+  };
+
+  const handleEditClick = (proj: any) => {
+    setEditingProjectId(proj.id);
+    setTitle(proj.title);
+    setDescription(proj.description);
+    setBudget(proj.budget || '');
+    
+    const skillList = (proj.required_skills || [])
+      .map((sk: any) => sk.skill_name)
+      .join(', ');
+    setSkills(skillList);
+    
+    setStatus('idle');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteProject = async (projId: string) => {
+    if (!window.confirm("Are you sure you want to delete this requirement?")) return;
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projId);
+
+      if (error) {
+        alert("Failed to delete requirement: " + error.message);
+      } else {
+        setMyProjects(prev => prev.filter(p => p.id !== projId));
+        if (editingProjectId === projId) {
+          handleCancelEdit();
+        }
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
@@ -6776,85 +6854,145 @@ function PostJobView({ userId }: { userId: string }) {
     setErrorMessage('');
 
     try {
-      let { data: company, error: compError } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('created_by', userId)
-        .maybeSingle();
+      if (editingProjectId) {
+        // Update existing project
+        const { error: projErr } = await supabase
+          .from('projects')
+          .update({
+            title: title.trim(),
+            description: description.trim(),
+            budget: budget.trim()
+          })
+          .eq('id', editingProjectId);
 
-      if (compError) {
-        setStatus('error');
-        setErrorMessage('Failed to resolve company profile: ' + compError.message);
-        return;
-      }
+        if (projErr) {
+          setStatus('error');
+          setErrorMessage('Failed to update project: ' + projErr.message);
+          return;
+        }
 
-      let companyId;
-      if (!company) {
-        const { data: newComp, error: newCompErr } = await supabase
+        // Delete existing skills first
+        const { error: delSkillErr } = await supabase
+          .from('required_skills')
+          .delete()
+          .eq('project_id', editingProjectId);
+
+        if (delSkillErr) {
+          console.error("Error deleting old skills:", delSkillErr.message);
+        }
+
+        // Insert new skills
+        const tagsArray = skills
+          .split(',')
+          .map(s => s.trim().toLowerCase())
+          .filter(s => s.length > 0);
+
+        if (tagsArray.length > 0) {
+          const skillsRows = tagsArray.map(tag => ({
+            project_id: editingProjectId,
+            skill_name: tag,
+            min_score: 50
+          }));
+
+          const { error: skillErr } = await supabase
+            .from('required_skills')
+            .insert(skillsRows);
+
+          if (skillErr) {
+            console.error("Error inserting skills:", skillErr.message);
+          }
+        }
+
+        setStatus('success');
+        setEditingProjectId(null);
+        setTitle('');
+        setDescription('');
+        setBudget('');
+        setSkills('');
+        fetchMyProjects();
+      } else {
+        // Create new project
+        let { data: company, error: compError } = await supabase
           .from('companies')
+          .select('id')
+          .eq('created_by', userId)
+          .maybeSingle();
+
+        if (compError) {
+          setStatus('error');
+          setErrorMessage('Failed to resolve company profile: ' + compError.message);
+          return;
+        }
+
+        let companyId;
+        if (!company) {
+          const { data: newComp, error: newCompErr } = await supabase
+            .from('companies')
+            .insert({
+              name: 'Upzeal Client Partner',
+              description: 'Recruiter organization profile',
+              created_by: userId
+            })
+            .select('id')
+            .single();
+
+          if (newCompErr) {
+            setStatus('error');
+            setErrorMessage('Failed to create company organization: ' + newCompErr.message);
+            return;
+          }
+          companyId = newComp.id;
+        } else {
+          companyId = company.id;
+        }
+
+        const { data: project, error: projErr } = await supabase
+          .from('projects')
           .insert({
-            name: 'Upzeal Client Partner',
-            description: 'Recruiter organization profile',
+            company_id: companyId,
+            title: title.trim(),
+            description: description.trim(),
+            budget: budget.trim(),
+            status: 'open',
             created_by: userId
           })
           .select('id')
           .single();
 
-        if (newCompErr) {
+        if (projErr) {
           setStatus('error');
-          setErrorMessage('Failed to create company organization: ' + newCompErr.message);
+          setErrorMessage('Failed to post project: ' + projErr.message);
           return;
         }
-        companyId = newComp.id;
-      } else {
-        companyId = company.id;
-      }
 
-      const { data: project, error: projErr } = await supabase
-        .from('projects')
-        .insert({
-          company_id: companyId,
-          title: title.trim(),
-          description: description.trim(),
-          budget: budget.trim(),
-          status: 'open',
-          created_by: userId
-        })
-        .select('id')
-        .single();
+        const tagsArray = skills
+          .split(',')
+          .map(s => s.trim().toLowerCase())
+          .filter(s => s.length > 0);
 
-      if (projErr) {
-        setStatus('error');
-        setErrorMessage('Failed to post project: ' + projErr.message);
-        return;
-      }
+        if (tagsArray.length > 0) {
+          const skillsRows = tagsArray.map(tag => ({
+            project_id: project.id,
+            skill_name: tag,
+            min_score: 50
+          }));
 
-      const tagsArray = skills
-        .split(',')
-        .map(s => s.trim().toLowerCase())
-        .filter(s => s.length > 0);
+          const { error: skillErr } = await supabase
+            .from('required_skills')
+            .insert(skillsRows);
 
-      if (tagsArray.length > 0) {
-        const skillsRows = tagsArray.map(tag => ({
-          project_id: project.id,
-          skill_name: tag,
-          min_score: 50
-        }));
-
-        const { error: skillErr } = await supabase
-          .from('required_skills')
-          .insert(skillsRows);
-
-        if (skillErr) {
-          console.error("Error inserting skills:", skillErr.message);
+          if (skillErr) {
+            console.error("Error inserting skills:", skillErr.message);
+          }
         }
-      }
 
-      setStatus('success');
-      setTitle('');
-      setDescription('');
-      setBudget('');
-      setSkills('');
+        setStatus('success');
+        setTitle('');
+        setDescription('');
+        setBudget('');
+        setSkills('');
+        fetchMyProjects();
+      }
     } catch (err: any) {
       setStatus('error');
       setErrorMessage(err.message || 'An unexpected error occurred');
@@ -6862,105 +7000,202 @@ function PostJobView({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="max-w-2xl text-left bg-[#0e111a]/85 border border-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 relative overflow-hidden w-full">
-      {/* Decorative top laser line */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#00d2ff] to-transparent" />
-      
-      <div className="flex items-start gap-4 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#00d2ff]/20 to-[#00d2ff]/5 border border-[#00d2ff]/30 flex items-center justify-center text-xl shrink-0">
-          💼
+    <div className="w-full flex flex-col flex-1 text-left">
+      <header className="mb-8 shrink-0">
+        <h1 className="text-2xl font-bold tracking-tight text-white">Requirement Manager</h1>
+        <p className="text-sm text-white/50 mt-1 font-mono">Create, update, and manage your opportunity requirements</p>
+      </header>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start w-full">
+        {/* Form Column */}
+        <div className="xl:col-span-5 bg-[#0e111a]/85 border border-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 relative overflow-hidden w-full">
+          {/* Decorative top laser line */}
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#00d2ff] to-transparent" />
+          
+          <div className="flex items-start gap-4 mb-8">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#00d2ff]/20 to-[#00d2ff]/5 border border-[#00d2ff]/30 flex items-center justify-center text-xl shrink-0">
+              💼
+            </div>
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-white/95">
+                {editingProjectId ? 'Edit Requirement' : 'Post Requirement'}
+              </h2>
+              <p className="text-xs text-white/40 mt-1 font-mono">
+                {editingProjectId ? 'Modify details for this active opportunity.' : 'Matched automatically to developers.'}
+              </p>
+            </div>
+          </div>
+
+          {status === 'success' && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
+              <span className="text-base select-none mt-0.5">✓</span>
+              <div>
+                <p className="font-semibold text-emerald-300">Success!</p>
+                <p className="mt-0.5 text-white/70">Requirement saved successfully! Developers with matching skills will now see this opportunity in their feeds.</p>
+              </div>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
+              <span className="text-base select-none mt-0.5">⚠</span>
+              <div>
+                <p className="font-semibold text-rose-300">Error</p>
+                <p className="mt-0.5 text-white/70">{errorMessage}</p>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Opportunity Title</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Senior Backend Engineer (FastAPI)"
+                className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Requirement Description</label>
+              <textarea
+                required
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Outline role responsibilities, deliverables, and team context..."
+                rows={5}
+                className="w-full bg-[#12151f] border border-white/10 rounded-xl p-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300 resize-none leading-relaxed"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Estimated Budget / Salary</label>
+                <input
+                  type="text"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="e.g. ₹5L - ₹8L or ₹6,00,000"
+                  className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Required Tech Skills (comma-separated)</label>
+                <input
+                  type="text"
+                  required
+                  value={skills}
+                  onChange={(e) => setSkills(e.target.value)}
+                  placeholder="e.g. fastapi, react, python"
+                  className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              {editingProjectId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="flex-1 h-12 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer text-xs"
+                >
+                  Cancel Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={status === 'submitting'}
+                className="flex-1 h-12 bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] hover:shadow-[0_0_15px_rgba(0,210,255,0.35)] text-white font-bold rounded-xl active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 border-none"
+              >
+                {status === 'submitting' ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-white" />
+                ) : (
+                  <>
+                    {editingProjectId ? 'Save Changes' : 'Publish Requirement'}
+                    <span>→</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white/95">Post Requirement</h2>
-          <p className="text-xs text-white/40 mt-1 font-mono">Matched automatically to developers with matching skill sets.</p>
+
+        {/* List Column */}
+        <div className="xl:col-span-7 space-y-6 w-full">
+          <div className="border border-white/5 rounded-3xl bg-[#111318]/60 backdrop-blur-md p-6 md:p-8 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white">Your Posted Opportunities</h3>
+                <p className="text-xs text-white/40 font-mono mt-0.5">Manage details or remove active listings</p>
+              </div>
+              <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-white/5 text-[#00d2ff] border border-white/5 font-bold">
+                {myProjects.length} Total
+              </span>
+            </div>
+
+            {loadingProjects ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-[#00d2ff]" />
+              </div>
+            ) : myProjects.length === 0 ? (
+              <div className="text-center py-12 text-white/40 border border-dashed border-white/10 rounded-2xl">
+                <p className="text-sm font-semibold">No requirements posted yet</p>
+                <p className="text-xs text-white/30 mt-1 max-w-xs mx-auto">Fill out the requirement form on the left to publish your first opportunity.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+                {myProjects.map(proj => (
+                  <div key={proj.id} className="p-5 rounded-2xl border border-white/5 bg-[#121520]/45 hover:border-[#00d2ff]/20 transition-all flex flex-col justify-between gap-4 group">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start gap-4">
+                        <h4 className="text-sm font-bold text-white group-hover:text-[#00d2ff] transition-colors">{proj.title}</h4>
+                        <span className="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                          {proj.status.toUpperCase()}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-white/50 leading-relaxed line-clamp-3">{proj.description}</p>
+                      
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        {(proj.required_skills || []).map((sk: any) => (
+                          <span key={sk.id} className="px-2 py-0.5 text-[9px] font-mono font-medium bg-black/60 border border-white/5 text-white/60 rounded">
+                            {sk.skill_name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="text-xs">
+                        <span className="text-white/30">Budget: </span>
+                        <strong className="text-emerald-400 font-mono">{proj.budget || 'N/A'}</strong>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditClick(proj)}
+                          className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold text-xs transition-colors cursor-pointer border-none"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProject(proj.id)}
+                          className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs transition-colors cursor-pointer border-none"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {status === 'success' && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
-          <span className="text-base select-none mt-0.5">✓</span>
-          <div>
-            <p className="font-semibold text-emerald-300">Success!</p>
-            <p className="mt-0.5 text-white/70">Requirement posted successfully! Developers with matching skills will now see this opportunity in their feeds.</p>
-          </div>
-        </div>
-      )}
-
-      {status === 'error' && (
-        <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-xl text-xs mb-6 font-mono flex items-start gap-2.5">
-          <span className="text-base select-none mt-0.5">⚠</span>
-          <div>
-            <p className="font-semibold text-rose-300">Error</p>
-            <p className="mt-0.5 text-white/70">{errorMessage}</p>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Opportunity Title</label>
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Senior Backend Engineer (FastAPI)"
-            className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
-          />
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Requirement Description</label>
-          <textarea
-            required
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Outline role responsibilities, deliverables, and team context..."
-            rows={5}
-            className="w-full bg-[#12151f] border border-white/10 rounded-xl p-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300 resize-none leading-relaxed"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Estimated Budget / Salary</label>
-            <input
-              type="text"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              placeholder="e.g. ₹5L - ₹8L or ₹6,00,000"
-              className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/60 tracking-wider uppercase">Required Tech Skills (comma-separated)</label>
-            <input
-              type="text"
-              required
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              placeholder="e.g. fastapi, react, python"
-              className="w-full bg-[#12151f] border border-white/10 rounded-xl h-12 px-4 text-white text-sm placeholder:text-white/20 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff] focus:outline-none transition-all duration-300"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={status === 'submitting'}
-          className="w-full h-12 bg-gradient-to-r from-[#00b5ec] to-[#00d2ff] hover:shadow-[0_0_15px_rgba(0,210,255,0.35)] text-white font-bold rounded-xl active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 mt-6 border-none"
-        >
-          {status === 'submitting' ? (
-            <Loader2 className="w-5 h-5 animate-spin text-white" />
-          ) : (
-            <>
-              Publish Requirement
-              <span>→</span>
-            </>
-          )}
-        </button>
-      </form>
     </div>
   );
 }
@@ -7980,13 +8215,24 @@ function CompanyDirectoryView({ onSelectCompany }: { onSelectCompany: (id: strin
   );
 }
 
-function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; onSelectCompany?: (id: string) => void }) {
+function B2BPartnerProjectsView({ 
+  userId, 
+  onSelectCompany, 
+  onStartChat 
+}: { 
+  userId: string; 
+  onSelectCompany?: (id: string) => void; 
+  onStartChat?: (partnerId: string) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'explore' | 'received'>('explore');
   const [projects, setProjects] = useState<any[]>([]);
   const [appliedProjectIds, setAppliedProjectIds] = useState<Set<string>>(new Set());
+  const [receivedApplications, setReceivedApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [_myCompanyId, setMyCompanyId] = useState<string | null>(null);
   const [showSuccessTick, setShowSuccessTick] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [acceptingAppId, setAcceptingAppId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -7994,9 +8240,29 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
     const loadB2BData = async () => {
       setLoading(true);
       try {
-        const [myCompRes, apiProjects] = await Promise.all([
+        const [myCompRes, apiProjects, appsRes] = await Promise.all([
           supabase.from('companies').select('id').eq('created_by', userId).maybeSingle(),
-          apiService.getChallenges()
+          apiService.getChallenges(),
+          supabase.from('applications').select(`
+            id,
+            status,
+            cover_letter,
+            created_at,
+            project:projects (
+              id,
+              title,
+              created_by
+            ),
+            developer:users (
+              id,
+              first_name,
+              last_name,
+              email,
+              username,
+              role,
+              profile_details
+            )
+          `)
         ]);
 
         let ownCompId = '';
@@ -8027,6 +8293,13 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
           }
         });
 
+        if (appsRes.data) {
+          const received = appsRes.data.filter((app: any) => 
+            app.project?.created_by === userId && app.developer?.id !== userId
+          );
+          setReceivedApplications(received);
+        }
+
         setAppliedProjectIds(appliedIds);
         setProjects(filtered);
       } catch (err) {
@@ -8055,6 +8328,21 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
     }
   };
 
+  const handleAcceptProposal = async (appId: string) => {
+    setAcceptingAppId(appId);
+    try {
+      await apiService.acceptApplication(appId);
+      setReceivedApplications(prev => prev.map(app => 
+        app.id === appId ? { ...app, status: 'hired' } : app
+      ));
+      alert("Proposal accepted successfully!");
+    } catch (err: any) {
+      alert("Failed to accept proposal: " + err.message);
+    } finally {
+      setAcceptingAppId(null);
+    }
+  };
+
   const filteredProjects = projects.filter(p => 
     p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -8064,119 +8352,259 @@ function B2BPartnerProjectsView({ userId, onSelectCompany }: { userId: string; o
 
   return (
     <div className="w-full flex flex-col flex-1 text-left">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
             Partner Board
-            <span className="text-[10px] bg-[#00d2ff]/10 text-[#00d2ff] border border-[#00d2ff]/20 font-bold px-2.5 py-0.5 rounded-full font-mono">
-              {filteredProjects.length} Opportunities
-            </span>
           </h1>
-          <p className="text-xs text-white/40 mt-1 font-mono">B2B marketplace: Browse and apply to opportunities posted by other organizations</p>
+          <p className="text-xs text-white/40 mt-1 font-mono">B2B marketplace: Browse and apply to opportunities, or review received partnership requests</p>
         </div>
 
-        {/* Premium search bar */}
-        <div className="relative w-full sm:w-80">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search B2B contracts..."
-            className="w-full bg-[#161922]/80 border border-white/5 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff]/30 text-white rounded-xl h-10 pl-10 pr-4 text-xs focus:outline-none transition-all placeholder:text-white/20"
-          />
-          <div className="absolute left-3 top-3 text-white/30">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        {activeTab === 'explore' && (
+          /* Premium search bar */
+          <div className="relative w-full sm:w-80">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search B2B contracts..."
+              className="w-full bg-[#161922]/80 border border-white/5 focus:border-[#00d2ff] focus:ring-1 focus:ring-[#00d2ff]/30 text-white rounded-xl h-10 pl-10 pr-4 text-xs focus:outline-none transition-all placeholder:text-white/20"
+            />
+            <div className="absolute left-3 top-3 text-white/30">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Tabs Header */}
+      <div className="flex gap-3 mb-8 shrink-0">
+        <button
+          onClick={() => setActiveTab('explore')}
+          className={`px-5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2 border-none ${
+            activeTab === 'explore' 
+              ? 'bg-[#00d2ff]/10 border border-[#00d2ff]/30 text-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.08)]' 
+              : 'bg-black/25 border border-white/5 text-white/50 hover:bg-white/5 hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          Explore B2B Contracts
+          <span className="text-[10px] bg-white/10 text-white/70 px-2.5 py-0.5 rounded-full font-mono font-bold">
+            {filteredProjects.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('received')}
+          className={`px-5 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-2 border-none ${
+            activeTab === 'received' 
+              ? 'bg-[#00d2ff]/10 border border-[#00d2ff]/30 text-[#00d2ff] shadow-[0_0_15px_rgba(0,210,255,0.08)]' 
+              : 'bg-black/25 border border-white/5 text-white/50 hover:bg-white/5 hover:text-white'
+          }`}
+        >
+          <Mail className="w-4 h-4" />
+          Received Proposals
+          {receivedApplications.length > 0 && (
+            <span className="text-[10px] bg-[#00d2ff]/20 text-[#00d2ff] border border-[#00d2ff]/30 px-2.5 py-0.5 rounded-full font-mono font-bold">
+              {receivedApplications.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center p-20 w-full">
           <Loader2 className="w-8 h-8 animate-spin text-white/50" />
         </div>
-      ) : filteredProjects.length === 0 ? (
-        <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20">
-          <svg className="w-8 h-8 mx-auto text-white/20 mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-          <p className="text-sm font-semibold">No B2B contracts listed</p>
-          <p className="text-xs text-white/30 mt-1">Try widening your search terms or wait for other companies to post requirements.</p>
-        </div>
+      ) : activeTab === 'explore' ? (
+        /* ── EXPLORE CONTRACTS TAB ── */
+        filteredProjects.length === 0 ? (
+          <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20">
+            <svg className="w-8 h-8 mx-auto text-white/20 mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <p className="text-sm font-semibold">No B2B contracts listed</p>
+            <p className="text-xs text-white/30 mt-1">Try widening your search terms or wait for other companies to post requirements.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            {filteredProjects.map(p => {
+              const hasApplied = appliedProjectIds.has(p.id);
+              return (
+                <div 
+                  key={p.id} 
+                  className="bg-[#121520]/60 border border-white/5 rounded-2xl p-5 hover:border-[#00d2ff]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-lg group text-left"
+                >
+                  {/* Card top gradient line */}
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div 
+                        onClick={() => p.company_id && onSelectCompany && onSelectCompany(p.company_id)}
+                        className={`flex items-center gap-3 ${p.company_id && onSelectCompany ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
+                      >
+                        {/* Logo circle frame */}
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden group-hover:border-[#00d2ff]/40 transition-colors">
+                          {p.logoUrl ? (
+                            <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{p.companyName.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className={`text-sm font-bold text-white leading-tight ${p.company_id && onSelectCompany ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{p.companyName}</h3>
+                          <p className="text-[10px] text-white/40 font-mono mt-0.5">Shared Contract Opportunity</p>
+                        </div>
+                      </div>
+
+                      {/* High contrast budget pill */}
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/35 px-3 py-1 rounded-full font-mono shrink-0">
+                        {p.budget ? formatBudget(p.budget) : 'B2B Contract'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-white/90 leading-snug group-hover:text-[#00d2ff] transition-colors">{p.title}</h4>
+                      <p className="text-xs text-white/50 mt-1.5 leading-relaxed font-medium">{p.description}</p>
+                    </div>
+
+                    {p.tags.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap pt-1.5">
+                        {p.tags.map((t: string) => (
+                          <span key={t} className="px-2 py-0.5 text-[9px] font-bold font-mono bg-[#161922] border border-white/5 text-white/50 rounded-md">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-6">
+                    {hasApplied ? (
+                      <button 
+                        disabled
+                        className="w-full text-xs font-semibold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 rounded-xl py-2.5 transition-all text-center cursor-not-allowed font-mono flex items-center justify-center gap-1.5"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Proposal Sent / Partnership Requested
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => handleApplyPartner(p.id)}
+                        className="w-full text-xs font-bold text-black bg-white hover:bg-white/95 active:scale-[0.98] rounded-xl py-2.5 transition-all text-center cursor-pointer font-sans flex items-center justify-center gap-1.5 border-none"
+                      >
+                        Apply as Partner
+                        <span className="transform translate-x-0 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-          {filteredProjects.map(p => {
-            const hasApplied = appliedProjectIds.has(p.id);
-            return (
-              <div 
-                key={p.id} 
-                className="bg-[#121520]/60 border border-white/5 rounded-2xl p-5 hover:border-[#00d2ff]/30 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-lg group text-left"
-              >
-                {/* Card top gradient line */}
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        /* ── RECEIVED PROPOSALS TAB ── */
+        receivedApplications.length === 0 ? (
+          <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20">
+            <Mail className="w-8 h-8 mx-auto text-white/20 mb-3" />
+            <p className="text-sm font-semibold">No proposals received</p>
+            <p className="text-xs text-white/30 mt-1">Partnership requests posted by other organizations to your B2B contracts will appear here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+            {receivedApplications.map(app => {
+              const dev = app.developer || {};
+              const displayName = dev.first_name && dev.last_name 
+                ? `${dev.first_name} ${dev.last_name}` 
+                : dev.username || dev.email || 'Partner Representative';
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div 
-                      onClick={() => p.company_id && onSelectCompany && onSelectCompany(p.company_id)}
-                      className={`flex items-center gap-3 ${p.company_id && onSelectCompany ? 'cursor-pointer hover:opacity-85 transition-opacity group' : ''}`}
-                    >
-                      {/* Logo circle frame */}
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden group-hover:border-[#00d2ff]/40 transition-colors">
-                        {p.logoUrl ? (
-                          <img src={p.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+              const roleLabel = dev.role === 'recruiter' 
+                ? 'Client Partner Recruiter' 
+                : 'Developer Candidate';
+
+              const isPending = app.status === 'pending';
+              const isHired = app.status === 'hired';
+
+              return (
+                <div 
+                  key={app.id} 
+                  className="bg-[#121520]/60 border border-white/5 rounded-2xl p-5 hover:border-[#00d2ff]/30 transition-all duration-300 flex flex-col justify-between relative overflow-hidden shadow-lg group text-left"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00d2ff]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden text-white">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white leading-tight">{displayName}</h3>
+                          <p className="text-[10px] text-white/40 font-mono mt-0.5">{roleLabel}</p>
+                        </div>
+                      </div>
+
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono shrink-0 border ${
+                        isHired 
+                          ? 'text-emerald-400 bg-emerald-500/15 border-emerald-500/35' 
+                          : 'text-[#00d2ff] bg-[#00d2ff]/15 border-[#00d2ff]/35'
+                      }`}>
+                        {isHired ? 'Partnership Accepted' : 'Proposal Pending'}
+                      </span>
+                    </div>
+
+                    <div className="border-t border-b border-white/5 py-3 my-1">
+                      <span className="text-[10px] text-white/30 block font-mono">Opportunity:</span>
+                      <strong className="text-xs text-white/85 leading-snug">{app.project?.title || 'Contract'}</strong>
+                      {app.cover_letter && (
+                        <div className="mt-2.5 bg-black/25 border border-white/5 rounded-xl p-3 text-xs text-white/60 leading-relaxed font-sans italic">
+                          "{app.cover_letter}"
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center text-[10px] text-white/35 font-mono">
+                      <span>Submitted on:</span>
+                      <span>{new Date(app.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 flex gap-3">
+                    {onStartChat && (
+                      <button 
+                        onClick={() => onStartChat(dev.id)}
+                        className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer border-none ${
+                          isHired
+                            ? 'text-black bg-white hover:bg-white/95'
+                            : 'text-white/70 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Chat
+                      </button>
+                    )}
+                    
+                    {isPending && (
+                      <button 
+                        onClick={() => handleAcceptProposal(app.id)}
+                        disabled={acceptingAppId === app.id}
+                        className="flex-1 text-xs font-bold text-black bg-[#00d2ff] hover:bg-[#00d2ff]/90 rounded-xl py-2.5 transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                      >
+                        {acceptingAppId === app.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <span>{p.companyName.charAt(0).toUpperCase()}</span>
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Accept Proposal
+                          </>
                         )}
-                      </div>
-                      <div>
-                        <h3 className={`text-sm font-bold text-white leading-tight ${p.company_id && onSelectCompany ? 'group-hover:text-[#00d2ff] group-hover:underline' : ''}`}>{p.companyName}</h3>
-                        <p className="text-[10px] text-white/40 font-mono mt-0.5">Shared Contract Opportunity</p>
-                      </div>
-                    </div>
-
-                    {/* High contrast budget pill */}
-                    <span className="text-xs font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/35 px-3 py-1 rounded-full font-mono shrink-0">
-                      {p.budget ? formatBudget(p.budget) : 'B2B Contract'}
-                    </span>
+                      </button>
+                    )}
                   </div>
-
-                  <div>
-                    <h4 className="text-sm font-bold text-white/90 leading-snug group-hover:text-[#00d2ff] transition-colors">{p.title}</h4>
-                    <p className="text-xs text-white/50 mt-1.5 leading-relaxed font-medium">{p.description}</p>
-                  </div>
-
-                  {p.tags.length > 0 && (
-                    <div className="flex gap-1.5 flex-wrap pt-1.5">
-                      {p.tags.map((t: string) => (
-                        <span key={t} className="px-2 py-0.5 text-[9px] font-bold font-mono bg-[#161922] border border-white/5 text-white/50 rounded-md">
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
-
-                <div className="pt-6">
-                  {hasApplied ? (
-                    <button 
-                      disabled
-                      className="w-full text-xs font-semibold text-[#00d2ff] bg-[#00d2ff]/10 border border-[#00d2ff]/20 rounded-xl py-2.5 transition-all text-center cursor-not-allowed font-mono flex items-center justify-center gap-1.5"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                      Proposal Sent / Partnership Requested
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={() => handleApplyPartner(p.id)}
-                      className="w-full text-xs font-bold text-black bg-white hover:bg-white/95 active:scale-[0.98] rounded-xl py-2.5 transition-all text-center cursor-pointer font-sans flex items-center justify-center gap-1.5 border-none"
-                    >
-                      Apply as Partner
-                      <span className="transform translate-x-0 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )
       )}
       {showSuccessTick && (
         <SuccessTickOverlay onClose={() => setShowSuccessTick(false)} />
@@ -8428,7 +8856,14 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
         ) : recruiterView === 'companies_directory' ? (
           <CompanyDirectoryView onSelectCompany={(id) => setSelectedCompanyId(id)} />
         ) : recruiterView === ('partner_projects' as any) ? (
-          <B2BPartnerProjectsView userId={userId} onSelectCompany={setSelectedCompanyId} />
+          <B2BPartnerProjectsView 
+            userId={userId} 
+            onSelectCompany={setSelectedCompanyId} 
+            onStartChat={(partnerId) => {
+              setActiveChatPartnerId(partnerId);
+              setRecruiterView('chat');
+            }}
+          />
         ) : (
           /* ── Talent Pool View ── */
           <div className="w-full flex flex-col flex-1 text-left">

@@ -15,7 +15,7 @@ async def list_challenges(current_user: dict = Depends(get_current_user)):
 async def join_challenge(
     req: JoinChallengeRequest, 
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    current_user: dict = Depends(require_role(["developer"]))
+    current_user: dict = Depends(require_role(["developer", "recruiter"]))
 ):
     """Join a challenge (Developer role required). Earns +50 points per skill and profile XP."""
     try:
@@ -25,4 +25,6 @@ async def join_challenge(
             token=credentials.credentials
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
