@@ -112,7 +112,34 @@ CREATE TABLE IF NOT EXISTS public.reviews (
 -- Trigger to automatically create a public.users row upon auth.users signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    temp_username VARCHAR(100);
+    email_local VARCHAR(100);
+    base_username VARCHAR(100);
+    suffix INTEGER := 0;
 BEGIN
+    -- Extract email local part
+    email_local := split_part(new.email, '@', 1);
+    
+    -- Clean email local part (only lowercase, digits, and underscores)
+    base_username := lower(regexp_replace(email_local, '[^a-zA-Z0-9_]', '', 'g'));
+    
+    -- Handle edge cases where email local part is empty or too short
+    IF base_username = '' OR base_username IS NULL THEN
+        base_username := 'user_' || substring(new.id::text from 1 for 5);
+    END IF;
+    
+    temp_username := base_username;
+    
+    -- Check if username already exists, loop until a unique one is found
+    LOOP
+        IF NOT EXISTS (SELECT 1 FROM public.users WHERE username = temp_username) THEN
+            EXIT;
+        END IF;
+        suffix := suffix + 1;
+        temp_username := substring(base_username from 1 for (100 - length(suffix::text) - 1)) || '_' || suffix;
+    END LOOP;
+
     INSERT INTO public.users (
         id, 
         email, 
@@ -125,7 +152,7 @@ BEGIN
     VALUES (
         new.id,
         new.email,
-        COALESCE(new.raw_user_meta_data->>'username', ''),
+        temp_username,
         COALESCE(new.raw_user_meta_data->>'first_name', ''),
         COALESCE(new.raw_user_meta_data->>'last_name', ''),
         COALESCE(new.raw_app_meta_data->>'provider', 'email'),

@@ -296,110 +296,156 @@ export default function App() {
 
   // Listen to Supabase Auth state shifts
   useEffect(() => {
+    let syncInProgressUser: string | null = null;
+
     const handleUserMetadataSync = async (session: any) => {
       if (!session?.user) return;
       const userIdVal = session.user.id;
       
-      const { data, error: _error } = await supabase
-        .from('users')
-        .select('first_name, last_name, role, username, onboarding_phase, dashboard_config')
-        .eq('id', userIdVal)
-        .single();
-        
-      let finalFirstName = '';
-      let finalLastName = '';
-      let finalRole = '';
-      let finalUsername = '';
-      
-      if (data) {
-        finalFirstName = data.first_name || '';
-        finalLastName = data.last_name || '';
-        finalRole = data.role || '';
-        finalUsername = data.username || '';
-        setFirstName(finalFirstName);
-        setLastName(finalLastName);
-        setAccountType(data.role as any);
-        if (data.dashboard_config?.tech_stack) {
-          setSelectedTech(data.dashboard_config.tech_stack);
-        }
+      if (syncInProgressUser === userIdVal) {
+        console.log("handleUserMetadataSync: skipping concurrent duplicate sync for user:", userIdVal);
+        return;
       }
+      syncInProgressUser = userIdVal;
 
-      // Automatically generate a username if one does not exist
-      if (!finalUsername) {
-        const emailLocalPart = session.user.email ? session.user.email.split('@')[0] : '';
-        const fullNameCombined = (session.user.user_metadata?.full_name || session.user.user_metadata?.name || '').replace(/\s+/g, '_').toLowerCase();
-        
-        let candidateUsername = (
-          session.user.user_metadata?.user_name ||
-          session.user.user_metadata?.username ||
-          session.user.user_metadata?.preferred_username ||
-          emailLocalPart ||
-          fullNameCombined ||
-          `user_${userIdVal.substring(0, 5)}`
-        ).trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-
-        if (!candidateUsername) {
-          candidateUsername = `user_${userIdVal.substring(0, 5)}`;
-        }
-
-        let uniqueUsername = candidateUsername;
-        let isTaken = true;
-        let attempt = 0;
-        
-        while (isTaken && attempt < 10) {
-          const suffix = attempt === 0 ? '' : `_${Math.floor(100 + Math.random() * 900)}`;
-          const testUsername = `${uniqueUsername}${suffix}`.substring(0, 30);
+      try {
+        const { data, error: queryError } = await supabase
+          .from('users')
+          .select('first_name, last_name, role, username, onboarding_phase, dashboard_config')
+          .eq('id', userIdVal)
+          .single();
           
-          const { data: duplicate } = await supabase
-            .from('users')
-            .select('id')
-            .eq('username', testUsername)
-            .maybeSingle();
-            
-          if (!duplicate) {
-            uniqueUsername = testUsername;
-            isTaken = false;
-          } else {
-            attempt++;
+        if (queryError) {
+          console.warn("handleUserMetadataSync: query error (or row not found):", queryError);
+        }
+          
+        let finalFirstName = '';
+        let finalLastName = '';
+        let finalRole = '';
+        let finalUsername = '';
+        let finalOnboardingPhase = 'phase_1';
+        
+        if (data) {
+          finalFirstName = data.first_name || '';
+          finalLastName = data.last_name || '';
+          finalRole = data.role || '';
+          finalUsername = data.username || '';
+          finalOnboardingPhase = data.onboarding_phase || 'phase_1';
+          setFirstName(finalFirstName);
+          setLastName(finalLastName);
+          setAccountType(data.role as any);
+          if (data.dashboard_config?.tech_stack) {
+            setSelectedTech(data.dashboard_config.tech_stack);
           }
         }
-        
-        if (isTaken) {
-          uniqueUsername = `${candidateUsername}_${userIdVal.substring(0, 5)}`.substring(0, 30);
+
+        // Automatically generate a username if one does not exist
+        if (!finalUsername) {
+          const emailLocalPart = session.user.email ? session.user.email.split('@')[0] : '';
+          const fullNameCombined = (session.user.user_metadata?.full_name || session.user.user_metadata?.name || '').replace(/\s+/g, '_').toLowerCase();
+          
+          let candidateUsername = (
+            session.user.user_metadata?.user_name ||
+            session.user.user_metadata?.username ||
+            session.user.user_metadata?.preferred_username ||
+            emailLocalPart ||
+            fullNameCombined ||
+            `user_${userIdVal.substring(0, 5)}`
+          ).trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+
+          if (!candidateUsername) {
+            candidateUsername = `user_${userIdVal.substring(0, 5)}`;
+          }
+
+          let uniqueUsername = candidateUsername;
+          let isTaken = true;
+          let attempt = 0;
+          
+          while (isTaken && attempt < 10) {
+            const suffix = attempt === 0 ? '' : `_${Math.floor(100 + Math.random() * 900)}`;
+            const testUsername = `${uniqueUsername}${suffix}`.substring(0, 30);
+            
+            const { data: duplicate } = await supabase
+              .from('users')
+              .select('id')
+              .eq('username', testUsername)
+              .maybeSingle();
+              
+            if (!duplicate) {
+              uniqueUsername = testUsername;
+              isTaken = false;
+            } else {
+              attempt++;
+            }
+          }
+          
+          if (isTaken) {
+            uniqueUsername = `${candidateUsername}_${userIdVal.substring(0, 5)}`.substring(0, 30);
+          }
+
+          // Only attempt update if the row exists in database
+          if (data) {
+            const { error: updateUsernameError } = await supabase
+              .from('users')
+              .update({ username: uniqueUsername })
+              .eq('id', userIdVal);
+            if (updateUsernameError) {
+              console.error("handleUserMetadataSync: failed to update username:", updateUsernameError);
+            }
+          }
+            
+          finalUsername = uniqueUsername;
         }
 
-        await supabase
-          .from('users')
-          .update({ username: uniqueUsername })
-          .eq('id', userIdVal);
-          
-        finalUsername = uniqueUsername;
-      }
+        // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize name and role
+        const storedRole = localStorage.getItem('oauth_intended_role');
+        if (storedRole) {
+          localStorage.removeItem('oauth_intended_role');
+        }
 
-      // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize name and role
-      if (session.user.user_metadata && (!finalFirstName || !finalRole)) {
-        const storedRole = localStorage.getItem('oauth_intended_role') || 'developer';
-        localStorage.removeItem('oauth_intended_role');
-        
-        const fullName = session.user.user_metadata.full_name || session.user.user_metadata.name || '';
-        const parts = fullName.split(' ');
-        const fName = finalFirstName || parts[0] || '';
-        const lName = finalLastName || parts.slice(1).join(' ') || '';
-        const roleVal = finalRole || storedRole;
+        let roleVal = finalRole || 'developer';
+        if (storedRole && (!finalRole || finalRole === 'developer' || finalOnboardingPhase === 'phase_1')) {
+          roleVal = storedRole;
+        }
 
-        await supabase
-          .from('users')
-          .update({ 
-            first_name: fName,
-            last_name: lName,
-            role: roleVal,
-            username: finalUsername
-          })
-          .eq('id', userIdVal);
-          
-        setFirstName(fName);
-        setLastName(lName);
-        setAccountType(roleVal as any);
+        if (session.user.user_metadata && (!finalFirstName || !finalRole || roleVal !== finalRole)) {
+          const fullName = session.user.user_metadata.full_name || session.user.user_metadata.name || '';
+          const parts = fullName.split(' ');
+          const fName = finalFirstName || parts[0] || '';
+          const lName = finalLastName || parts.slice(1).join(' ') || '';
+
+          // Only attempt update if the row exists in database
+          if (data) {
+            const { error: updateProfileError } = await supabase
+              .from('users')
+              .update({ 
+                first_name: fName,
+                last_name: lName,
+                role: roleVal,
+                username: finalUsername
+              })
+              .eq('id', userIdVal);
+            if (updateProfileError) {
+              console.error("handleUserMetadataSync: failed to update name and role:", updateProfileError);
+            }
+          }
+            
+          setFirstName(fName);
+          setLastName(lName);
+          setAccountType(roleVal as any);
+        }
+
+        // Route view dynamically based on onboarding completion status
+        if (finalOnboardingPhase !== 'phase_3') {
+          setView('signup');
+          setSignupStep(3);
+        } else {
+          setView('dashboard');
+        }
+      } catch (err) {
+        console.error("Uncaught exception inside handleUserMetadataSync:", err);
+      } finally {
+        syncInProgressUser = null;
       }
     };
 
@@ -409,7 +455,6 @@ export default function App() {
         setUser(session.user);
         setEmail(session.user.email || '');
         await handleUserMetadataSync(session);
-        setView('dashboard');
       }
     });
 
@@ -675,8 +720,9 @@ export default function App() {
   );
 
   return (
-    <AnimatePresence mode="wait">
-      {view === 'landing' ? (
+    <>
+      <AnimatePresence mode="wait">
+        {view === 'landing' ? (
         <motion.div
           key="landing"
           initial={{ opacity: 0 }}
@@ -1776,37 +1822,63 @@ export default function App() {
           </div>
         </motion.main>
       ) : accountType === 'recruiter' ? (
-        <RecruiterDashboard 
-          key="recruiter" 
-          userId={user?.id || ''}
-          firstName={firstName} 
-          lastName={lastName} 
-          email={email} 
-          onLogout={async () => {
-            await supabase.auth.signOut();
-            setView('landing');
-          }}
-        />
+        <motion.div
+          key="recruiter"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full h-full"
+        >
+          <RecruiterDashboard 
+            userId={user?.id || ''}
+            firstName={firstName} 
+            lastName={lastName} 
+            email={email} 
+            onLogout={async () => {
+              await supabase.auth.signOut();
+              setView('landing');
+            }}
+          />
+        </motion.div>
       ) : (
-        <StudentDashboard 
-          key="student" 
-          userId={user?.id}
-          firstName={firstName} 
-          lastName={lastName} 
-          email={email} 
-          developerSkills={selectedTech}
+        <motion.div
+          key="student"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full h-full"
+        >
+          <StudentDashboard 
+            userId={user?.id}
+            firstName={firstName} 
+            lastName={lastName} 
+            email={email} 
+            developerSkills={selectedTech}
 
-          onLogout={async () => {
-            await supabase.auth.signOut();
-            setView('landing');
-          }}
-        />
+            onLogout={async () => {
+              await supabase.auth.signOut();
+              setView('landing');
+            }}
+          />
+        </motion.div>
       )}
+    </AnimatePresence>
+
+    <AnimatePresence>
       {showLoginModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+        >
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ type: "spring", duration: 0.4 }}
             className="w-full max-w-md border border-white/10 rounded-2xl bg-[#0c0c0c]/95 p-8 text-left space-y-6 relative"
           >
             <button 
@@ -1878,56 +1950,58 @@ export default function App() {
               </button>
             </form>
           </motion.div>
-        </div>
+        </motion.div>
       )}
-      {/* Real-time Toast Notifications list */}
-      <div className="fixed bottom-6 right-6 z-[250] flex flex-col gap-3.5 max-w-sm w-full pointer-events-none">
-        <AnimatePresence>
-          {toasts.map(t => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
-              className="pointer-events-auto w-full bg-[#111318] border border-[#333] rounded-2xl p-5 shadow-2xl flex flex-col gap-3 text-left relative"
-            >
-              <button 
-                onClick={() => setToasts(prev => prev.filter(toast => toast.id !== t.id))}
-                className="absolute right-4 top-4 text-white/30 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
-              >
-                <X className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-start gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
-                  t.type === 'success' 
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                    : 'bg-[#00d2ff]/10 border-[#00d2ff]/20 text-[#00d2ff]'
-                }`}>
-                  {t.type === 'success' ? <Check className="w-4 h-4 stroke-[3.5]" /> : <Sparkles className="w-4 h-4" />}
-                </div>
-                <div className="overflow-hidden flex-1 pr-4">
-                  <h4 className="text-sm font-bold text-white">{t.title}</h4>
-                  <p className="text-xs text-white/50 mt-1 leading-normal">{t.message}</p>
-                </div>
-              </div>
-
-              {t.action && (
-                <div className="flex justify-end pt-1">
-                  <button
-                    onClick={t.action.onClick}
-                    className="px-4 py-2 bg-white text-black hover:bg-white/95 rounded-xl font-bold text-xs transition-colors cursor-pointer border-none"
-                  >
-                    {t.action.label}
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
     </AnimatePresence>
-  );
+
+    {/* Real-time Toast Notifications list */}
+    <div className="fixed bottom-6 right-6 z-[250] flex flex-col gap-3.5 max-w-sm w-full pointer-events-none">
+      <AnimatePresence>
+        {toasts.map(t => (
+          <motion.div
+            key={t.id}
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+            className="pointer-events-auto w-full bg-[#111318] border border-[#333] rounded-2xl p-5 shadow-2xl flex flex-col gap-3 text-left relative"
+          >
+            <button 
+              onClick={() => setToasts(prev => prev.filter(toast => toast.id !== t.id))}
+              className="absolute right-4 top-4 text-white/30 hover:text-white transition-colors cursor-pointer bg-transparent border-none"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                t.type === 'success' 
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                  : 'bg-[#00d2ff]/10 border-[#00d2ff]/20 text-[#00d2ff]'
+              }`}>
+                {t.type === 'success' ? <Check className="w-4 h-4 stroke-[3.5]" /> : <Sparkles className="w-4 h-4" />}
+              </div>
+              <div className="overflow-hidden flex-1 pr-4">
+                <h4 className="text-sm font-bold text-white">{t.title}</h4>
+                <p className="text-xs text-white/50 mt-1 leading-normal">{t.message}</p>
+              </div>
+            </div>
+
+            {t.action && (
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={t.action.onClick}
+                  className="px-4 py-2 bg-white text-black hover:bg-white/95 rounded-xl font-bold text-xs transition-colors cursor-pointer border-none"
+                >
+                  {t.action.label}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  </>
+);
 }
 
 // ==========================================
