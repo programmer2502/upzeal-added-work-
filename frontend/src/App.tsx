@@ -309,14 +309,29 @@ export default function App() {
       syncInProgressUser = userIdVal;
 
       try {
-        const { data, error: queryError } = await supabase
+        let { data, error: queryError } = await supabase
           .from('users')
           .select('first_name, last_name, role, username, onboarding_phase, dashboard_config')
           .eq('id', userIdVal)
-          .single();
+          .maybeSingle();
           
         if (queryError) {
-          console.warn("handleUserMetadataSync: query error (or row not found):", queryError);
+          console.warn("handleUserMetadataSync: query error:", queryError);
+        }
+          
+        if (!data) {
+          console.log("handleUserMetadataSync: user row not found, retrying in 1000ms...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryResult = await supabase
+            .from('users')
+            .select('first_name, last_name, role, username, onboarding_phase, dashboard_config')
+            .eq('id', userIdVal)
+            .maybeSingle();
+          data = retryResult.data;
+          if (retryResult.error) {
+            queryError = retryResult.error;
+            console.error("handleUserMetadataSync: retry query error:", queryError);
+          }
         }
           
         let finalFirstName = '';
@@ -399,9 +414,6 @@ export default function App() {
 
         // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize name and role
         const storedRole = localStorage.getItem('oauth_intended_role');
-        if (storedRole) {
-          localStorage.removeItem('oauth_intended_role');
-        }
 
         let roleVal = finalRole || 'developer';
         if (storedRole && (!finalRole || finalRole === 'developer' || finalOnboardingPhase === 'phase_1')) {
@@ -640,6 +652,7 @@ export default function App() {
     if (error) {
       setAuthError(error.message);
     } else {
+      localStorage.removeItem('oauth_intended_role');
       setView('dashboard');
     }
   };
@@ -683,6 +696,7 @@ export default function App() {
     if (userError) {
       setAuthError(userError.message);
     } else {
+      localStorage.removeItem('oauth_intended_role');
       setView('dashboard');
     }
   };
