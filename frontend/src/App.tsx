@@ -630,6 +630,7 @@ export default function App() {
     const { error } = await supabase
       .from('users')
       .update({
+        role: 'developer',
         dashboard_config: { tech_stack: selectedTech },
         onboarding_phase: 'phase_3'
       })
@@ -673,6 +674,7 @@ export default function App() {
     const { error: userError } = await supabase
       .from('users')
       .update({
+        role: 'recruiter',
         onboarding_phase: 'phase_3'
       })
       .eq('id', user.id);
