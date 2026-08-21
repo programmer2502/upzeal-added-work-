@@ -61,6 +61,7 @@ def get_related_skill_md(query: str) -> str:
 @router.post("/ask", response_model=MentorResponse)
 async def ask_ai_mentor(req: MentorQueryRequest, current_user: dict = Depends(get_current_user)):
     """AI Mentor response generation for developer queries."""
+    print("[MENTOR] Started ask_ai_mentor")
     q = req.query.strip().lower()
     first_name = current_user.get("first_name") or "Developer"
 
@@ -70,17 +71,26 @@ async def ask_ai_mentor(req: MentorQueryRequest, current_user: dict = Depends(ge
         f"Answer the query clearly, provide concrete code examples, and suggest what they should practice next.\n"
     )
     
+    print("[MENTOR] Scanning related skill markdown")
     related_skill = get_related_skill_md(q)
+    print(f"[MENTOR] Related skill length: {len(related_skill)}")
     if related_skill:
+        # Avoid model context limit overflows (e.g. cohere/north-mini-code:free limit is 8192 tokens)
+        max_guideline_len = 4000
+        truncated_guideline = related_skill
+        if len(related_skill) > max_guideline_len:
+            truncated_guideline = related_skill[:max_guideline_len] + "\n... [guidelines truncated for length] ..."
         system_prompt += (
             f"\nHere are the repository's official guidelines and rules for this skill. "
             f"You MUST align your guidance, terminology, and practice tips with these guidelines:\n"
-            f"```markdown\n{related_skill}\n```\n"
+            f"```markdown\n{truncated_guideline}\n```\n"
         )
 
     reply = None
+    print(f"[MENTOR] OpenRouter API Key configured: {bool(settings.OPENROUTER_API_KEY)}")
     if settings.OPENROUTER_API_KEY:
         try:
+            print(f"[MENTOR] Making request to OpenRouter with model: {settings.OPENROUTER_MODEL}")
             response = await openrouter_client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -99,16 +109,29 @@ async def ask_ai_mentor(req: MentorQueryRequest, current_user: dict = Depends(ge
                     "max_tokens": 1000
                 }
             )
+            print(f"[MENTOR] OpenRouter returned status: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
-                reply = data["choices"][0]["message"]["content"]
+                if isinstance(data, dict):
+                    if "error" in data:
+                        print(f"[MENTOR] OpenRouter returned error payload: {data['error']}")
+                    elif "choices" in data and data["choices"]:
+                        first_choice = data["choices"][0]
+                        if first_choice and isinstance(first_choice, dict) and "message" in first_choice:
+                            msg = first_choice["message"]
+                            if msg and isinstance(msg, dict) and "content" in msg:
+                                reply = msg["content"]
+                                if reply:
+                                    safe_preview = reply[:100].encode('ascii', 'ignore').decode('ascii')
+                                    print(f"[MENTOR] Successfully parsed OpenRouter response: {safe_preview}...")
             else:
-                print(f"OpenRouter returned status {response.status_code}: {response.text}")
+                print(f"[MENTOR] OpenRouter returned status {response.status_code}: {response.text}")
         except Exception as e:
-            print(f"Error calling OpenRouter: {e}")
+            print(f"[MENTOR] Error calling OpenRouter: {e}")
 
     # Fallback to local keyword-based matching if OpenRouter fails or is unavailable
     if not reply:
+        print("[MENTOR] OpenRouter failed or no reply; falling back to local copy")
         if "react" in q:
             reply = f"Hi {first_name}! For React: Focus on hooks (useEffect, useMemo), state composition patterns, and building reusable component libraries."
         elif "dsa" in q or "algorithm" in q:
@@ -122,4 +145,5 @@ async def ask_ai_mentor(req: MentorQueryRequest, current_user: dict = Depends(ge
         else:
             reply = f"Hi {first_name}! Here is a tip on '{req.query.strip()}': Master core fundamentals, write automated tests, and practice clean code standards."
 
+    print("[MENTOR] Finished ask_ai_mentor")
     return MentorResponse(reply=reply)

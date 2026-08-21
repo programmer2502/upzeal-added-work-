@@ -117,9 +117,17 @@ DECLARE
     email_local VARCHAR(100);
     base_username VARCHAR(100);
     suffix INTEGER := 0;
+    final_email VARCHAR(255);
 BEGIN
+    -- Handle potentially missing email (e.g. private email on GitHub)
+    IF new.email IS NULL THEN
+        final_email := 'user_' || substring(new.id::text from 1 for 10) || '@noemail.upzeal.in';
+    ELSE
+        final_email := new.email;
+    END IF;
+
     -- Extract email local part
-    email_local := split_part(new.email, '@', 1);
+    email_local := split_part(final_email, '@', 1);
     
     -- Clean email local part (only lowercase, digits, and underscores)
     base_username := lower(regexp_replace(email_local, '[^a-zA-Z0-9_]', '', 'g'));
@@ -151,10 +159,10 @@ BEGIN
     )
     VALUES (
         new.id,
-        new.email,
+        final_email,
         temp_username,
-        COALESCE(new.raw_user_meta_data->>'first_name', ''),
-        COALESCE(new.raw_user_meta_data->>'last_name', ''),
+        COALESCE(new.raw_user_meta_data->>'first_name', COALESCE(new.raw_user_meta_data->>'given_name', '')),
+        COALESCE(new.raw_user_meta_data->>'last_name', COALESCE(new.raw_user_meta_data->>'family_name', '')),
         COALESCE(new.raw_app_meta_data->>'provider', 'email'),
         COALESCE(new.raw_user_meta_data->>'role', 'developer')
     );
