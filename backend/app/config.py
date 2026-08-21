@@ -13,8 +13,10 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:5200",
         "http://127.0.0.1:5200",
-        "https://upzeal.in"
+        "https://upzeal.in",
+        "https://www.upzeal.in"
     ]
+
 
     class Config:
         env_file = ".env"

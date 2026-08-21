@@ -1,6 +1,8 @@
 import { supabase } from '../supabaseClient';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = rawApiUrl.endsWith('/api/v1') || rawApiUrl.endsWith('/api/v1/')
+  ? rawApiUrl
+  : rawApiUrl.replace(/\/$/, '') + '/api/v1';
 
 class ClientCache {
   private cache: Record<string, { val: any; expiresAt: number }> = {};
