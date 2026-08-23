@@ -169,9 +169,28 @@ const BackgroundVideo = React.memo(({ isFixed = false }: { isFixed?: boolean }) 
   </div>
 ));
 
-// ==========================================
-// CORE APP COMPONENT
-// ==========================================
+// Cookie helpers for domain-safe OAuth state sharing (shared between www.upzeal.in and upzeal.in)
+const setOAuthCookie = (name: string, value: string, days: number = 1) => {
+  const domain = window.location.hostname.endsWith('upzeal.in') ? '; domain=.upzeal.in' : '';
+  const expires = new Date(Date.now() + days * 86400000).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/${domain}; SameSite=Lax; Secure`;
+};
+
+const getOAuthCookie = (name: string): string | null => {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const eraseOAuthCookie = (name: string) => {
+  const domain = window.location.hostname.endsWith('upzeal.in') ? '; domain=.upzeal.in' : '';
+  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;${domain}; SameSite=Lax; Secure`;
+};
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'signup' | 'dashboard'>('landing');
@@ -413,7 +432,7 @@ export default function App() {
         }
 
         // If user profile metadata is empty (e.g. new Google/GitHub signup), synchronize name and role
-        const storedRole = localStorage.getItem('oauth_intended_role');
+        const storedRole = localStorage.getItem('oauth_intended_role') || getOAuthCookie('oauth_intended_role');
 
         let roleVal = finalRole || 'developer';
         if (storedRole && (!finalRole || finalRole === 'developer' || finalOnboardingPhase === 'phase_1')) {
@@ -494,9 +513,10 @@ export default function App() {
     setAuthError(null);
     setLoginError(null);
     
-    // Store intended role in localStorage if signup flow is active
+    // Store intended role in localStorage and cookie (cross-subdomain safe) if signup flow is active
     if (accountType) {
       localStorage.setItem('oauth_intended_role', accountType);
+      setOAuthCookie('oauth_intended_role', accountType, 1);
     }
     
     try {
@@ -653,6 +673,7 @@ export default function App() {
       setAuthError(error.message);
     } else {
       localStorage.removeItem('oauth_intended_role');
+      eraseOAuthCookie('oauth_intended_role');
       setView('dashboard');
     }
   };
@@ -697,6 +718,7 @@ export default function App() {
       setAuthError(userError.message);
     } else {
       localStorage.removeItem('oauth_intended_role');
+      eraseOAuthCookie('oauth_intended_role');
       setView('dashboard');
     }
   };
