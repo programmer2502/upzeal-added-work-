@@ -439,12 +439,12 @@ export default function App() {
           roleVal = storedRole;
         }
 
-        if (session.user.user_metadata && (!finalFirstName || !finalRole || roleVal !== finalRole)) {
-          const fullName = session.user.user_metadata.full_name || session.user.user_metadata.name || '';
-          const parts = fullName.split(' ');
-          const fName = finalFirstName || parts[0] || '';
-          const lName = finalLastName || parts.slice(1).join(' ') || '';
+        const fullName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
+        const parts = fullName.split(' ');
+        const fName = finalFirstName || parts[0] || '';
+        const lName = finalLastName || parts.slice(1).join(' ') || '';
 
+        if (roleVal !== finalRole || !finalFirstName || !finalLastName) {
           // Only attempt update if the row exists in database
           if (data) {
             const { error: updateProfileError } = await supabase
