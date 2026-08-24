@@ -8537,6 +8537,7 @@ function B2BPartnerProjectsView({
 
 function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
   const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory' | 'ongoing_projects'>('pipeline');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [dbCandidates, setDbCandidates] = useState<any[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -8595,123 +8596,158 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
   ];
 
   return (
-    <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden">
+    <div className="flex h-screen bg-[#0e1015] text-white overflow-hidden relative">
+      {/* Sidebar Backdrop Overlay for Mobile */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 md:hidden" 
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Recruiter Sidebar */}
-      <aside className="w-16 md:w-64 border-r border-[#333] bg-[#0a0a0a] flex flex-col justify-between shrink-0 transition-all">
-        <div className="p-4 md:p-6">
-          <div className="flex items-center justify-center md:justify-start gap-2 mb-10">
-            <Briefcase className="w-6 h-6 text-white" />
-            <span className="font-bold text-lg tracking-tight hidden md:block">Upzeal Recruiter</span>
+      <aside className={`fixed md:relative top-0 bottom-0 left-0 z-50 w-64 border-r border-[#333] bg-[#0a0a0a] flex flex-col justify-between shrink-0 transition-transform duration-300 md:translate-x-0 ${
+        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-6 h-6 text-white" />
+              <span className="font-bold text-lg tracking-tight">Upzeal Recruiter</span>
+            </div>
+            <button 
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="md:hidden p-1 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer border-none"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
           <nav className="flex flex-col gap-2">
             <button
-              onClick={() => setRecruiterView('pipeline')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('pipeline'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'pipeline' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Pipeline</span>
+              <span className="font-medium text-sm text-left">Pipeline</span>
             </button>
             <button
-              onClick={() => setRecruiterView('talent')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('talent'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'talent' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <Users className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Talent Pool</span>
+              <span className="font-medium text-sm text-left">Talent Pool</span>
             </button>
             <button
-              onClick={() => setRecruiterView('post_job')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('post_job'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'post_job' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="font-medium text-sm hidden md:block text-left">Post Requirement</span>
+              <span className="font-medium text-sm text-left">Post Requirement</span>
             </button>
             <button
-              onClick={() => setRecruiterView('ongoing_projects')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('ongoing_projects'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'ongoing_projects' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <LayoutTemplate className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Ongoing Projects</span>
+              <span className="font-medium text-sm text-left">Ongoing Projects</span>
             </button>
             <button
-              onClick={() => setRecruiterView('chat')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('chat'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'chat' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <MessageSquare className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Chat</span>
+              <span className="font-medium text-sm text-left">Chat</span>
             </button>
             <button
-              onClick={() => setRecruiterView('partner_projects' as any)}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('partner_projects' as any); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === ('partner_projects' as any) ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Partner Board</span>
+              <span className="font-medium text-sm text-left">Partner Board</span>
             </button>
             <button
-              onClick={() => setRecruiterView('companies_directory')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('companies_directory'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'companies_directory' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <Briefcase className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Companies</span>
+              <span className="font-medium text-sm text-left">Companies</span>
             </button>
             <button
-              onClick={() => setRecruiterView('company_profile')}
-              className={`flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl transition-all cursor-pointer ${
+              onClick={() => { setRecruiterView('company_profile'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
                 recruiterView === 'company_profile' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
               }`}
             >
               <Settings className="w-4 h-4" />
-              <span className="font-medium text-sm hidden md:block text-left">Profile</span>
+              <span className="font-medium text-sm text-left">Profile</span>
             </button>
           </nav>
         </div>
-        <div className="p-4 md:p-6 border-t border-[#333] flex flex-col gap-4">
-           <div className="flex items-center justify-center md:justify-start gap-3">
+        <div className="p-6 border-t border-[#333] flex flex-col gap-4">
+           <div className="flex items-center justify-start gap-3">
              <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-xs font-bold shrink-0">
                 {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'R'}
              </div>
-             <div className="overflow-hidden hidden md:block flex-1 text-left">
+             <div className="overflow-hidden flex-1 text-left">
                <p className="text-sm font-semibold truncate">{firstName && lastName ? `${firstName} ${lastName}` : email}</p>
                <p className="text-xs text-white/50 font-mono truncate">{email}</p>
              </div>
            </div>
            <button 
              onClick={onLogout}
-             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer hidden md:block"
+             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer"
            >
              Log Out
-           </button>
-           <button 
-             onClick={onLogout}
-             title="Log Out"
-             className="w-full text-xs font-semibold text-white/60 hover:text-white border border-[#333] rounded-lg py-2 hover:bg-white/5 transition-colors cursor-pointer block md:hidden"
-           >
-             ←
            </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className={`flex-1 bg-[#0e1015] ${
-        recruiterView === 'chat' 
-          ? 'overflow-hidden h-full' 
-          : 'overflow-y-auto p-6 md:p-10 w-full h-full'
-      }`}>
+      {/* Main Content Area Container */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
+        {/* Mobile Header */}
+        <header className="md:hidden flex items-center justify-between px-6 py-4 bg-[#0a0a0a] border-b border-[#333] shrink-0">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="p-1 text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer border-none"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <span className="text-lg font-bold tracking-tight flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-white" />
+              <span>Upzeal Recruiter</span>
+            </span>
+          </div>
+          <div 
+            className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-xs font-bold shrink-0 cursor-pointer"
+            onClick={() => { setRecruiterView('company_profile'); }}
+          >
+             {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : email[0]?.toUpperCase() || 'R'}
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className={`flex-1 bg-[#0e1015] ${
+          recruiterView === 'chat' 
+            ? 'overflow-hidden h-full' 
+            : 'overflow-y-auto p-6 md:p-10 w-full h-full'
+        }`}>
         {recruiterView === 'pipeline' ? (
           <div className="w-full flex flex-col flex-1">
             <header className="mb-8 shrink-0 text-left">
@@ -8878,7 +8914,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           </div>
         )}
       </main>
-      {selectedCandidate && (
+    </div>
+    {selectedCandidate && (
         <DeveloperProfileModal 
           developer={selectedCandidate} 
           recruiterUserId={userId}
