@@ -36,7 +36,10 @@ import {
   Users,
   Edit3,
   MessageSquare,
-  Mail
+  Mail,
+  Bell,
+  BellOff,
+  Trash2
 } from 'lucide-react';
 
 const formatBudget = (budgetStr: string | null | undefined): string => {
@@ -234,6 +237,7 @@ export default function App() {
     type: 'success' | 'info';
   }
   const [toasts, setToasts] = useState<AppToast[]>([]);
+  const [newApplicationEvent, setNewApplicationEvent] = useState<any>(null);
 
   // FastAPI WebSocket connection for real-time push events from the backend
   useEffect(() => {
@@ -267,6 +271,7 @@ export default function App() {
           } else if (data.type === 'NEW_APPLICATION' && data.payload) {
             const { app_id, project_title, applicant_name } = data.payload;
             const toastId = `toast-${app_id}`;
+            setNewApplicationEvent({ app_id, project_title, applicant_name, timestamp: Date.now() });
             setToasts(prev => {
               if (prev.find(t => t.id === toastId)) return prev;
               return [
@@ -1758,6 +1763,7 @@ export default function App() {
             firstName={firstName} 
             lastName={lastName} 
             email={email} 
+            newApplicationEvent={newApplicationEvent}
             onLogout={async () => {
               await supabase.auth.signOut();
               setView('landing');
@@ -8535,13 +8541,235 @@ function B2BPartnerProjectsView({
   );
 }
 
-function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { userId: string; firstName: string; lastName: string; email: string; onLogout: () => void }) {
-  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory' | 'ongoing_projects'>('pipeline');
+interface NotificationItem {
+  id: string;
+  app_id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+  type: string;
+  applicant_name: string;
+  project_title: string;
+  role: string;
+  developer: any;
+}
+
+function RecruiterNotificationsView({
+  notifications,
+  onAccept,
+  onMarkAllRead,
+  onClearAll,
+  onSelectCandidate
+}: {
+  notifications: NotificationItem[];
+  onAccept: (appId: string, notifId: string) => Promise<void>;
+  onMarkAllRead: () => void;
+  onClearAll: () => void;
+  onSelectCandidate: (dev: any) => void;
+}) {
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+
+  const handleAccept = async (appId: string, notifId: string) => {
+    setAcceptingId(appId);
+    try {
+      await onAccept(appId, notifId);
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  return (
+    <div className="w-full flex flex-col flex-1 text-left">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Bell className="w-6 h-6 text-[#00d2ff]" />
+            Notifications Center
+          </h1>
+          <p className="text-xs text-white/40 mt-1 font-mono">Review recent activity, pending applications, and contract proposal requests</p>
+        </div>
+
+        {notifications.length > 0 && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onMarkAllRead}
+              className="text-xs font-semibold text-white/60 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-all cursor-pointer bg-transparent"
+            >
+              Mark all as read
+            </button>
+            <button
+              onClick={onClearAll}
+              className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-3 py-1.5 rounded-lg border border-rose-500/20 hover:bg-rose-500/5 transition-all cursor-pointer flex items-center gap-1.5 bg-transparent"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div className="border border-dashed border-white/10 rounded-2xl p-16 text-center text-white/40 w-full bg-[#121520]/20 flex flex-col items-center justify-center min-h-[300px]">
+          <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+            <BellOff className="w-6 h-6 text-white/20" />
+          </div>
+          <p className="text-sm font-semibold">All caught up!</p>
+          <p className="text-xs text-white/30 mt-1">No new applicant notifications or pending proposals at the moment.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 max-w-4xl w-full">
+          {notifications.map(n => (
+            <div
+              key={n.id}
+              className={`border rounded-2xl p-5 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden shadow-lg group ${
+                n.read 
+                  ? 'bg-[#121520]/30 border-white/5 opacity-75' 
+                  : 'bg-[#121520]/75 border-[#00d2ff]/20 hover:border-[#00d2ff]/40'
+              }`}
+            >
+              {!n.read && (
+                <div className="absolute top-0 left-0 bottom-0 w-[3px] bg-gradient-to-b from-[#00d2ff] to-[#0B2551]" />
+              )}
+
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#00d2ff]/10 to-[#0B2551]/20 border border-white/10 flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden text-white mt-1">
+                  {n.applicant_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#00d2ff] bg-[#00d2ff]/10 px-2.5 py-0.5 rounded-full">
+                      {n.role === 'recruiter' ? 'B2B Partner' : 'Developer'}
+                    </span>
+                    <span className="text-[10px] text-white/30 font-mono">
+                      {new Date(n.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <h3 
+                    onClick={() => onSelectCandidate(n.developer)}
+                    className="text-sm font-bold text-white leading-snug cursor-pointer hover:underline hover:text-[#00d2ff]"
+                  >
+                    {n.applicant_name} applied
+                  </h3>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    Applied to your requirement: <strong className="text-white/80 font-semibold">"{n.project_title}"</strong>
+                  </p>
+                  {n.developer?.profile_details?.bio && (
+                    <p className="text-[11px] text-white/40 italic font-light max-w-xl truncate mt-1">
+                      "{n.developer.profile_details.bio}"
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                <button
+                  onClick={() => onSelectCandidate(n.developer)}
+                  className="text-xs font-bold text-white bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-xl border border-white/10 transition-all cursor-pointer"
+                >
+                  View Profile
+                </button>
+                <button
+                  onClick={() => handleAccept(n.app_id, n.id)}
+                  disabled={acceptingId === n.app_id}
+                  className="text-xs font-bold text-black bg-[#00d2ff] hover:bg-[#00d2ff]/90 px-4 py-2.5 rounded-xl transition-all cursor-pointer border-none flex items-center gap-1.5"
+                >
+                  {acceptingId === n.app_id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      Accept Application
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecruiterDashboard({ userId, firstName, lastName, email, newApplicationEvent, onLogout }: { userId: string; firstName: string; lastName: string; email: string; newApplicationEvent?: any; onLogout: () => void }) {
+  const [recruiterView, setRecruiterView] = useState<'pipeline' | 'talent' | 'post_job' | 'chat' | 'company_profile' | 'companies_directory' | 'ongoing_projects' | 'notifications'>('pipeline');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [dbCandidates, setDbCandidates] = useState<any[]>([]);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
+
+  // Recruiter notifications
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = async () => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select(`
+          id,
+          status,
+          cover_letter,
+          created_at,
+          project:projects (
+            id,
+            title,
+            created_by
+          ),
+          developer:users (
+            id,
+            first_name,
+            last_name,
+            email,
+            username,
+            role,
+            profile_details
+          )
+        `);
+
+      if (error) {
+        console.error("Error fetching notifications:", error.message);
+        return;
+      }
+
+      if (data) {
+        // Filter applications where project creator matches this recruiter, and status is pending
+        const pendingApps = data.filter((app: any) => 
+          app.project?.created_by === userId && app.status === 'pending'
+        );
+
+        const mappedNotifs = pendingApps.map((app: any) => {
+          const dev = app.developer || {};
+          const applicantName = dev.first_name && dev.last_name 
+            ? `${dev.first_name} ${dev.last_name}` 
+            : dev.username || dev.email || 'Applicant';
+          const projectTitle = app.project?.title || 'Requirement';
+
+          return {
+            id: `notif-${app.id}`,
+            app_id: app.id,
+            title: 'New Application Received',
+            message: `${applicantName} applied to your requirement: "${projectTitle}"`,
+            read: false,
+            timestamp: app.created_at,
+            type: 'NEW_APPLICATION',
+            applicant_name: applicantName,
+            project_title: projectTitle,
+            role: dev.role,
+            developer: dev
+          };
+        });
+
+        setNotifications(mappedNotifs);
+        setUnreadCount(mappedNotifs.filter((n: any) => !n.read).length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  };
 
   const fetchDevelopers = async () => {
     try {
@@ -8554,7 +8782,15 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
 
   useEffect(() => {
     fetchDevelopers();
-  }, []);
+    fetchNotifications();
+  }, [userId]);
+
+  useEffect(() => {
+    if (newApplicationEvent) {
+      fetchDevelopers();
+      fetchNotifications();
+    }
+  }, [newApplicationEvent]);
 
   const mappedDbCandidates = dbCandidates.map(u => {
     const name = u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email;
@@ -8587,6 +8823,8 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
       profile_details: updatedDev.profile_details,
       xp: Number(updatedDev.profile_details?.xp !== undefined ? updatedDev.profile_details.xp : (updatedDev.xp || 23094))
     } : prev);
+    fetchDevelopers();
+    fetchNotifications();
   };
 
   const columns = [
@@ -8669,6 +8907,25 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
             >
               <MessageSquare className="w-4 h-4" />
               <span className="font-medium text-sm text-left">Chat</span>
+            </button>
+            <button
+              onClick={() => { setRecruiterView('notifications'); setIsMobileSidebarOpen(false); }}
+              className={`flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer ${
+                recruiterView === 'notifications' ? 'bg-white/10 text-white border border-[#333]' : 'text-white/60 hover:bg-white/5 hover:text-white border border-transparent'
+              }`}
+            >
+              <div className="relative">
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#00d2ff] rounded-full border border-black animate-pulse" />
+                )}
+              </div>
+              <span className="font-medium text-sm text-left">Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto text-[10px] font-bold bg-[#00d2ff]/20 text-[#00d2ff] border border-[#00d2ff]/30 px-2 py-0.5 rounded-full font-mono">
+                  {unreadCount}
+                </span>
+              )}
             </button>
             <button
               onClick={() => { setRecruiterView('partner_projects' as any); setIsMobileSidebarOpen(false); }}
@@ -8798,6 +9055,45 @@ function RecruiterDashboard({ userId, firstName, lastName, email, onLogout }: { 
           <RecruiterOngoingProjectsView userId={userId} />
         ) : recruiterView === 'post_job' ? (
           <PostJobView userId={userId} />
+        ) : recruiterView === 'notifications' ? (
+          <RecruiterNotificationsView
+            notifications={notifications}
+            onAccept={async (appId, notifId) => {
+              try {
+                await apiService.acceptApplication(appId);
+                await Promise.all([fetchDevelopers(), fetchNotifications()]);
+              } catch (err: any) {
+                alert(err.message || "Failed to accept application");
+              }
+            }}
+            onMarkAllRead={() => {
+              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+              setUnreadCount(0);
+            }}
+            onClearAll={() => {
+              setNotifications([]);
+              setUnreadCount(0);
+            }}
+            onSelectCandidate={(dev) => {
+              const name = dev.first_name && dev.last_name ? `${dev.first_name} ${dev.last_name}` : dev.username || dev.email;
+              const skills = dev.dashboard_config?.tech_stack || [];
+              setSelectedCandidate({
+                id: dev.id,
+                name,
+                role: dev.role === 'recruiter' ? 'Client Partner Recruiter' : 'Software Engineer',
+                avatar: dev.profile_details?.avatar_url || '',
+                skills,
+                status: 'new',
+                xp: dev.profile_details?.xp || dev.xp || 0,
+                match: skills.length > 0 ? Math.min(100, Math.max(50, 60 + skills.length * 8)) : 0,
+                isDbDeveloper: true,
+                email: dev.email,
+                username: dev.username,
+                profile_details: dev.profile_details,
+                dashboard_config: dev.dashboard_config
+              });
+            }}
+          />
         ) : recruiterView === 'chat' ? (
           <StudentChatView 
             userId={userId} 

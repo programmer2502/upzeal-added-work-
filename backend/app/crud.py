@@ -207,7 +207,8 @@ class ChallengeRepository:
                     "app_id": app_id,
                     "project_id": project_id,
                     "project_title": project_title,
-                    "applicant_name": applicant_name
+                    "applicant_name": applicant_name,
+                    "developer_id": user_id
                 }
             }, project_creator_id)
 
