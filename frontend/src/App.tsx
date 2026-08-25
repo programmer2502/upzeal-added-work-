@@ -6752,13 +6752,16 @@ function PostJobView({ userId }: { userId: string }) {
   const handleDeleteProject = async (projId: string) => {
     if (!window.confirm("Are you sure you want to delete this requirement?")) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('projects')
         .delete()
-        .eq('id', projId);
+        .eq('id', projId)
+        .select();
 
       if (error) {
         alert("Failed to delete requirement: " + error.message);
+      } else if (!data || data.length === 0) {
+        alert("Failed to delete requirement: You do not have database permission (RLS) to delete this requirement.");
       } else {
         setMyProjects(prev => prev.filter(p => p.id !== projId));
         if (editingProjectId === projId) {

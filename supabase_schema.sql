@@ -224,9 +224,11 @@ CREATE POLICY "Allow company owner to update" ON public.companies FOR UPDATE USI
 DROP POLICY IF EXISTS "Allow public read access to projects" ON public.projects;
 DROP POLICY IF EXISTS "Allow recruiters to insert projects" ON public.projects;
 DROP POLICY IF EXISTS "Allow project creator to update" ON public.projects;
+DROP POLICY IF EXISTS "Allow project creator to delete" ON public.projects;
 CREATE POLICY "Allow public read access to projects" ON public.projects FOR SELECT USING (true);
 CREATE POLICY "Allow recruiters to insert projects" ON public.projects FOR INSERT WITH CHECK ((select auth.role()) = 'authenticated');
 CREATE POLICY "Allow project creator to update" ON public.projects FOR UPDATE USING ((select auth.uid()) = created_by);
+CREATE POLICY "Allow project creator to delete" ON public.projects FOR DELETE USING ((select auth.uid()) = created_by);
 
 -- 4. APPLICATIONS POLICIES
 DROP POLICY IF EXISTS "Allow applicants and project owners to read applications" ON public.applications;
